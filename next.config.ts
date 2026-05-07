@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   env: {
-    NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_BASE_PATH: "",
   },
 };
 
