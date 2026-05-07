@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
 
-const GITHUB_REPO_NAME = 'drugucopia.github.io';
 
-const basePath = isGithubActions ? `/${GITHUB_REPO_NAME}` : '';
+const basePath = isGithubActions ? `/` : '';
 
 const nextConfig: NextConfig = {
   /* config options here */
