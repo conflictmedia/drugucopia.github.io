@@ -148,10 +148,10 @@ const routeDangerColors: Record<string, string> = {
 }
 
 const GITHUB_NEW_SUBSTANCE_URL =
-  'https://github.com/conflictmedia/drugucopia/issues/new?template=new-substance-request.md'
+  'https://github.com/drugucopia/substances/issues/new?template=new-substance-request.md'
 const GITHUB_INFO_CHANGE_URL =
-  'https://github.com/conflictmedia/drugucopia/issues/new?template=change-substance-info.md'
-const GITHUB_FEEDBACK_URL = 'https://github.com/conflictmedia/drugucopia/issues/new'
+  'https://github.com/drugucopia/substances/issues/new?template=change-substance-info.md'
+const GITHUB_FEEDBACK_URL = 'https://github.com/drugucopia/substances/issues/new'
 const GITHUB_MAIN_URL = 'https://github.com/conflictmedia/drugucopia'
 
 type MobileTab = 'substances' | 'timeline' | 'log' | 'history'
