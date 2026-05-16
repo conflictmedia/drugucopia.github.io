@@ -1,3 +1,6 @@
 [submodule "src/lib/substances"]
 	path = src/lib/substances
 	url = https://github.com/drugucopia/substances.git
+[submodule "substances"]
+	path = substances
+	url = https://github.com/drugucopia/substances/

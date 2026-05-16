@@ -14,6 +14,7 @@ import {
   X,
   Search,
   Activity,
+  Calculator,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -25,6 +26,7 @@ import { searchSubstancesRanked } from '@/lib/substances/index'
 const navItems = [
   { href: '/', label: 'Substances', icon: FlaskConical },
   { href: '/interactions', label: 'Interactions', icon: Shuffle },
+  { href: '/dxm-calculator', label: 'DXM Calc', icon: Calculator },
   { href: '/harm-reduction', label: 'Harm Reduction', icon: Shield },
 ]
 
