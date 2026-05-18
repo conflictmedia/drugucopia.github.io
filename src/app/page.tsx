@@ -152,7 +152,7 @@ const GITHUB_NEW_SUBSTANCE_URL =
 const GITHUB_INFO_CHANGE_URL =
   'https://github.com/drugucopia/substances/issues/new?template=change-substance-info.md'
 const GITHUB_FEEDBACK_URL = 'https://github.com/drugucopia/substances/issues/new'
-const GITHUB_MAIN_URL = 'https://github.com/conflictmedia/drugucopia'
+const GITHUB_MAIN_URL = 'https://github.com/drugucopia/drugucopia'
 
 type MobileTab = 'substances' | 'timeline' | 'log' | 'history'
 
