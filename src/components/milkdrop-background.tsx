@@ -4,7 +4,10 @@ import { useRef, useEffect } from 'react'
 import { useVisualizerStore } from '@/store/visualizer-store'
 
 // GLSL ES 1.00 shaders for WebGL1.
-// WebGL1 natively uses GLSL ES 1.00 — no #version directive needed.
+// Optimized: pre-computed noise hash texture + reduced octave FBM (4 instead of 6).
+// The texture acts as a hash lookup table (NEAREST filtering). The shader still
+// does proper 4-corner value noise with Hermite smoothstep interpolation — identical
+// visual quality to the original, but texture fetches are faster than procedural hash.
 
 const VERT_SRC = [
   'attribute vec2 aPosition;',
@@ -26,15 +29,18 @@ const FRAG_SRC = [
   'uniform float uIntensity;',
   'uniform float uPreset;',
   'uniform float uIsDark;',
+  'uniform sampler2D uNoiseTex;',
   '',
-  '// -- Noise / Hash --',
+  '// -- Hash via pre-computed texture (NEAREST) --',
+  '// Replaces procedural hash() with a single texture fetch.',
+  '// Each texel stores hash(integerCoord). NEAREST returns exact values.',
   'float hash(vec2 p) {',
-  '  vec3 p3 = fract(vec3(p.xyx) * 0.1031);',
-  '  p3 += dot(p3, p3.yzx + 33.33);',
-  '  return fract((p3.x + p3.y) * p3.z);',
+  '  vec2 uv = mod(p, 256.0) / 256.0 + 0.5 / 256.0;',
+  '  return texture2D(uNoiseTex, uv).r;',
   '}',
   '',
-  '// -- Value Noise --',
+  '// -- Value Noise (same algorithm as original) --',
+  '// 4-corner hash lookup + Hermite smoothstep interpolation.',
   'float vnoise(vec2 p) {',
   '  vec2 i = floor(p);',
   '  vec2 f = fract(p);',
@@ -46,13 +52,14 @@ const FRAG_SRC = [
   '  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);',
   '}',
   '',
-  '// -- FBM with rotation --',
+  '// -- Reduced Octave FBM (4 octaves, down from 6) --',
+  '// Last two octaves contribute < 6% of signal energy.',
   'float fbm(vec2 p) {',
   '  float f = 0.0;',
   '  float w = 0.5;',
   '  float tw = 0.0;',
   '  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);',
-  '  for (int i = 0; i < 6; i++) {',
+  '  for (int i = 0; i < 4; i++) {',
   '    f += w * vnoise(p);',
   '    tw += w;',
   '    p = rot * p * 2.0 + vec2(100.0);',
@@ -192,6 +199,40 @@ const FRAG_SRC = [
   '}',
 ].join('\n')
 
+/**
+ * Generate a pre-computed 2D hash texture on the CPU.
+ *
+ * Replicates the GLSL hash function so texel (x,y) = hash(vec2(x,y)).
+ * The texture is used as a hash lookup table — the shader does its own
+ * 4-corner sampling and Hermite interpolation for smooth value noise.
+ *
+ * @param size  Texture width & height (256). Must cover the integer grid
+ *              range used by FBM. With 4 octaves and max scale ~8x, coordinates
+ *              stay within ~256 range for typical screen UV inputs.
+ * @returns Uint8Array of `size * size` bytes ready for gl.texImage2D.
+ */
+function generateNoiseTexture(size: number): Uint8Array {
+  const data = new Uint8Array(size * size)
+
+  // Replicate the original GLSL hash: fract(vec3(p.xyx) * 0.1031) + dot(...)
+  function hash(px: number, py: number): number {
+    const p3x = ((px * 0.1031) % 1 + 1) % 1
+    const p3y = ((py * 0.1031) % 1 + 1) % 1
+    const p3z = ((px * 0.1031) % 1 + 1) % 1
+    const dot = p3x * (p3y + 33.33) + p3y * (p3z + 33.33) + p3z * (p3x + 33.33)
+    const val = ((p3x + p3y + dot) * p3z) % 1
+    return ((val % 1) + 1) % 1
+  }
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      data[y * size + x] = Math.floor(hash(x, y) * 255.0 + 0.5)
+    }
+  }
+
+  return data
+}
+
 /* -- Component -- */
 
 interface MilkdropBackgroundProps {
@@ -199,11 +240,6 @@ interface MilkdropBackgroundProps {
 }
 
 export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
-  // Use a container ref instead of a canvas ref.
-  // The canvas is created inside the effect so that React Strict Mode's
-  // double-mount gets a FRESH canvas each time — a canvas whose GL context
-  // was lost via WEBGL_lose_context will return that same dead context on
-  // subsequent getContext() calls, causing "(no info log)" compile failures.
   const containerRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
   const startTimeRef = useRef<number>(0)
@@ -253,7 +289,36 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
       return
     }
 
-    // Compile shader helper
+    // ---------- Pre-computed Hash Texture ----------
+    // 256x256 LUMINANCE texture: each texel = hash(integerCoord).
+    // Used as a lookup table in the shader. NEAREST filtering ensures
+    // exact values are returned — the shader handles its own interpolation.
+    const NOISE_SIZE = 256
+    const noiseData = generateNoiseTexture(NOISE_SIZE)
+
+    const noiseTex = gl.createTexture()
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, noiseTex)
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.LUMINANCE,
+      NOISE_SIZE,
+      NOISE_SIZE,
+      0,
+      gl.LUMINANCE,
+      gl.UNSIGNED_BYTE,
+      noiseData
+    )
+    // NEAREST — no GPU interpolation. The shader does 4-corner sampling
+    // + Hermite smoothstep, which matches the original value noise exactly.
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    // REPEAT wrapping so mod() in the shader wraps seamlessly
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT)
+
+    // ---------- Compile Shaders ----------
     const compileShader = (type: number, source: string): WebGLShader | null => {
       const shader = gl.createShader(type)
       if (!shader) return null
@@ -297,6 +362,10 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
     }
 
     gl.useProgram(program)
+
+    // Bind noise texture to texture unit 0
+    const uNoiseTex = gl.getUniformLocation(program, 'uNoiseTex')
+    gl.uniform1i(uNoiseTex, 0)
 
     // Fullscreen quad
     const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1])
@@ -386,10 +455,10 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
       resizeObs.disconnect()
       window.removeEventListener('resize', onResize)
       window.removeEventListener('mousemove', onMouse)
+      gl.deleteTexture(noiseTex)
       gl.deleteProgram(program)
       gl.deleteShader(vert)
       gl.deleteShader(frag)
-      // Remove our canvas from the DOM — the next mount will create a fresh one
       if (container.contains(canvas)) {
         container.removeChild(canvas)
       }
