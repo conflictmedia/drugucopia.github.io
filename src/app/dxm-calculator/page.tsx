@@ -115,12 +115,12 @@ interface OTCProduct {
 
 const otcProducts: OTCProduct[] = [
   {
-    name: 'Robitussin DX (Syrup)',
-    dxmPerUnit: 3,
-    unitLabel: 'ml',
+    name: 'Robocough Freebase tablets',
+    dxmPerUnit: 30,
+    unitLabel: 'mg',
   },
   {
-    name: 'Delsym (Extended Release)',
+    name: 'Delsym (polisterix)',
     dxmPerUnit: 3,
     unitLabel: 'ml',
     warning:
@@ -129,13 +129,18 @@ const otcProducts: OTCProduct[] = [
   {
     name: 'Cough Gels (15mg)',
     dxmPerUnit: 15,
-    unitLabel: 'capsules',
+    unitLabel: 'gels',
   },
   {
-    name: 'Cough Gels (30mg)',
+    name: 'Robocough HBR tablets',
     dxmPerUnit: 30,
     unitLabel: 'capsules',
   },
+  {
+    name: 'Delsym tablets',
+    dxmPerUnit: 15,
+    unitLabel: 'capsules',
+  }
 ]
 
 // ─── Main Page Component ─────────────────────────────────────────────────────
