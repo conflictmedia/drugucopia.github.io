@@ -116,7 +116,7 @@ interface OTCProduct {
 const otcProducts: OTCProduct[] = [
   {
     name: 'Robocough Freebase tablets',
-    dxmPerUnit: 30,
+    dxmPerUnit: 40.92,
     unitLabel: 'mg',
   },
   {
