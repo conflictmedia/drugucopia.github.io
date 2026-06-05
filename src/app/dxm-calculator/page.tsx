@@ -117,7 +117,7 @@ const otcProducts: OTCProduct[] = [
   {
     name: 'Robocough Freebase tablets',
     dxmPerUnit: 40.92,
-    unitLabel: 'mg',
+    unitLabel: 'tablets',
   },
   {
     name: 'Delsym (polisterix)',
@@ -134,12 +134,12 @@ const otcProducts: OTCProduct[] = [
   {
     name: 'Robocough HBR tablets',
     dxmPerUnit: 30,
-    unitLabel: 'capsules',
+    unitLabel: 'tablets',
   },
   {
     name: 'Delsym tablets',
     dxmPerUnit: 15,
-    unitLabel: 'capsules',
+    unitLabel: 'tablets',
   }
 ]
 
