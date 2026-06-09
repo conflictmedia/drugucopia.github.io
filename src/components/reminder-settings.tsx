@@ -67,7 +67,7 @@ function ScheduleEditor({
     schedule?.substanceId || '',
   )
   const [intervalHours, setIntervalHours] = useState(
-    schedule ? schedule.intervalMinutes / 60 : 4,
+    schedule ? Math.floor(schedule.intervalMinutes / 60) : 4,
   )
   const [intervalMinutes, setIntervalMinutes] = useState(
     schedule ? schedule.intervalMinutes % 60 : 0,
@@ -140,40 +140,48 @@ function ScheduleEditor({
 
       <div className="space-y-2">
         <Label>Interval between doses</Label>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                min={0}
-                max={24}
-                value={intervalHours}
-                onChange={(e) =>
-                  setIntervalHours(
-                    Math.max(0, parseInt(e.target.value) || 0),
-                  )
-                }
-                className="w-20"
-              />
-              <span className="text-sm text-neutral-content">hours</span>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              min={0}
+              max={24}
+              step={1}
+              value={intervalHours}
+              onChange={(e) =>
+                setIntervalHours(
+                  Math.min(24, Math.max(0, parseInt(e.target.value) || 0)),
+                )
+              }
+              onBlur={() => {
+                // Clamp on blur so empty/invalid values snap to 0
+                if (isNaN(intervalHours) || intervalHours < 0) setIntervalHours(0)
+                if (intervalHours > 24) setIntervalHours(24)
+              }}
+              className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-sm text-neutral-content whitespace-nowrap">hours</span>
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-1">
-              <Input
-                type="number"
-                min={0}
-                max={59}
-                value={intervalMinutes}
-                onChange={(e) =>
-                  setIntervalMinutes(
-                    Math.max(0, parseInt(e.target.value) || 0),
-                  )
-                }
-                className="w-20"
-              />
-              <span className="text-sm text-neutral-content">min</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <Input
+              type="number"
+              min={0}
+              max={59}
+              step={1}
+              value={intervalMinutes}
+              onChange={(e) =>
+                setIntervalMinutes(
+                  Math.min(59, Math.max(0, parseInt(e.target.value) || 0)),
+                )
+              }
+              onBlur={() => {
+                // Clamp on blur so empty/invalid values snap to 0
+                if (isNaN(intervalMinutes) || intervalMinutes < 0) setIntervalMinutes(0)
+                if (intervalMinutes > 59) setIntervalMinutes(59)
+              }}
+              className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <span className="text-sm text-neutral-content whitespace-nowrap">min</span>
           </div>
         </div>
         {totalMinutes > 0 && (
