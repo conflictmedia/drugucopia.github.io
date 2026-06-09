@@ -552,7 +552,7 @@ function MobileBottomNav({
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-[30px] inset-x-0 z-50 bg-base-100 border-t border-base-300 safe-area-pb">
+    <nav className="md:hidden fixed bottom-[30px] inset-x-0 z-50 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="flex">
         {items.map(({ id, label, icon: Icon }) => {
           const isLog = id === 'log'
@@ -720,7 +720,7 @@ function SubstanceDetail({
       </header>
 
       {/* Mobile content */}
-      <div className="md:hidden flex-1 overflow-y-auto pb-24">
+      <div className="md:hidden flex-1 overflow-y-auto pb-32">
         <div className="px-4 pt-4 pb-3 border-b border-base-300">
           <div className="flex items-start gap-3 mb-3">
             {primary && (
@@ -1645,7 +1645,7 @@ function HomeContent() {
           </div>
 
           {/* Mobile: Substances tab */}
-          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-24`}>
+          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-32`}>
             <div className="px-4 pt-3 pb-1">
               <CategoryChipRow selected={selectedCategory} onChange={handleCategoryChange} />
             </div>
@@ -1678,14 +1678,15 @@ function HomeContent() {
           </div>
 
           {/* Mobile: Timeline tab */}
-          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-24 px-4 pt-3 space-y-4`}>
+          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-32 px-4 pt-3 space-y-4`}>
             <MobileActiveReminders />
             <ActiveDosesTimeline />
+            <ReminderSettings />
             <DoseStats />
           </div>
 
           {/* Mobile: History tab */}
-          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-24 px-4 pt-3`}>
+          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-32 px-4 pt-3`}>
             <DoseHistory />
           </div>
         </main>
