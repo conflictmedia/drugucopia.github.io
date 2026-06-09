@@ -966,8 +966,8 @@ export function DoseHistory() {
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="bg-base-100" />
-                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-base-100" />
+                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
+                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
                   <Button
                     onClick={() => connectToSync()}
                     disabled={syncStatus === 'connecting' || !roomId || !password}
@@ -993,7 +993,7 @@ export function DoseHistory() {
               {Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
                 return (
                   <div key={dateGroup} className="mb-6">
-                    <h4 className="text-sm font-medium text-neutral-content mb-3 py-1 text-center">
+                    <h4 className="text-sm font-medium text-neutral-content mb-3 sticky top-0 bg-base-100 py-1 z-10 text-center">
                       {dateGroup}
                     </h4>
                     <div className="space-y-3">
