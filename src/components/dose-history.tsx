@@ -989,11 +989,11 @@ export function DoseHistory() {
               <h3 className="text-lg font-medium mb-2">No doses logged yet</h3>
             </div>
           ) : (
-            <ScrollArea className="h-[400px] pr-4">
+            <div className="pr-4">
               {Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
                 return (
                   <div key={dateGroup} className="mb-6">
-                    <h4 className="text-sm font-medium text-neutral-content mb-3 sticky top-0 bg-base-100 py-1 z-10 text-center">
+                    <h4 className="text-sm font-medium text-neutral-content mb-3 py-1 text-center">
                       {dateGroup}
                     </h4>
                     <div className="space-y-3">
@@ -1050,7 +1050,7 @@ export function DoseHistory() {
                   </div>
                 )
               })}
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
