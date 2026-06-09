@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { DoseLog } from '../types'
+import { useReminderStore } from './reminder-store'
 
 const STORAGE_KEY = 'drugucopia-dose-logs'
 const DELETED_KEY = 'drugucopia-deleted-ids'
@@ -65,6 +66,16 @@ export const useDoseStore = create<DoseStore>((set, get) => ({
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
       return { doses: updated }
     })
+
+    // Trigger reminder system — auto-start a timer if this substance has a schedule
+    try {
+      const reminderStore = useReminderStore.getState()
+      if (reminderStore.autoStartEnabled) {
+        reminderStore.startTimer(dose)
+      }
+    } catch {
+      // Reminder store may not be initialized yet — silently skip
+    }
   },
 
   updateDose: (updatedDose) => {

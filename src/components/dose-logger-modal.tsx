@@ -26,6 +26,8 @@ import { DoseLog, Duration } from '@/types'
 import { calculatePhaseTimings, getPhaseStatus } from '@/components/dose-timeline/dose-timeline-utils'
 import { getDurationForRoute } from '@/lib/duration-interpolation'
 import { DurationOverrideFields } from '@/components/duration-override-fields'
+import { useReminderStore } from '@/store/reminder-store'
+import { formatIntervalMinutes } from '@/lib/notification-utils'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DoseLoggerModalProps {
@@ -775,6 +777,7 @@ export function DoseLoggerModal({
   const [unit, setUnit] = useState('mg')
   const [route, setRoute] = useState(preselectedRoute || 'oral')
   const [timestamp, setTimestamp] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+  const [timestampModified, setTimestampModified] = useState(false)
   const [notes, setNotes] = useState('')
   const [mood, setMood] = useState('')
   const [setting, setSetting] = useState('')
@@ -1077,7 +1080,10 @@ export function DoseLoggerModal({
         amount: parseFloat(amount),
         unit,
         route,
-        timestamp: new Date(timestamp).toISOString(),
+        // If the user didn't modify the timestamp field, use the exact current time
+        // (preserving seconds). If they manually changed it, use their input
+        // (which will have :00 seconds — acceptable for a hand-picked time).
+        timestamp: timestampModified ? new Date(timestamp).toISOString() : new Date().toISOString(),
         duration: resolvedDuration,
         durationIsEstimated: usingEstimate || undefined,
         durationSourceRoute: usingEstimate ? estimatedDuration?.sourceRoute : undefined,
@@ -1095,6 +1101,22 @@ export function DoseLoggerModal({
         title: 'Dose logged',
         description: `${amount} ${formatUnit(unit, parseFloat(amount))} of ${substanceName}${estimatedDuration?.isEstimated && !durationOverride ? ' (estimated timeline)' : ''}`,
       })
+
+      // Check if a reminder timer was auto-started and notify the user
+      try {
+        const reminderStore = useReminderStore.getState()
+        const matchingSchedule = reminderStore.schedules.find(
+          s => s.enabled && s.substanceName.toLowerCase() === substanceName.toLowerCase()
+        )
+        if (matchingSchedule && reminderStore.autoStartEnabled) {
+          toast({
+            title: 'Reminder started',
+            description: `${formatIntervalMinutes(matchingSchedule.intervalMinutes)} timer started for ${substanceName}`,
+          })
+        }
+      } catch {
+        // Reminder store may not be available — skip
+      }
 
       setOpen(false)
       resetForm()
@@ -1120,6 +1142,7 @@ export function DoseLoggerModal({
     setUnit('mg')
     if (!preselectedRoute) setRoute('oral')
     setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+    setTimestampModified(false)
     setNotes('')
     setMood('')
     setSetting('')
@@ -1153,7 +1176,10 @@ export function DoseLoggerModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (isOpen) setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+      if (isOpen) {
+        setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+        setTimestampModified(false)
+      }
       setOpen(isOpen)
     }}>
       <DialogTrigger asChild>
@@ -1402,7 +1428,10 @@ export function DoseLoggerModal({
               <Input
                 type="datetime-local"
                 value={timestamp}
-                onChange={(e) => setTimestamp(e.target.value)}
+                onChange={(e) => {
+                  setTimestamp(e.target.value)
+                  setTimestampModified(true)
+                }}
               />
             </div>
 

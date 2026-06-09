@@ -9,6 +9,7 @@ import { SyncProvider } from "@/contexts/sync-context";
 import { SharedNav } from "@/components/shared-nav";
 import { MilkdropBackgroundWrapper } from "@/components/milkdrop-background-wrapper";
 import { VisualizerControls } from "@/components/visualizer-controls";
+import { ReminderProvider } from "@/components/reminder-provider";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
@@ -50,6 +51,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SyncProvider>
+            <ReminderProvider>
             <MilkdropBackgroundWrapper />
             <Suspense>
               <SharedNav />
@@ -68,6 +70,7 @@ export default function RootLayout({
 
             <VisualizerControls />
             <Toaster />
+            </ReminderProvider>
           </SyncProvider>
         </ThemeProvider>
       </body>
