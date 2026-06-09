@@ -883,6 +883,14 @@ export function DoseLoggerModal({
           e.preventDefault()
           setQuickActiveIndex(prev => prev > 0 ? prev - 1 : quickSuggestions.length - 1)
           return
+        case 'Tab':
+          e.preventDefault()
+          if (e.shiftKey) {
+            setQuickActiveIndex(prev => prev > 0 ? prev - 1 : quickSuggestions.length - 1)
+          } else {
+            setQuickActiveIndex(prev => prev < quickSuggestions.length - 1 ? prev + 1 : 0)
+          }
+          return
         case 'Escape':
           e.preventDefault()
           setShowQuickSuggestions(false)
@@ -1244,6 +1252,17 @@ export function DoseLoggerModal({
                             </button>
                           )
                         })}
+                      </div>
+                      <div className="px-2.5 py-1.5 border-t border-base-300 text-[10px] text-neutral-content flex items-center justify-between">
+                        <span>{quickSuggestions.length} result{quickSuggestions.length !== 1 ? 's' : ''}</span>
+                        <span>
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                          {' / '}
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
+                          {' '}navigate{' '}
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
+                          {' '}select
+                        </span>
                       </div>
                     </motion.div>
                   )}

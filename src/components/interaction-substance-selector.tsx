@@ -172,8 +172,16 @@ export function InteractionSubstanceSelector({
           setActiveIndex(-1)
           break
         case 'Tab':
-          // Close dropdown on Tab
-          setOpen(false)
+          e.preventDefault()
+          if (e.shiftKey) {
+            setActiveIndex((prev) =>
+              prev > 0 ? prev - 1 : displayResults.length - 1
+            )
+          } else {
+            setActiveIndex((prev) =>
+              prev < displayResults.length - 1 ? prev + 1 : 0
+            )
+          }
           break
       }
     },
@@ -394,16 +402,28 @@ export function InteractionSubstanceSelector({
                   })
                 )}
 
-                {/* Result count */}
+                {/* Result count + keyboard hints */}
                 {displayResults.length > 0 && (
-                  <div className="px-2 py-1.5 text-[10px] text-neutral-content border-t mt-1">
-                    {query.trim()
-                      ? `${displayResults.length} result${displayResults.length !== 1 ? 's' : ''} found`
-                      : `${totalFiltered} substances available`}
-                    {!query.trim() && (
-                      <span className="flex items-center gap-0.5 ml-1">
-                        <Keyboard className="h-2.5 w-2.5" />
-                        Type to search
+                  <div className="px-2 py-1.5 text-[10px] text-neutral-content border-t border-base-300 flex items-center justify-between">
+                    <span>
+                      {query.trim()
+                        ? `${displayResults.length} result${displayResults.length !== 1 ? 's' : ''} found`
+                        : `${totalFiltered} substances available`}
+                      {!query.trim() && (
+                        <span className="flex items-center gap-0.5 ml-1">
+                          <Keyboard className="h-2.5 w-2.5" />
+                          Type to search
+                        </span>
+                      )}
+                    </span>
+                    {query.trim() && (
+                      <span>
+                        <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                        {' / '}
+                        <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
+                        {' '}navigate{' '}
+                        <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
+                        {' '}select
                       </span>
                     )}
                   </div>

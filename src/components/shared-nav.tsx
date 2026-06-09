@@ -156,6 +156,14 @@ export function SharedNav() {
         e.preventDefault()
         setActiveIndex(prev => prev > 0 ? prev - 1 : searchResults.length - 1)
         break
+      case 'Tab':
+        e.preventDefault()
+        if (e.shiftKey) {
+          setActiveIndex(prev => prev > 0 ? prev - 1 : searchResults.length - 1)
+        } else {
+          setActiveIndex(prev => prev < searchResults.length - 1 ? prev + 1 : 0)
+        }
+        break
       case 'Enter':
         e.preventDefault()
         const idx = activeIndex >= 0 ? activeIndex : 0
@@ -269,6 +277,8 @@ export function SharedNav() {
                 <span>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
                 <span className="hidden sm:inline">
                   <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                  {' / '}
+                  <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
                   {' '}navigate{' '}
                   <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
                   {' '}select
