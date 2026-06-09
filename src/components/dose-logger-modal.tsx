@@ -758,6 +758,7 @@ export function DoseLoggerModal({
 
   // Quick input state - single field that can parse substance + amount + unit
   const [quickInput, setQuickInput] = useState('')
+  const [quickInputSubstanceQuery, setQuickInputSubstanceQuery] = useState('')
   const [mathResult, setMathResult] = useState<{ result: number; unit: string; expression: string } | null>(null)
   const quickInputRef = useRef<HTMLInputElement>(null)
   const [showQuickSuggestions, setShowQuickSuggestions] = useState(false)
@@ -806,10 +807,17 @@ export function DoseLoggerModal({
   const handleQuickInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setQuickInput(value)
-    setShowQuickSuggestions(true)
 
     // Parse the input
     const parsed = parseQuickInput(value, substances)
+
+    // Use the extracted substance-name portion for suggestions, not the full
+    // input. This prevents the dropdown from reappearing when the user types
+    // a dose amount after the substance name has already been identified.
+    const hasAmount = !!parsed.amount
+    const queryForSuggestions = hasAmount ? parsed.substanceName : value
+    setQuickInputSubstanceQuery(queryForSuggestions)
+    setShowQuickSuggestions(!hasAmount || !parsed.substanceId)
 
     // Update math result for preview
     setMathResult(parsed.mathResult)
@@ -849,10 +857,12 @@ export function DoseLoggerModal({
   }, [])
 
   // Quick input autocomplete suggestions
+  // Uses quickInputSubstanceQuery (the substance-name portion only) so that
+  // typing a dose after the name doesn't re-trigger the dropdown.
   const quickSuggestions = useMemo(() => {
-    if (!quickInput.trim() || !showQuickSuggestions) return []
-    return searchSubstancesRanked(quickInput, { limit: 6 })
-  }, [quickInput, showQuickSuggestions])
+    if (!quickInputSubstanceQuery.trim() || !showQuickSuggestions) return []
+    return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
+  }, [quickInputSubstanceQuery, showQuickSuggestions])
 
   const selectRecentSubstance = useCallback((sub: { name: string; id: string; category: string }) => {
     setSubstanceId(sub.id)
