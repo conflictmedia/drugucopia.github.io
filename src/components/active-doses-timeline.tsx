@@ -57,7 +57,7 @@ import { categoryColors } from '@/lib/categories'
 import { useDoseStore } from '@/store/dose-store'
 import {
   EnrichedDose, RouteGroup, SubstanceGroup, TooltipData,
-  RouteIntensitySnapshot, PhaseTimings, PhaseName,
+  RouteIntensitySnapshot, PhaseTimings, PhaseName, LifecyclePhase,
 } from './dose-timeline/dose-timeline-types'
 import {
   phaseColors, phaseIcons, ROUTE_PALETTE,
@@ -102,8 +102,9 @@ function computeTooltipAtProgress(
 
   const globalMins = (progress / 100) * windowDuration
   const routeIntensities: RouteIntensitySnapshot[] = []
-  const allIntensities: number[] = []
   let maxVisualIntensity = 0
+  // Track which dose has the highest intensity so we report its phase accurately
+  let peakDoseInfo: { phase: PhaseName; timings: PhaseTimings; localMins: number } | null = null
 
   for (const rg of routes) {
     // Process ALL doses in this route, not just the primary one
@@ -127,6 +128,7 @@ function computeTooltipAtProgress(
         visIntensity = Math.max(0, Math.min(100, visIntensity))
         if (visIntensity > maxVisualIntensity) {
           maxVisualIntensity = visIntensity
+          peakDoseInfo = { phase, timings: dose.timings, localMins }
         }
 
         routeIntensities.push({
@@ -144,17 +146,19 @@ function computeTooltipAtProgress(
   // Dose-height scaling still appears in the per-route breakdown (routeIntensities).
   const displayIntensity = maxVisualIntensity
 
-  const primaryPhase = routeIntensities.length > 0
-    ? routeIntensities[0].phase
-    : phaseNameAt(progress, primaryTimings)
+  // Use the phase from the dose with the highest intensity at this point.
+  // Previously this used routeIntensities[0].phase which was arbitrary and could
+  // show the wrong phase when hovering over a non-primary dose's curve.
+  const primaryPhase = peakDoseInfo?.phase
+    ?? phaseNameAt(progress, primaryTimings)
 
-  // Calculate minutes remaining until the current phase changes (for primary dose)
-  const primaryLocalMins = globalMins - primaryOffsetMins
-  const primaryLocalProgress = (primaryLocalMins / primaryTimings.totalDuration) * 100
+  // Calculate minutes remaining until the current phase changes.
+  // Use the peak-intensity dose's own timings (not the group primary's timings)
+  // to avoid reporting wrong remaining time when hovering non-primary curves.
   let minutesUntilPhaseChange = 0
-  if (primaryLocalProgress >= 0 && primaryLocalProgress <= 100) {
-    const pEnd = phaseEnd(primaryPhase, primaryTimings)
-    minutesUntilPhaseChange = Math.max(0, pEnd - primaryLocalMins)
+  if (peakDoseInfo) {
+    const pEnd = phaseEnd(peakDoseInfo.phase, peakDoseInfo.timings)
+    minutesUntilPhaseChange = Math.max(0, pEnd - peakDoseInfo.localMins)
   }
 
   const absoluteDate = addMinutes(windowStart, globalMins)
@@ -253,6 +257,15 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 60_000)
     return () => clearInterval(id)
+  }, [])
+
+  // Cleanup pending rAF callbacks on unmount to prevent setState on unmounted component
+  useEffect(() => {
+    return () => {
+      for (const id of Object.values(rafRefs.current)) {
+        if (id !== null) cancelAnimationFrame(id)
+      }
+    }
   }, [])
 
   /* ---------------------------------------------------------------- */
@@ -767,11 +780,11 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                     {/* Phase badge - use fresh timing calculation */}
                     {(() => {
                       const primaryElapsedMins = (now - primaryDose.doseTime.getTime()) / 60_000
-                      let primaryPhase: PhaseName = 'onset'
+                      let primaryPhase: LifecyclePhase = 'onset'
                       if (primaryElapsedMins < 0) {
-                        primaryPhase = 'not_started' as PhaseName
+                        primaryPhase = 'not_started'
                       } else if (primaryElapsedMins >= primaryDose.timings.offsetEnd) {
-                        primaryPhase = 'ended' as PhaseName
+                        primaryPhase = 'ended'
                       } else if (primaryElapsedMins >= primaryDose.timings.peakEnd) {
                         primaryPhase = 'offset'
                       } else if (primaryElapsedMins >= primaryDose.timings.comeupEnd) {
@@ -929,7 +942,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                 </div>
 
                 {/* ── SVG Graph ── */}
-                <div className="relative" style={{ opacity: allEnded ? 0.4 : 1, transition: 'opacity 1s ease-out' }}>
+                <div className="relative">
                   <svg
                     ref={el => { svgRefs.current[group.key] = el }}
                     viewBox={`0 0 ${SVG_W} ${SVG_H}`}
@@ -1213,7 +1226,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                               const currentGlobalIdx = globalDoseIdx++
                               // When a dose is isolated, treat it as primary for styling
                               const isIsolated = selectedDose === doseId.toString()
-                              const shouldBeBright = isPrimary || isIsolated || (selectedDose && globalTotal === 1)
+                              const shouldBeBright = isPrimary || isIsolated || (selectedDose !== null && globalTotal === 1)
 
                               return (
                                 <g key={doseId} opacity={isEnded ? 0.35 : 1}>
@@ -1475,11 +1488,11 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
                             // Calculate current phase using fresh timing
                             const elapsedMinsForDose = (now - d.doseTime.getTime()) / 60_000
-                            let currentPhase: PhaseName = 'onset'
+                            let currentPhase: LifecyclePhase = 'onset'
                             if (elapsedMinsForDose < 0) {
-                              currentPhase = 'not_started' as PhaseName
+                              currentPhase = 'not_started'
                             } else if (elapsedMinsForDose >= d.timings.offsetEnd) {
-                              currentPhase = 'ended' as PhaseName
+                              currentPhase = 'ended'
                             } else if (elapsedMinsForDose >= d.timings.peakEnd) {
                               currentPhase = 'offset'
                             } else if (elapsedMinsForDose >= d.timings.comeupEnd) {

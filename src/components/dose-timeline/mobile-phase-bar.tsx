@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { format, addMinutes } from 'date-fns'
-import { EnrichedDose, PhaseStatus, SubstanceGroup } from './dose-timeline-types'
+import { EnrichedDose, PhaseStatus, SubstanceGroup, LifecyclePhase } from './dose-timeline-types'
 import {
   MOBILE_SVG_W,
   MOBILE_SVG_H,
@@ -119,7 +119,7 @@ function DoseBreakdownItem({
   // Calculate current phase using fresh timing
   const now = Date.now()
   const elapsedMins = (now - dose.doseTime.getTime()) / 60_000
-  let currentPhase: string = 'onset'
+  let currentPhase: LifecyclePhase = 'onset'
   if (elapsedMins < 0) {
     currentPhase = 'not_started'
   } else if (elapsedMins >= dose.timings.offsetEnd) {
@@ -350,7 +350,7 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
           {(() => {
             const now = Date.now()
             const primaryElapsedMins = (now - primaryDose.doseTime.getTime()) / 60_000
-            let primaryPhase: string = 'onset'
+            let primaryPhase: LifecyclePhase = 'onset'
             if (primaryElapsedMins < 0) {
               primaryPhase = 'not_started'
             } else if (primaryElapsedMins >= primaryDose.timings.offsetEnd) {
