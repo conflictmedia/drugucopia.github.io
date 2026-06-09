@@ -75,6 +75,7 @@ const categoryIcons: Record<SubstanceCategory, React.ElementType> = {
   deliriants: Ghost,
   nootropics: Brain,
   other: FlaskConical,
+  medications: Shield
 }
 
 const categoryColors: Record<SubstanceCategory, string> = {
