@@ -777,6 +777,7 @@ export function DoseLoggerModal({
   const [unit, setUnit] = useState('mg')
   const [route, setRoute] = useState(preselectedRoute || 'oral')
   const [timestamp, setTimestamp] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+  const [timestampModified, setTimestampModified] = useState(false)
   const [notes, setNotes] = useState('')
   const [mood, setMood] = useState('')
   const [setting, setSetting] = useState('')
@@ -1079,7 +1080,10 @@ export function DoseLoggerModal({
         amount: parseFloat(amount),
         unit,
         route,
-        timestamp: new Date(timestamp).toISOString(),
+        // If the user didn't modify the timestamp field, use the exact current time
+        // (preserving seconds). If they manually changed it, use their input
+        // (which will have :00 seconds — acceptable for a hand-picked time).
+        timestamp: timestampModified ? new Date(timestamp).toISOString() : new Date().toISOString(),
         duration: resolvedDuration,
         durationIsEstimated: usingEstimate || undefined,
         durationSourceRoute: usingEstimate ? estimatedDuration?.sourceRoute : undefined,
@@ -1138,6 +1142,7 @@ export function DoseLoggerModal({
     setUnit('mg')
     if (!preselectedRoute) setRoute('oral')
     setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+    setTimestampModified(false)
     setNotes('')
     setMood('')
     setSetting('')
@@ -1171,7 +1176,10 @@ export function DoseLoggerModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (isOpen) setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+      if (isOpen) {
+        setTimestamp(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
+        setTimestampModified(false)
+      }
       setOpen(isOpen)
     }}>
       <DialogTrigger asChild>
@@ -1420,7 +1428,10 @@ export function DoseLoggerModal({
               <Input
                 type="datetime-local"
                 value={timestamp}
-                onChange={(e) => setTimestamp(e.target.value)}
+                onChange={(e) => {
+                  setTimestamp(e.target.value)
+                  setTimestampModified(true)
+                }}
               />
             </div>
 

@@ -179,7 +179,15 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     }
 
     set((state) => {
-      const updated = [...state.activeReminders, timer]
+      // Cancel any existing timers for the same substance — the user just
+      // took a dose, so the old countdown/notification is stale and the
+      // new timer should replace it from the current dose time.
+      // This covers running, snoozed, AND fired (un-dismissed) reminders.
+      const nameLower = dose.substanceName.toLowerCase()
+      const filtered = state.activeReminders.filter(
+        (r) => r.substanceName.toLowerCase() !== nameLower,
+      )
+      const updated = [...filtered, timer]
       persistActive(updated)
       return { activeReminders: updated }
     })
