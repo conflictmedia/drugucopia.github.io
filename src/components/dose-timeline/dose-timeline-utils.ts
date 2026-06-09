@@ -6,7 +6,6 @@ import {
   PhaseName,
   TimeMarker,
   PhaseBandRange,
-  CombinedIntensityPoint,
 } from './dose-timeline-types'
 import {
   PL, GW, PT, GH,
@@ -488,53 +487,6 @@ interface Point2D {
   y: number
 }
 
-function catmullRomToCubicBezier(pts: Point2D[], clampScreenY?: number, clampBaseY?: number): string {
-  if (pts.length < 2) {
-    return pts.length === 1
-      ? `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`
-      : ''
-  }
-
-  // Reflect a point across an anchor for tangent calculation at boundaries
-  const reflect = (anchor: Point2D, point: Point2D): Point2D => ({
-    x: 2 * anchor.x - point.x,
-    y: 2 * anchor.y - point.y,
-  })
-
-  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`
-
-  for (let i = 0; i < pts.length - 1; i++) {
-    // Four points for Catmull-Rom: P0, P1, P2, P3
-    const p0 = i === 0 ? reflect(pts[0], pts[1]) : pts[i - 1]
-    const p1 = pts[i]
-    const p2 = pts[i + 1]
-    const p3 = i + 2 < pts.length ? pts[i + 2] : reflect(pts[pts.length - 1], pts[pts.length - 2])
-
-    // Convert to cubic Bézier control points (tension = 1 for standard Catmull-Rom)
-    let cp1x = p1.x + (p2.x - p0.x) / 6
-    let cp1y = p1.y + (p2.y - p0.y) / 6
-    let cp2x = p2.x - (p3.x - p1.x) / 6
-    let cp2y = p2.y - (p3.y - p1.y) / 6
-
-    // Clamp control-point y to prevent overshoot above the peak line and
-    // undershoot below the baseline. In SVG the y-axis is inverted (y increases
-    // downward), so y < clampScreenY renders ABOVE peak and y > clampBaseY
-    // renders BELOW the 0% baseline.
-    if (clampScreenY != null) {
-      cp1y = Math.max(cp1y, clampScreenY)
-      cp2y = Math.max(cp2y, clampScreenY)
-    }
-    if (clampBaseY != null) {
-      cp1y = Math.min(cp1y, clampBaseY)
-      cp2y = Math.min(cp2y, clampBaseY)
-    }
-
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`
-  }
-
-  return d
-}
-
 export function curvePath(
   t: PhaseTimings,
   offsetMins: number,
@@ -834,51 +786,4 @@ export function getNowProgress(windowStart: Date, windowDuration: number): numbe
   if (now >= windowEndMs) return 100
 
   return clamp((elapsed / (windowDuration * 60_000)) * 100, 0, 100)
-}
-
-export function buildCombinedIntensityCurve(
-  routes: { doses: { timings: PhaseTimings; doseHeight?: number; doseOffsetMins?: number }[] }[],
-  windowDuration: number,
-): CombinedIntensityPoint[] {
-  const points: CombinedIntensityPoint[] = []
-
-  // Find the normalization factor: the tallest combined peak across all samples.
-  // This is computed in two passes — first pass finds the max, second applies it.
-  const rawPoints: { minutes: number; intensity: number; progress: number }[] = []
-
-  for (let i = 0; i <= CURVE_SAMPLES; i++) {
-    const progress = (i / CURVE_SAMPLES) * 100
-    const minutes  = (progress / 100) * windowDuration
-    const individualIntensities: number[] = []
-
-    for (const route of routes) {
-      for (const dose of route.doses) {
-        const doseOffsetMins = dose.doseOffsetMins ?? 0
-        const doseTotalMins  = dose.timings.totalDuration
-        const localProgress = ((minutes - doseOffsetMins) / doseTotalMins) * 100
-
-        if (localProgress >= 0 && localProgress <= 100) {
-          const rawIntensity = intensityAt(localProgress, dose.timings)
-          // Scale by dose height (relative to common dose)
-          const height = dose.doseHeight ?? 1
-          individualIntensities.push(rawIntensity * height)
-        }
-      }
-    }
-
-    rawPoints.push({
-      minutes,
-      intensity: combinedIntensityAt(individualIntensities),
-      progress,
-    })
-  }
-
-  // Normalize so the tallest combined peak fills the graph height (100)
-  const maxIntensity = rawPoints.reduce((max, p) => Math.max(max, p.intensity), 0)
-  const normalizer = maxIntensity > 0 ? 100 / maxIntensity : 1
-
-  return rawPoints.map(p => ({
-    ...p,
-    intensity: p.intensity * normalizer,
-  }))
 }

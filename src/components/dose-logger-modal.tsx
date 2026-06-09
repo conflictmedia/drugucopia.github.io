@@ -758,6 +758,7 @@ export function DoseLoggerModal({
 
   // Quick input state - single field that can parse substance + amount + unit
   const [quickInput, setQuickInput] = useState('')
+  const [quickInputSubstanceQuery, setQuickInputSubstanceQuery] = useState('')
   const [mathResult, setMathResult] = useState<{ result: number; unit: string; expression: string } | null>(null)
   const quickInputRef = useRef<HTMLInputElement>(null)
   const [showQuickSuggestions, setShowQuickSuggestions] = useState(false)
@@ -806,10 +807,17 @@ export function DoseLoggerModal({
   const handleQuickInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setQuickInput(value)
-    setShowQuickSuggestions(true)
 
     // Parse the input
     const parsed = parseQuickInput(value, substances)
+
+    // Use the extracted substance-name portion for suggestions, not the full
+    // input. This prevents the dropdown from reappearing when the user types
+    // a dose amount after the substance name has already been identified.
+    const hasAmount = !!parsed.amount
+    const queryForSuggestions = hasAmount ? parsed.substanceName : value
+    setQuickInputSubstanceQuery(queryForSuggestions)
+    setShowQuickSuggestions(!hasAmount || !parsed.substanceId)
 
     // Update math result for preview
     setMathResult(parsed.mathResult)
@@ -849,10 +857,12 @@ export function DoseLoggerModal({
   }, [])
 
   // Quick input autocomplete suggestions
+  // Uses quickInputSubstanceQuery (the substance-name portion only) so that
+  // typing a dose after the name doesn't re-trigger the dropdown.
   const quickSuggestions = useMemo(() => {
-    if (!quickInput.trim() || !showQuickSuggestions) return []
-    return searchSubstancesRanked(quickInput, { limit: 6 })
-  }, [quickInput, showQuickSuggestions])
+    if (!quickInputSubstanceQuery.trim() || !showQuickSuggestions) return []
+    return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
+  }, [quickInputSubstanceQuery, showQuickSuggestions])
 
   const selectRecentSubstance = useCallback((sub: { name: string; id: string; category: string }) => {
     setSubstanceId(sub.id)
@@ -872,6 +882,14 @@ export function DoseLoggerModal({
         case 'ArrowUp':
           e.preventDefault()
           setQuickActiveIndex(prev => prev > 0 ? prev - 1 : quickSuggestions.length - 1)
+          return
+        case 'Tab':
+          e.preventDefault()
+          if (e.shiftKey) {
+            setQuickActiveIndex(prev => prev > 0 ? prev - 1 : quickSuggestions.length - 1)
+          } else {
+            setQuickActiveIndex(prev => prev < quickSuggestions.length - 1 ? prev + 1 : 0)
+          }
           return
         case 'Escape':
           e.preventDefault()
@@ -1234,6 +1252,17 @@ export function DoseLoggerModal({
                             </button>
                           )
                         })}
+                      </div>
+                      <div className="px-2.5 py-1.5 border-t border-base-300 text-[10px] text-neutral-content flex items-center justify-between">
+                        <span>{quickSuggestions.length} result{quickSuggestions.length !== 1 ? 's' : ''}</span>
+                        <span>
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                          {' / '}
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
+                          {' '}navigate{' '}
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
+                          {' '}select
+                        </span>
                       </div>
                     </motion.div>
                   )}

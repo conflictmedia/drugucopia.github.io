@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { format, addMinutes } from 'date-fns'
-import { EnrichedDose, PhaseStatus, SubstanceGroup } from './dose-timeline-types'
+import { EnrichedDose, PhaseStatus, SubstanceGroup, LifecyclePhase } from './dose-timeline-types'
 import {
   MOBILE_SVG_W,
   MOBILE_SVG_H,
@@ -27,7 +27,6 @@ import {
   getNowProgress,
   formatMinutes,
   formatPhaseName,
-  combinedIntensityAt,
   getPhaseBandRanges,
   phaseEnd,
 } from './dose-timeline-utils'
@@ -120,7 +119,7 @@ function DoseBreakdownItem({
   // Calculate current phase using fresh timing
   const now = Date.now()
   const elapsedMins = (now - dose.doseTime.getTime()) / 60_000
-  let currentPhase: string = 'onset'
+  let currentPhase: LifecyclePhase = 'onset'
   if (elapsedMins < 0) {
     currentPhase = 'not_started'
   } else if (elapsedMins >= dose.timings.offsetEnd) {
@@ -218,16 +217,19 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
   const nowProgress = useMemo(() => {
     if (!isLive) return -1
     const now = Date.now()
-    // Find any active dose using fresh time calculation
-    const activeDose = group.routes
+    // Find the LATEST active dose for the now-indicator position
+    const allActiveDoses = group.routes
       .flatMap(rg => rg.doses)
-      .find(d => {
+      .filter(d => {
         const elapsedMins = (now - d.doseTime.getTime()) / 60_000
         return elapsedMins < d.timings.offsetEnd
       })
-    if (!activeDose) return -1
-    const elapsedMins = (now - activeDose.doseTime.getTime()) / 60_000
-    const doseOffsetMins = (activeDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
+    if (allActiveDoses.length === 0) return -1
+    const latestActiveDose = allActiveDoses.reduce((latest, d) =>
+      d.doseTime.getTime() > latest.doseTime.getTime() ? d : latest
+    , allActiveDoses[0])
+    const elapsedMins = (now - latestActiveDose.doseTime.getTime()) / 60_000
+    const doseOffsetMins = (latestActiveDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
     return (doseOffsetMins + elapsedMins) / group.windowDuration * 100
   }, [isLive, group.routes, group.windowStart, group.windowDuration])
 
@@ -327,12 +329,13 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
         const localMins = globalMins - offsetMins
         const localProgress = (localMins / dose.timings.totalDuration) * 100
         if (localProgress >= 0 && localProgress <= 100) {
-          intensities.push(intensityAt(localProgress, dose.timings) * (dose.doseHeight ?? 1))
+          // Use raw intensity (no dose-height scaling) to match desktop and visual curve
+          intensities.push(intensityAt(localProgress, dose.timings))
         }
       }
     }
     if (intensities.length === 0) return null
-    return combinedIntensityAt(intensities)
+    return Math.round(Math.max(...intensities, 0))
   }, [isLive, nowProgress, group.routes])
 
   return (
@@ -347,7 +350,7 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
           {(() => {
             const now = Date.now()
             const primaryElapsedMins = (now - primaryDose.doseTime.getTime()) / 60_000
-            let primaryPhase: string = 'onset'
+            let primaryPhase: LifecyclePhase = 'onset'
             if (primaryElapsedMins < 0) {
               primaryPhase = 'not_started'
             } else if (primaryElapsedMins >= primaryDose.timings.offsetEnd) {

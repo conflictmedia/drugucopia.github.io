@@ -549,7 +549,7 @@ function MobileBottomNav({
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-base-100 border-t border-base-300 safe-area-pb">
+    <nav className="md:hidden fixed bottom-[30px] inset-x-0 z-50 bg-base-100 border-t border-base-300 safe-area-pb">
       <div className="flex">
         {items.map(({ id, label, icon: Icon }) => {
           const isLog = id === 'log'
@@ -1514,12 +1514,6 @@ function HomeContent() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t">
-            <div className="alert alert-warning text-xs py-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
-            </div>
-          </div>
         </div>
       </aside>
 

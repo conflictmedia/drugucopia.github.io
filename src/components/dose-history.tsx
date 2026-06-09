@@ -966,8 +966,8 @@ export function DoseHistory() {
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} className="bg-base-100" />
-                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-base-100" />
+                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
+                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
                   <Button
                     onClick={() => connectToSync()}
                     disabled={syncStatus === 'connecting' || !roomId || !password}
@@ -989,7 +989,7 @@ export function DoseHistory() {
               <h3 className="text-lg font-medium mb-2">No doses logged yet</h3>
             </div>
           ) : (
-            <ScrollArea className="h-[400px] pr-4">
+            <div className="pr-4">
               {Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
                 return (
                   <div key={dateGroup} className="mb-6">
@@ -1050,7 +1050,7 @@ export function DoseHistory() {
                   </div>
                 )
               })}
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>

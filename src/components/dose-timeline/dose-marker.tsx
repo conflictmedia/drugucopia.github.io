@@ -1,6 +1,6 @@
 'use client'
 
-import { EnrichedDose } from './dose-timeline-types'
+import { EnrichedDose, PhaseStatus } from './dose-timeline-types'
 import { PT, GH, PL, GW, SVG_W, markerHex } from './dose-timeline-constants'
 import { toX, toY, intensityAt } from './dose-timeline-utils'
 import { formatDoseAmount } from '@/lib/utils'
@@ -50,13 +50,23 @@ export function DoseMarker({
   isMultiDose = false,
   doseIndex = 0,
 }: DoseMarkerProps) {
-  /* ---- Timing calculations ---- */
-  const elapsedMins   = d.status.phase === 'not_started' ? 0
-                      : d.status.phase === 'ended'       ? d.timings.totalDuration
-                      : d.timings.totalDuration - d.status.totalRemaining
+  /* ---- Timing calculations (fresh, not stale from memoized status) ---- */
+  const now = Date.now()
+  const freshElapsedMins = (now - d.doseTime.getTime()) / 60_000
+  const isEnded = freshElapsedMins >= d.timings.offsetEnd
+  const isNotStarted = freshElapsedMins < 0
+  const elapsedMins   = isNotStarted ? 0
+                      : isEnded       ? d.timings.totalDuration
+                      : freshElapsedMins
   const localProgress = Math.max(0, Math.min(100, (elapsedMins / d.timings.totalDuration) * 100))
 
-  const isEnded = d.status.phase === 'ended'
+  // Derive phase from fresh time
+  const freshPhase: PhaseStatus['phase'] = isNotStarted ? 'not_started'
+    : isEnded ? 'ended'
+    : freshElapsedMins >= d.timings.peakEnd ? 'offset'
+    : freshElapsedMins >= d.timings.comeupEnd ? 'peak'
+    : freshElapsedMins >= d.timings.onsetEnd ? 'comeup'
+    : 'onset'
   let mx: number
   let my: number
 
@@ -76,11 +86,11 @@ export function DoseMarker({
 
   const dotX       = Math.max(PL + 4, Math.min(PL + GW - 4, mx))
 
-  const isHollow = d.status.phase === 'not_started'
+  const isHollow = freshPhase === 'not_started'
   const radius   = isPrimary ? 6 : 4
 
   /* ---- Phase-aware marker color ---- */
-  const phaseColor = markerHex[d.status.phase]
+  const phaseColor = markerHex[freshPhase]
 
   /* ---- Formatted label ---- */
   const formattedDose = formatDoseAmount(d.amount, d.unit)
@@ -92,7 +102,7 @@ export function DoseMarker({
     <g
       opacity={isEnded ? 0.35 : 1}
       role="img"
-      aria-label={`${formattedDose.amount} ${formattedDose.unit} dose marker — ${d.status.phase}`}
+      aria-label={`${formattedDose.amount} ${formattedDose.unit} dose marker — ${freshPhase}`}
     >
       {/* ── Inline defs: gradient for the vertical guide line ── */}
       <defs>
