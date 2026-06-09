@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { ReminderSchedule, ActiveReminder, DoseLog } from '../types'
 import { showBrowserNotification } from '@/lib/notification-utils'
+import { playReminderSound } from '@/lib/sound-utils'
 
 const SCHEDULES_KEY = 'drugucopia-reminder-schedules'
 const ACTIVE_KEY = 'drugucopia-reminder-active'
@@ -8,6 +9,7 @@ const SETTINGS_KEY = 'drugucopia-reminder-settings'
 
 interface ReminderSettings {
   autoStartEnabled: boolean
+  soundEnabled: boolean
   notificationPermission: NotificationPermission | 'default'
 }
 
@@ -16,6 +18,7 @@ interface ReminderState {
   activeReminders: ActiveReminder[]
   notificationPermission: NotificationPermission | 'default'
   autoStartEnabled: boolean
+  soundEnabled: boolean
   isLoaded: boolean
 
   initialize: () => (() => void) | void
@@ -29,6 +32,7 @@ interface ReminderState {
   tick: () => void
   setNotificationPermission: (p: NotificationPermission) => void
   setAutoStartEnabled: (enabled: boolean) => void
+  setSoundEnabled: (enabled: boolean) => void
 }
 
 function persistSchedules(schedules: ReminderSchedule[]) {
@@ -48,6 +52,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   activeReminders: [],
   notificationPermission: 'default',
   autoStartEnabled: true,
+  soundEnabled: true,
   isLoaded: false,
 
   initialize: () => {
@@ -69,6 +74,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
         activeReminders: active,
         notificationPermission: perm,
         autoStartEnabled: settings.autoStartEnabled ?? true,
+        soundEnabled: settings.soundEnabled ?? true,
         isLoaded: true,
       })
     } catch (e) {
@@ -91,7 +97,10 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       if (e.key === SETTINGS_KEY && e.newValue) {
         try {
           const s = JSON.parse(e.newValue)
-          set({ autoStartEnabled: s.autoStartEnabled ?? true })
+          set({
+            autoStartEnabled: s.autoStartEnabled ?? true,
+            soundEnabled: s.soundEnabled ?? true,
+          })
         } catch {}
       }
     }
@@ -271,6 +280,10 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       for (const r of newlyFired) {
         const schedule = schedules.find((s) => s.id === r.scheduleId)
         showBrowserNotification(r, schedule?.customMessage)
+        // Play notification sound if enabled
+        if (get().soundEnabled) {
+          playReminderSound()
+        }
       }
 
       // Cleanup: remove dismissed and old fired reminders (> 2 hours)
@@ -293,6 +306,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     set({ notificationPermission: p })
     persistSettings({
       autoStartEnabled: get().autoStartEnabled,
+      soundEnabled: get().soundEnabled,
       notificationPermission: p,
     })
   },
@@ -301,6 +315,16 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     set({ autoStartEnabled: enabled })
     persistSettings({
       autoStartEnabled: enabled,
+      soundEnabled: get().soundEnabled,
+      notificationPermission: get().notificationPermission,
+    })
+  },
+
+  setSoundEnabled: (enabled) => {
+    set({ soundEnabled: enabled })
+    persistSettings({
+      autoStartEnabled: get().autoStartEnabled,
+      soundEnabled: enabled,
       notificationPermission: get().notificationPermission,
     })
   },
