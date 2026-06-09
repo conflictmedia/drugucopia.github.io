@@ -477,6 +477,7 @@ export function ReminderSettings() {
       id: crypto.randomUUID(),
       ...data,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     setShowAddDialog(false)
     toast({
@@ -494,7 +495,7 @@ export function ReminderSettings() {
     enabled: boolean
   }) => {
     if (!editingSchedule) return
-    updateSchedule(editingSchedule.id, data)
+    updateSchedule(editingSchedule.id, { ...data, updatedAt: new Date().toISOString() })
     setEditingSchedule(null)
     toast({
       title: 'Schedule updated',

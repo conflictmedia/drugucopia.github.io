@@ -6,6 +6,7 @@ import { playReminderSound } from '@/lib/sound-utils'
 const SCHEDULES_KEY = 'drugucopia-reminder-schedules'
 const ACTIVE_KEY = 'drugucopia-reminder-active'
 const SETTINGS_KEY = 'drugucopia-reminder-settings'
+const DELETED_SCHEDULES_KEY = 'drugucopia-deleted-schedule-ids'
 
 interface ReminderSettings {
   autoStartEnabled: boolean
@@ -16,6 +17,7 @@ interface ReminderSettings {
 interface ReminderState {
   schedules: ReminderSchedule[]
   activeReminders: ActiveReminder[]
+  deletedScheduleIds: Set<string>
   notificationPermission: NotificationPermission | 'default'
   autoStartEnabled: boolean
   soundEnabled: boolean
@@ -33,6 +35,12 @@ interface ReminderState {
   setNotificationPermission: (p: NotificationPermission) => void
   setAutoStartEnabled: (enabled: boolean) => void
   setSoundEnabled: (enabled: boolean) => void
+  setRemindersFromSync: (
+    schedules: ReminderSchedule[],
+    activeReminders: ActiveReminder[],
+    deletedScheduleIds: Set<string>,
+    settings?: Partial<Pick<ReminderState, 'autoStartEnabled' | 'soundEnabled'>>,
+  ) => void
 }
 
 function persistSchedules(schedules: ReminderSchedule[]) {
@@ -47,9 +55,14 @@ function persistSettings(settings: ReminderSettings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
 }
 
+function persistDeletedScheduleIds(deleted: Set<string>) {
+  localStorage.setItem(DELETED_SCHEDULES_KEY, JSON.stringify([...deleted]))
+}
+
 export const useReminderStore = create<ReminderState>((set, get) => ({
   schedules: [],
   activeReminders: [],
+  deletedScheduleIds: new Set(),
   notificationPermission: 'default',
   autoStartEnabled: true,
   soundEnabled: true,
@@ -61,6 +74,9 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
     try {
       const schedules = JSON.parse(localStorage.getItem(SCHEDULES_KEY) || '[]')
       const active = JSON.parse(localStorage.getItem(ACTIVE_KEY) || '[]')
+      const deletedScheduleIds = new Set<string>(
+        JSON.parse(localStorage.getItem(DELETED_SCHEDULES_KEY) || '[]'),
+      )
       const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
 
       // Check current notification permission
@@ -72,6 +88,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       set({
         schedules,
         activeReminders: active,
+        deletedScheduleIds,
         notificationPermission: perm,
         autoStartEnabled: settings.autoStartEnabled ?? true,
         soundEnabled: settings.soundEnabled ?? true,
@@ -92,6 +109,11 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       if (e.key === ACTIVE_KEY && e.newValue) {
         try {
           set({ activeReminders: JSON.parse(e.newValue) })
+        } catch {}
+      }
+      if (e.key === DELETED_SCHEDULES_KEY && e.newValue) {
+        try {
+          set({ deletedScheduleIds: new Set(JSON.parse(e.newValue)) })
         } catch {}
       }
       if (e.key === SETTINGS_KEY && e.newValue) {
@@ -119,7 +141,7 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   updateSchedule: (id, patch) => {
     set((state) => {
       const updated = state.schedules.map((s) =>
-        s.id === id ? { ...s, ...patch } : s,
+        s.id === id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s,
       )
       persistSchedules(updated)
       return { schedules: updated }
@@ -129,13 +151,15 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
   removeSchedule: (id) => {
     set((state) => {
       const updated = state.schedules.filter((s) => s.id !== id)
+      const updatedDeleted = new Set(state.deletedScheduleIds).add(id)
       persistSchedules(updated)
+      persistDeletedScheduleIds(updatedDeleted)
       // Also remove active timers for this schedule
       const activeUpdated = state.activeReminders.filter(
         (r) => r.scheduleId !== id,
       )
       persistActive(activeUpdated)
-      return { schedules: updated, activeReminders: activeUpdated }
+      return { schedules: updated, deletedScheduleIds: updatedDeleted, activeReminders: activeUpdated }
     })
   },
 
@@ -327,5 +351,31 @@ export const useReminderStore = create<ReminderState>((set, get) => ({
       soundEnabled: enabled,
       notificationPermission: get().notificationPermission,
     })
+  },
+
+  setRemindersFromSync: (schedules, activeReminders, deletedScheduleIds, settings) => {
+    persistSchedules(schedules)
+    persistActive(activeReminders)
+    persistDeletedScheduleIds(deletedScheduleIds)
+    const stateUpdate: Partial<ReminderState> = {
+      schedules,
+      activeReminders,
+      deletedScheduleIds,
+    }
+    if (settings?.autoStartEnabled !== undefined) {
+      stateUpdate.autoStartEnabled = settings.autoStartEnabled
+    }
+    if (settings?.soundEnabled !== undefined) {
+      stateUpdate.soundEnabled = settings.soundEnabled
+    }
+    // Also persist settings if they came from sync
+    if (settings) {
+      persistSettings({
+        autoStartEnabled: settings.autoStartEnabled ?? get().autoStartEnabled,
+        soundEnabled: settings.soundEnabled ?? get().soundEnabled,
+        notificationPermission: get().notificationPermission,
+      })
+    }
+    set(stateUpdate)
   },
 }))

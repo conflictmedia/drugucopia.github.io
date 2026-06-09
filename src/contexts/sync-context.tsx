@@ -5,7 +5,8 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app'
 import { getFirestore, type Firestore, doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from '../hooks/use-toast'
 import { useDoseStore } from '../store/dose-store'
-import { DoseLog } from '../types'
+import { useReminderStore } from '../store/reminder-store'
+import { DoseLog, ReminderSchedule, ActiveReminder } from '../types'
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -83,7 +84,11 @@ const decryptData = async (encryptedObj: { iv: string; ciphertext: string }, key
   return JSON.parse(new TextDecoder().decode(decrypted))
 }
 
+// --- MERGE UTILS ---
+
 const getUpdateTime = (d: DoseLog) => new Date(d.updatedAt || d.createdAt).getTime()
+
+const getScheduleUpdateTime = (s: ReminderSchedule) => new Date(s.updatedAt || s.createdAt).getTime()
 
 const mergeDoses = (local: DoseLog[], remote: DoseLog[], localDeleted: Set<string>, remoteDeleted: Set<string>) => {
   const allDeleted = new Set([...localDeleted, ...remoteDeleted])
@@ -106,6 +111,64 @@ const mergeDoses = (local: DoseLog[], remote: DoseLog[], localDeleted: Set<strin
   const doses = Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   return { doses, deleted: allDeleted }
 }
+
+/**
+ * Merge reminder schedules using the same conflict-resolution strategy as doses:
+ * - Deleted IDs from both sides are unioned and take priority
+ * - For duplicate IDs, the one with the newer updatedAt (or createdAt) wins
+ */
+const mergeSchedules = (
+  local: ReminderSchedule[],
+  remote: ReminderSchedule[],
+  localDeleted: Set<string>,
+  remoteDeleted: Set<string>,
+) => {
+  const allDeleted = new Set([...localDeleted, ...remoteDeleted])
+  const map = new Map<string, ReminderSchedule>()
+
+  for (const s of local) {
+    if (!allDeleted.has(s.id)) map.set(s.id, s)
+  }
+
+  for (const s of remote) {
+    if (allDeleted.has(s.id)) { map.delete(s.id); continue }
+    const existing = map.get(s.id)
+    if (!existing || getScheduleUpdateTime(s) > getScheduleUpdateTime(existing)) {
+      map.set(s.id, s)
+    }
+  }
+
+  return { schedules: Array.from(map.values()), deleted: allDeleted }
+}
+
+/**
+ * Merge active reminders:
+ * - Combine local + remote, dedup by ID
+ * - For duplicates, keep the one with the later startedAt (most recent timer)
+ * - Filter out stale fired reminders (> 2 hours old)
+ */
+const mergeActiveReminders = (local: ActiveReminder[], remote: ActiveReminder[]) => {
+  const now = Date.now()
+  const map = new Map<string, ActiveReminder>()
+
+  const addIfValid = (r: ActiveReminder) => {
+    // Skip stale fired reminders (> 2 hours old)
+    if (r.status === 'fired' && now - new Date(r.firesAt).getTime() > 2 * 60 * 60_000) return
+    // Skip dismissed
+    if (r.status === 'dismissed') return
+
+    const existing = map.get(r.id)
+    if (!existing || new Date(r.startedAt).getTime() > new Date(existing.startedAt).getTime()) {
+      map.set(r.id, r)
+    }
+  }
+
+  for (const r of local) addIfValid(r)
+  for (const r of remote) addIfValid(r)
+
+  return Array.from(map.values())
+}
+
 // --- CONTEXT ---
 interface SyncContextType {
   syncStatus: 'idle' | 'connecting' | 'synced' | 'error'
@@ -127,6 +190,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const initialize = useDoseStore(s => s.initialize)
   const setDosesFromSync = useDoseStore(s => s.setDosesFromSync)
 
+  const reminderIsLoaded = useReminderStore(s => s.isLoaded)
+  const initializeReminders = useReminderStore(s => s.initialize)
+  const setRemindersFromSync = useReminderStore(s => s.setRemindersFromSync)
+
   const [syncStatus, setSyncStatusRaw] = useState<'idle' | 'connecting' | 'synced' | 'error'>('idle')
   const [roomId, setRoomId] = useState('')
   const [password, setPassword] = useState('')
@@ -140,10 +207,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const syncStatusRef = useRef<'idle' | 'connecting' | 'synced' | 'error'>('idle')
   const pushDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Guard against feedback loop: when setDosesFromSync updates the Zustand
-  // store, the subscription listener fires and would schedule another push.
-  // This flag tells the subscription to skip the next auto-push.
-  const skipNextAutoPushRef = useRef(false)
+  // Guard against feedback loop: when setDosesFromSync / setRemindersFromSync updates
+  // the Zustand stores, the subscription listeners fire and would schedule another push.
+  // This counter tracks how many sync-originated updates are in flight.
+  const skipAutoPushCountRef = useRef(0)
 
   // Rate-limit: minimum milliseconds between actual Firestore writes.
   // Prevents rapid-fire setDoc calls that exhaust the write stream.
@@ -165,15 +232,24 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setSyncStatusRaw(status)
   }, [])
 
-  // Initialize Zustand store on mount
+  // Initialize Zustand stores on mount
   useEffect(() => {
     initialize()
-  }, [initialize])
+    initializeReminders()
+  }, [initialize, initializeReminders])
 
-  // Use refs for doses/deletedIds so pushToSync doesn't recreate on every state change.
+  // Use refs for store data so pushToSync doesn't recreate on every state change.
   // This prevents unnecessary effect triggers in the auto-push subscription.
   const dosesRef = useRef(useDoseStore.getState().doses)
   const deletedIdsRef = useRef(useDoseStore.getState().deletedIds)
+
+  const schedulesRef = useRef(useReminderStore.getState().schedules)
+  const activeRemindersRef = useRef(useReminderStore.getState().activeReminders)
+  const deletedScheduleIdsRef = useRef(useReminderStore.getState().deletedScheduleIds)
+  const reminderSettingsRef = useRef({
+    autoStartEnabled: useReminderStore.getState().autoStartEnabled,
+    soundEnabled: useReminderStore.getState().soundEnabled,
+  })
 
   const pushToSync = useCallback(async () => {
     if (!cryptoKeyRef.current || !hashedRoomRef.current || isPushingRef.current || !isLoaded) return
@@ -197,7 +273,23 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     try {
       const currentDoses = dosesRef.current
       const currentDeleted = deletedIdsRef.current
-      const payload = { doses: currentDoses, deleted: [...currentDeleted] }
+      const currentSchedules = schedulesRef.current
+      const currentActiveReminders = activeRemindersRef.current
+      const currentDeletedScheduleIds = deletedScheduleIdsRef.current
+      const currentReminderSettings = reminderSettingsRef.current
+
+      const payload = {
+        doses: currentDoses,
+        deleted: [...currentDeleted],
+        // Reminder sync data
+        schedules: currentSchedules,
+        deletedSchedules: [...currentDeletedScheduleIds],
+        activeReminders: currentActiveReminders,
+        reminderSettings: {
+          autoStartEnabled: currentReminderSettings.autoStartEnabled,
+          soundEnabled: currentReminderSettings.soundEnabled,
+        },
+      }
       const encrypted = await encryptData(payload, cryptoKeyRef.current)
       lastPushedHashRef.current = encrypted.ciphertext.substring(0, 32)
       await setDoc(doc(db, 'secure_rooms', hashedRoomRef.current), {
@@ -215,14 +307,40 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   // Subscribe to Zustand store changes OUTSIDE of React render cycle.
   // Updates refs and triggers debounced push without causing re-renders.
   useEffect(() => {
-    const unsub = useDoseStore.subscribe((state) => {
+    const unsubDose = useDoseStore.subscribe((state) => {
       dosesRef.current = state.doses
       deletedIdsRef.current = state.deletedIds
 
       // Skip auto-push if this state change came from a sync merge.
-      // This prevents the feedback loop: remote data → merge → push → echo.
-      if (skipNextAutoPushRef.current) {
-        skipNextAutoPushRef.current = false
+      if (skipAutoPushCountRef.current > 0) {
+        skipAutoPushCountRef.current--
+        return
+      }
+
+      if (syncStatusRef.current === 'synced' && state.isLoaded && initialSyncDoneRef.current) {
+        if (pushDebounceRef.current) {
+          clearTimeout(pushDebounceRef.current)
+          pushDebounceRef.current = null
+        }
+        pushDebounceRef.current = setTimeout(() => {
+          pushDebounceRef.current = null
+          pushToSync()
+        }, 2000)
+      }
+    })
+
+    const unsubReminder = useReminderStore.subscribe((state) => {
+      schedulesRef.current = state.schedules
+      activeRemindersRef.current = state.activeReminders
+      deletedScheduleIdsRef.current = state.deletedScheduleIds
+      reminderSettingsRef.current = {
+        autoStartEnabled: state.autoStartEnabled,
+        soundEnabled: state.soundEnabled,
+      }
+
+      // Skip auto-push if this state change came from a sync merge.
+      if (skipAutoPushCountRef.current > 0) {
+        skipAutoPushCountRef.current--
         return
       }
 
@@ -239,7 +357,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
-      unsub()
+      unsubDose()
+      unsubReminder()
       if (pushDebounceRef.current) {
         clearTimeout(pushDebounceRef.current)
         pushDebounceRef.current = null
@@ -299,6 +418,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
           try {
             const payload = await decryptData(remoteData.encrypted, cryptoKeyRef.current!)
+
+            // ─── Dose merge (backward-compatible with old format) ───
             const remoteDoses: DoseLog[] = Array.isArray(payload) ? payload : payload.doses ?? []
             const remoteDeleted: Set<string> = new Set(Array.isArray(payload) ? [] : payload.deleted ?? [])
 
@@ -316,11 +437,39 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
             const { doses: merged, deleted: mergedDeleted } = mergeDoses(localDoses, remoteDoses, effectiveLocalDeleted, remoteDeleted)
 
-            // Prevent the incoming sync merge from triggering an auto-push.
-            // Without this, the Zustand subscription would fire pushToSync
-            // again, creating a feedback loop that exhausts Firestore writes.
-            skipNextAutoPushRef.current = true
+            // ─── Reminder merge ───
+            const remoteSchedules: ReminderSchedule[] = payload.schedules ?? []
+            const remoteDeletedSchedules: Set<string> = new Set(payload.deletedSchedules ?? [])
+            const remoteActiveReminders: ActiveReminder[] = payload.activeReminders ?? []
+            const remoteReminderSettings = payload.reminderSettings ?? {}
+
+            const localSchedules = useReminderStore.getState().schedules
+            const localDeletedScheduleIds = useReminderStore.getState().deletedScheduleIds
+            const localActiveReminders = useReminderStore.getState().activeReminders
+
+            // On first sync, ignore local schedule deletions (same as doses)
+            const effectiveLocalDeletedSchedules = isFirstSync ? new Set<string>() : localDeletedScheduleIds
+
+            const { schedules: mergedSchedules, deleted: mergedDeletedSchedules } = mergeSchedules(
+              localSchedules, remoteSchedules, effectiveLocalDeletedSchedules, remoteDeletedSchedules,
+            )
+            const mergedActiveReminders = mergeActiveReminders(localActiveReminders, remoteActiveReminders)
+
+            // Prevent the incoming sync merge from triggering auto-pushes.
+            // We're updating 2 stores, so we need 2 skip tokens.
+            // Each store subscription will decrement the counter once.
+            skipAutoPushCountRef.current += 2
+
             setDosesFromSync(merged, mergedDeleted)
+            setRemindersFromSync(
+              mergedSchedules,
+              mergedActiveReminders,
+              mergedDeletedSchedules,
+              {
+                autoStartEnabled: remoteReminderSettings.autoStartEnabled,
+                soundEnabled: remoteReminderSettings.soundEnabled,
+              },
+            )
 
           } catch (e) {
             console.error('Decryption failed:', e)
@@ -342,7 +491,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
   // roomId and password are read via refs to avoid recreating on every keystroke
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, setDosesFromSync, pushToSync, setSyncStatus])
+  }, [isLoaded, reminderIsLoaded, setDosesFromSync, setRemindersFromSync, pushToSync, setSyncStatus])
 
   const disconnectSync = useCallback(() => {
     if (unsubscribeRef.current) unsubscribeRef.current()
@@ -350,7 +499,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     cryptoKeyRef.current = null
     hashedRoomRef.current = null
     lastPushedHashRef.current = null
-    skipNextAutoPushRef.current = false
+    skipAutoPushCountRef.current = 0
     lastWriteTimeRef.current = 0
     if (pushDebounceRef.current) {
       clearTimeout(pushDebounceRef.current)
