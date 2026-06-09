@@ -46,6 +46,8 @@ export interface ReminderSchedule {
   customMessage?: string
   /** ISO timestamp of creation */
   createdAt: string
+  /** ISO timestamp of last update (used for sync conflict resolution) */
+  updatedAt?: string
 }
 
 /** A running countdown timer instance spawned from a ReminderSchedule */
