@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useReminderStore } from '@/store/reminder-store'
 import { startReminderEngine, stopReminderEngine } from '@/lib/reminder-engine'
+import { preloadReminderSound } from '@/lib/sound-utils'
 
 /**
  * Client-only provider that initializes the reminder store,
@@ -26,6 +27,16 @@ export function ReminderProvider({ children }: { children: React.ReactNode }) {
         console.warn('SW registration failed (reminders still work in-app):', err?.message)
       })
     }
+
+    // 4. Preload notification sound on first user interaction
+    //    (browsers require user gesture before allowing audio playback)
+    const onFirstInteraction = () => {
+      preloadReminderSound()
+      document.removeEventListener('click', onFirstInteraction)
+      document.removeEventListener('keydown', onFirstInteraction)
+    }
+    document.addEventListener('click', onFirstInteraction)
+    document.addEventListener('keydown', onFirstInteraction)
 
     return () => {
       stopReminderEngine()

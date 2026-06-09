@@ -21,10 +21,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Bell, BellOff, Plus, Trash2, Pencil, Clock, ShieldCheck, ShieldAlert, Search, X } from 'lucide-react'
+import { Bell, BellOff, Plus, Trash2, Pencil, Clock, ShieldCheck, ShieldAlert, Search, X, Volume2, VolumeX, Play } from 'lucide-react'
 import { useReminderStore } from '@/store/reminder-store'
 import { askNotificationPermission } from '@/lib/reminder-engine'
 import { formatIntervalMinutes } from '@/lib/notification-utils'
+import { previewReminderSound } from '@/lib/sound-utils'
 import { searchSubstancesRanked } from '@/lib/substances/index'
 import { ReminderSchedule } from '@/types'
 import { toast } from '@/hooks/use-toast'
@@ -457,6 +458,8 @@ export function ReminderSettings() {
   const notificationPermission = useReminderStore(
     (s) => s.notificationPermission,
   )
+  const soundEnabled = useReminderStore((s) => s.soundEnabled)
+  const setSoundEnabled = useReminderStore((s) => s.setSoundEnabled)
 
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingSchedule, setEditingSchedule] =
@@ -579,6 +582,40 @@ export function ReminderSettings() {
                 Enable
               </Button>
             )}
+          </div>
+
+          {/* Notification sound toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Notification sound</p>
+              <p className="text-xs text-neutral-content">
+                Play a chime when a reminder fires
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={previewReminderSound}
+                title="Preview sound"
+              >
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={soundEnabled ? 'default' : 'outline'}
+                size="sm"
+                className="gap-1"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-3.5 w-3.5" />
+                ) : (
+                  <VolumeX className="h-3.5 w-3.5" />
+                )}
+                {soundEnabled ? 'On' : 'Off'}
+              </Button>
+            </div>
           </div>
         </div>
 
