@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { AlertTriangle } from "lucide-react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
@@ -53,9 +54,18 @@ export default function RootLayout({
             <Suspense>
               <SharedNav />
             </Suspense>
-            <main className="min-h-[calc(100vh-3.5rem)]">
+            <main className="min-h-[calc(100vh-3.5rem)] pb-10 md:pb-0">
               {children}
             </main>
+
+            {/* Always-visible disclaimer */}
+            <div className="fixed bottom-0 md:bottom-0 inset-x-0 z-40 md:z-30 bg-base-100/95 backdrop-blur-sm border-t border-warning/20">
+              <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
+              </div>
+            </div>
+
             <VisualizerControls />
             <Toaster />
           </SyncProvider>
