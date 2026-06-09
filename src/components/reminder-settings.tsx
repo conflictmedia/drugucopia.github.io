@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -21,28 +21,46 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
-import { Bell, BellOff, Plus, Trash2, Pencil, Clock, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { Bell, BellOff, Plus, Trash2, Pencil, Clock, ShieldCheck, ShieldAlert, Search, X } from 'lucide-react'
 import { useReminderStore } from '@/store/reminder-store'
 import { askNotificationPermission } from '@/lib/reminder-engine'
 import { formatIntervalMinutes } from '@/lib/notification-utils'
-import { substances } from '@/lib/substances/index'
+import { searchSubstancesRanked } from '@/lib/substances/index'
 import { ReminderSchedule } from '@/types'
 import { toast } from '@/hooks/use-toast'
+import { motion, AnimatePresence } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
-// Pre-built schedule suggestions for common multi-dose substances
-const SUGGESTIONS: {
-  name: string
-  intervalMinutes: number
-  maxDosesPerDay: number
-}[] = [
-  { name: 'N-Acetylcysteine', intervalMinutes: 240, maxDosesPerDay: 2 },
-  { name: 'Vitamin C', intervalMinutes: 480, maxDosesPerDay: 2 },
-  { name: 'L-Theanine', intervalMinutes: 360, maxDosesPerDay: 3 },
-  { name: 'Ashwagandha', intervalMinutes: 720, maxDosesPerDay: 2 },
-  { name: 'Omega-3', intervalMinutes: 720, maxDosesPerDay: 2 },
-  { name: 'Magnesium', intervalMinutes: 480, maxDosesPerDay: 2 },
-]
+// ─── Category dots (same as shared-nav & dose-logger-modal) ─────────────────
+const CATEGORY_DOTS: Record<string, string> = {
+  stimulants: 'bg-amber-500',
+  depressants: 'bg-indigo-500',
+  hallucinogens: 'bg-purple-500',
+  dissociatives: 'bg-cyan-500',
+  empathogens: 'bg-pink-500',
+  cannabinoids: 'bg-green-500',
+  opioids: 'bg-red-500',
+  deliriants: 'bg-slate-500',
+  nootropics: 'bg-teal-500',
+  other: 'bg-zinc-500',
+}
+
+function highlightMatch(text: string, query: string) {
+  if (!query.trim()) return text
+  const lower = text.toLowerCase()
+  const lowerQuery = query.toLowerCase().trim()
+  const index = lower.indexOf(lowerQuery)
+  if (index === -1) return text
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="font-semibold text-primary">{text.slice(index, index + lowerQuery.length)}</span>
+      {text.slice(index + lowerQuery.length)}
+    </>
+  )
+}
+
+// ─── Schedule Editor ─────────────────────────────────────────────────────────
 
 function ScheduleEditor({
   schedule,
@@ -66,6 +84,12 @@ function ScheduleEditor({
   const [substanceId, setSubstanceId] = useState(
     schedule?.substanceId || '',
   )
+  const [searchQuery, setSearchQuery] = useState(schedule?.substanceName || '')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const searchRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const [intervalHours, setIntervalHours] = useState(
     schedule ? Math.floor(schedule.intervalMinutes / 60) : 4,
   )
@@ -80,27 +104,109 @@ function ScheduleEditor({
   )
   const [enabled, setEnabled] = useState(schedule?.enabled ?? true)
 
-  const substanceOptions: ComboboxOption[] = useMemo(
-    () => substances.map((s) => ({ value: s.id, label: s.name })),
-    [substances],
-  )
+  // ── Search results (same engine as SharedNav & Quick Input) ──
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim() || !searchOpen) return []
+    return searchSubstancesRanked(searchQuery, { limit: 8 })
+  }, [searchQuery, searchOpen])
 
-  const handleSubstanceChange = (value: string) => {
-    const found = substances.find((s) => s.id === value)
-    if (found) {
-      setSubstanceId(found.id)
-      setSubstanceName(found.name)
-    } else {
-      // Custom value typed by user
-      setSubstanceId('')
-      setSubstanceName(value)
+  // Reset active index when results change
+  useEffect(() => {
+    setActiveIndex(-1)
+  }, [searchResults.length])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!searchOpen) return
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false)
+      }
     }
-  }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [searchOpen])
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchQuery(value)
+    setSearchOpen(true)
+    // Clear the selection while typing so the user can re-search
+    if (!value.trim()) {
+      setSubstanceId('')
+      setSubstanceName('')
+    }
+  }, [])
+
+  const selectSubstance = useCallback((id: string, name: string) => {
+    setSubstanceId(id)
+    setSubstanceName(name)
+    setSearchQuery(name)
+    setSearchOpen(false)
+    setActiveIndex(-1)
+  }, [])
+
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!searchOpen || searchResults.length === 0) {
+      if (e.key === 'Enter' && searchQuery.trim() && !substanceId) {
+        e.preventDefault()
+        // Accept custom value
+        setSubstanceId('')
+        setSubstanceName(searchQuery.trim())
+        setSearchOpen(false)
+      }
+      return
+    }
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setActiveIndex(prev => prev < searchResults.length - 1 ? prev + 1 : 0)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setActiveIndex(prev => prev > 0 ? prev - 1 : searchResults.length - 1)
+        break
+      case 'Tab':
+        e.preventDefault()
+        if (e.shiftKey) {
+          setActiveIndex(prev => prev > 0 ? prev - 1 : searchResults.length - 1)
+        } else {
+          setActiveIndex(prev => prev < searchResults.length - 1 ? prev + 1 : 0)
+        }
+        break
+      case 'Enter':
+        e.preventDefault()
+        if (activeIndex >= 0) {
+          const sel = searchResults[activeIndex]
+          selectSubstance(sel.substance.id, sel.substance.name)
+        } else if (searchQuery.trim()) {
+          // Accept custom value
+          setSubstanceId('')
+          setSubstanceName(searchQuery.trim())
+          setSearchOpen(false)
+        }
+        break
+      case 'Escape':
+        e.preventDefault()
+        setSearchOpen(false)
+        setActiveIndex(-1)
+        break
+    }
+  }, [searchOpen, searchResults, activeIndex, searchQuery, substanceId, selectSubstance])
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('')
+    setSubstanceId('')
+    setSubstanceName('')
+    setSearchOpen(false)
+    setActiveIndex(-1)
+    inputRef.current?.focus()
+  }, [])
 
   const totalMinutes = intervalHours * 60 + intervalMinutes
 
   const handleSave = () => {
-    if (!substanceName.trim()) {
+    const nameToSave = substanceName || searchQuery.trim()
+    if (!nameToSave) {
       toast({
         title: 'Missing substance name',
         variant: 'destructive',
@@ -116,7 +222,7 @@ function ScheduleEditor({
       return
     }
     onSave({
-      substanceName: substanceName.trim(),
+      substanceName: nameToSave.trim(),
       substanceId: substanceId || undefined,
       intervalMinutes: totalMinutes,
       maxDosesPerDay,
@@ -129,13 +235,105 @@ function ScheduleEditor({
     <div className="space-y-4 py-2">
       <div className="space-y-2">
         <Label>Substance</Label>
-        <Combobox
-          options={substanceOptions}
-          value={substanceId}
-          onChange={handleSubstanceChange}
-          placeholder="Search or type substance name..."
-          allowCustom
-        />
+        <div ref={searchRef} className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-content pointer-events-none" />
+          <Input
+            ref={inputRef}
+            type="text"
+            placeholder="Search substances..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => { if (searchQuery.trim()) setSearchOpen(true) }}
+            onKeyDown={handleSearchKeyDown}
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-content hover:text-base-content transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* Search results dropdown (matches SharedNav style) */}
+          <AnimatePresence>
+            {searchOpen && searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute z-50 top-full mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl overflow-hidden"
+              >
+                <div className="max-h-60 overflow-y-auto p-1">
+                  {searchResults.map((result, idx) => {
+                    const sub = result.substance
+                    const isActive = idx === activeIndex
+                    const matchedAlias = result.matchField !== 'name'
+                      && result.matchField !== 'class'
+                      && result.matchField !== 'category'
+                      && result.matchField !== 'description'
+                      ? result.matchField
+                      : null
+
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          selectSubstance(sub.id, sub.name)
+                        }}
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        className={cn(
+                          'flex items-center gap-2.5 w-full px-2.5 py-2 rounded-md text-sm transition-colors text-left',
+                          isActive ? 'bg-accent text-accent-content' : 'hover:bg-accent/50',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-2 h-2 rounded-full shrink-0',
+                            CATEGORY_DOTS[sub.categories[0]] || 'bg-zinc-500',
+                          )}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate">
+                            {result.matchField === 'name'
+                              ? highlightMatch(sub.name, searchQuery)
+                              : sub.name}
+                          </div>
+                          <div className="text-[10px] text-neutral-content truncate">
+                            {sub.class}
+                          </div>
+                        </div>
+                        {matchedAlias && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-neutral-content truncate max-w-[90px] shrink-0">
+                            {matchedAlias}
+                          </span>
+                        )}
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-base-300 text-neutral-content whitespace-nowrap shrink-0">
+                          {sub.categories[0]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="px-2.5 py-1.5 border-t border-base-300 text-[10px] text-neutral-content flex items-center justify-between">
+                  <span>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+                  <span>
+                    <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                    {' / '}
+                    <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
+                    {' '}navigate{' '}
+                    <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
+                    {' '}select
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -154,7 +352,6 @@ function ScheduleEditor({
                 )
               }
               onBlur={() => {
-                // Clamp on blur so empty/invalid values snap to 0
                 if (isNaN(intervalHours) || intervalHours < 0) setIntervalHours(0)
                 if (intervalHours > 24) setIntervalHours(24)
               }}
@@ -175,7 +372,6 @@ function ScheduleEditor({
                 )
               }
               onBlur={() => {
-                // Clamp on blur so empty/invalid values snap to 0
                 if (isNaN(intervalMinutes) || intervalMinutes < 0) setIntervalMinutes(0)
                 if (intervalMinutes > 59) setIntervalMinutes(59)
               }}
@@ -249,9 +445,8 @@ function ScheduleEditor({
   )
 }
 
-/**
- * ReminderSettings — full settings panel for configuring dose reminder schedules.
- */
+// ─── ReminderSettings ────────────────────────────────────────────────────────
+
 export function ReminderSettings() {
   const schedules = useReminderStore((s) => s.schedules)
   const addSchedule = useReminderStore((s) => s.addSchedule)
@@ -301,34 +496,6 @@ export function ReminderSettings() {
     toast({
       title: 'Schedule updated',
       description: `${data.substanceName} reminder saved`,
-    })
-  }
-
-  const handleAddSuggestion = (suggestion: (typeof SUGGESTIONS)[0]) => {
-    // Don't add if already exists
-    const exists = schedules.some(
-      (s) =>
-        s.substanceName.toLowerCase() === suggestion.name.toLowerCase(),
-    )
-    if (exists) {
-      toast({
-        title: 'Already exists',
-        description: `${suggestion.name} already has a reminder schedule`,
-      })
-      return
-    }
-
-    addSchedule({
-      id: crypto.randomUUID(),
-      substanceName: suggestion.name,
-      intervalMinutes: suggestion.intervalMinutes,
-      maxDosesPerDay: suggestion.maxDosesPerDay,
-      enabled: true,
-      createdAt: new Date().toISOString(),
-    })
-    toast({
-      title: 'Reminder added',
-      description: `${suggestion.name} — every ${formatIntervalMinutes(suggestion.intervalMinutes)}`,
     })
   }
 
@@ -416,41 +583,6 @@ export function ReminderSettings() {
         </div>
 
         <div className="divider my-1" />
-
-        {/* ── Suggestion chips ── */}
-        {schedules.length === 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-neutral-content uppercase tracking-wide">
-              Quick add
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => {
-                const exists = schedules.some(
-                  (sc) =>
-                    sc.substanceName.toLowerCase() === s.name.toLowerCase(),
-                )
-                return (
-                  <button
-                    key={s.name}
-                    onClick={() => !exists && handleAddSuggestion(s)}
-                    disabled={exists}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      exists
-                        ? 'opacity-40 cursor-not-allowed border-base-300'
-                        : 'border-primary/30 hover:border-primary/60 hover:bg-primary/5 cursor-pointer'
-                    }`}
-                  >
-                    <Plus className="h-3 w-3" />
-                    {s.name}
-                    <span className="text-neutral-content">
-                      ({formatIntervalMinutes(s.intervalMinutes)})
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Existing schedules ── */}
         {schedules.length > 0 && (
@@ -547,7 +679,7 @@ export function ReminderSettings() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1">
                   <Plus className="h-3.5 w-3.5" />
-                  Create Custom Schedule
+                  Add Reminder Schedule
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
