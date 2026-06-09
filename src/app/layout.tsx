@@ -56,7 +56,7 @@ export default function RootLayout({
             <Suspense>
               <SharedNav />
             </Suspense>
-            <main className="min-h-[calc(100vh-3.5rem)] pb-10 md:pb-0">
+            <main className="min-h-[calc(100vh-3.5rem)]">
               {children}
             </main>
 
