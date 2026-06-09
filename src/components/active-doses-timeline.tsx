@@ -51,7 +51,7 @@ import { format, addMinutes } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
-  Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers,
+  Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers, Clock,
 } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
 import { useDoseStore } from '@/store/dose-store'
@@ -62,7 +62,7 @@ import {
 import {
   phaseColors, phaseIcons, ROUTE_PALETTE,
   SVG_W, SVG_H, PL, PT, GW, GH, PHASE_BANDS,
-  NOW_INDICATOR, markerHex,
+  NOW_INDICATOR, markerHex, ENDED_DOSE_RETENTION_MINS,
 } from './dose-timeline/dose-timeline-constants'
 import { classifyDose } from '@/lib/dose-classification'
 import {
@@ -317,10 +317,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
   const groups = useMemo(() => {
     const now = Date.now()
 
-    // Filter out ended doses (dose ends when offset phase ends)
+    // Retain doses that are still active OR recently ended (within ENDED_DOSE_RETENTION_MINS)
     const activeDoses = baseDoses.filter(d => {
       const elapsedMins = (now - d.doseTime.getTime()) / 60_000
-      return elapsedMins < d.timings.offsetEnd
+      return elapsedMins < d.timings.offsetEnd + ENDED_DOSE_RETENTION_MINS
     })
     
     const bySubstance = new Map<string, EnrichedDose[]>()
@@ -517,11 +517,8 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
   const groupPhaseBands = useMemo(() => {
     const map = new Map<string, ReturnType<typeof getPhaseBandRanges>>()
     for (const group of groups) {
-      const bandTimings = (() => {
-        const primary = group.routes.find(r => r.primary)
-        if (!primary) return group.routes[0]?.primary?.timings
-        return primary.primary.timings
-      })()
+      // Use the first route's primary dose timings for phase bands
+      const bandTimings = group.routes[0]?.primary?.timings
       if (bandTimings) {
         map.set(group.key, getPhaseBandRanges(bandTimings))
       }
@@ -678,6 +675,13 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                 return elapsedMins < d.timings.offsetEnd
               }),
             )
+            // Check if ALL doses in the group have ended (for rendering ended state)
+            const allEnded = group.routes.every(rg =>
+              rg.doses.every(d => {
+                const elapsedMins = (now - d.doseTime.getTime()) / 60_000
+                return elapsedMins >= d.timings.offsetEnd
+              }),
+            )
 
             const primaryDose = group.primary
             const isMultiRoute = group.routes.length > 1
@@ -686,16 +690,22 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
             const nowProgress = (() => {
               if (!allActive) return -1
-              // Find any active dose using fresh time calculation
-              const activeDose = group.routes
+              // Find the LATEST active dose (most recently dosed) for the now-indicator position.
+              // Using .find() would pick the earliest dose, which puts the now-line at the wrong
+              // position when redosing — it should track the most recent dose's progress.
+              const allActiveDoses = group.routes
                 .flatMap(rg => rg.doses)
-                .find(d => {
+                .filter(d => {
                   const elapsedMins = (now - d.doseTime.getTime()) / 60_000
                   return elapsedMins < d.timings.offsetEnd
                 })
-              if (!activeDose) return -1
-              const elapsedMins = (now - activeDose.doseTime.getTime()) / 60_000
-              const doseOffsetMins = (activeDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
+              if (allActiveDoses.length === 0) return -1
+              // Pick the dose with the latest doseTime
+              const latestActiveDose = allActiveDoses.reduce((latest, d) =>
+                d.doseTime.getTime() > latest.doseTime.getTime() ? d : latest
+              , allActiveDoses[0])
+              const elapsedMins = (now - latestActiveDose.doseTime.getTime()) / 60_000
+              const doseOffsetMins = (latestActiveDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
               return (doseOffsetMins + elapsedMins) / group.windowDuration * 100
             })()
             const timeMarkers = buildTimeMarkers(group.windowDuration, group.windowStart)
@@ -795,11 +805,22 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                     )}
                   </div>
 
-                  {/* Remaining time */}
-                  {allActive && primaryDose.status.totalRemaining > 0 && (
-                    <span className="text-xs text-neutral-content flex items-center gap-1">
-                      <Timer className="h-3 w-3" />
-                      {formatMinutes(primaryDose.status.totalRemaining)} remaining
+                  {/* Remaining time — compute fresh instead of using stale status */}
+                  {allActive && (() => {
+                    const primaryElapsedMins = (now - primaryDose.doseTime.getTime()) / 60_000
+                    const freshRemaining = Math.max(0, primaryDose.timings.offsetEnd - primaryElapsedMins)
+                    return freshRemaining > 0 ? (
+                      <span className="text-xs text-neutral-content flex items-center gap-1">
+                        <Timer className="h-3 w-3" />
+                        {formatMinutes(freshRemaining)} remaining
+                      </span>
+                    ) : null
+                  })()}
+                  {/* Ended indicator for recently-ended doses */}
+                  {allEnded && (
+                    <span className="text-xs text-neutral-content/60 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Ended
                     </span>
                   )}
                 </div>
@@ -854,6 +875,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       // Use fresh timing for active check
                       const elapsedMinsForDose = (now - d.doseTime.getTime()) / 60_000
                       const isDoseActive = elapsedMinsForDose >= 0 && elapsedMinsForDose < d.timings.offsetEnd
+                      const isDoseEnded = elapsedMinsForDose >= d.timings.offsetEnd
                       const doseProgress = (elapsedMinsForDose / d.timings.totalDuration) * 100
 
                       return (
@@ -863,7 +885,9 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                           className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${
                             isIsolated
                               ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
-                              : 'border-base-300 hover:border-base-300/80'
+                              : isDoseEnded
+                                ? 'border-base-300/50 opacity-50'
+                                : 'border-base-300 hover:border-base-300/80'
                           }`}
                           style={{ color: palette.stroke }}
                         >
@@ -905,7 +929,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                 </div>
 
                 {/* ── SVG Graph ── */}
-                <div className="relative">
+                <div className="relative" style={{ opacity: allEnded ? 0.4 : 1, transition: 'opacity 1s ease-out' }}>
                   <svg
                     ref={el => { svgRefs.current[group.key] = el }}
                     viewBox={`0 0 ${SVG_W} ${SVG_H}`}
