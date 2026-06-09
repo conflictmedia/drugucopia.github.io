@@ -43,6 +43,8 @@ import { DoseLoggerModal } from '@/components/dose-logger-modal'
 import { DoseHistory } from '@/components/dose-history'
 import { DoseStats } from '@/components/dose-stats'
 import { ActiveDosesTimeline } from '@/components/active-doses-timeline'
+import { ActiveReminders, MobileActiveReminders } from '@/components/active-reminders'
+import { ReminderSettings } from '@/components/reminder-settings'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -1591,7 +1593,9 @@ function HomeContent() {
           {/* Desktop dose-log */}
           <div className={`container mx-auto py-6 lg:py-10 px-4 lg:px-6 ${desktopView === 'dose-log' ? 'hidden md:block' : 'hidden'}`}>
             <div className="space-y-6">
+              <ActiveReminders />
               <ActiveDosesTimeline />
+              <ReminderSettings />
               <DoseStats />
               <DoseHistory />
             </div>
@@ -1674,6 +1678,7 @@ function HomeContent() {
 
           {/* Mobile: Timeline tab */}
           <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-24 px-4 pt-3 space-y-4`}>
+            <MobileActiveReminders />
             <ActiveDosesTimeline />
             <DoseStats />
           </div>

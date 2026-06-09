@@ -816,6 +816,24 @@ export function DoseHistory() {
     })
     setRedosing(null)
     toast({ title: 'Redose logged', description: `${dose.substanceName} logged again.` })
+
+    // Check if a reminder timer was auto-started and notify the user
+    try {
+      const { useReminderStore } = await import('@/store/reminder-store')
+      const { formatIntervalMinutes } = await import('@/lib/notification-utils')
+      const reminderStore = useReminderStore.getState()
+      const matchingSchedule = reminderStore.schedules.find(
+        s => s.enabled && s.substanceName.toLowerCase() === dose.substanceName.toLowerCase()
+      )
+      if (matchingSchedule && reminderStore.autoStartEnabled) {
+        toast({
+          title: 'Reminder started',
+          description: `${formatIntervalMinutes(matchingSchedule.intervalMinutes)} timer started for ${dose.substanceName}`,
+        })
+      }
+    } catch {
+      // Reminder store may not be available — skip
+    }
   }
 
   const getCategoryColor = (category: string) =>

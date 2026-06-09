@@ -26,6 +26,8 @@ import { DoseLog, Duration } from '@/types'
 import { calculatePhaseTimings, getPhaseStatus } from '@/components/dose-timeline/dose-timeline-utils'
 import { getDurationForRoute } from '@/lib/duration-interpolation'
 import { DurationOverrideFields } from '@/components/duration-override-fields'
+import { useReminderStore } from '@/store/reminder-store'
+import { formatIntervalMinutes } from '@/lib/notification-utils'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DoseLoggerModalProps {
@@ -1095,6 +1097,22 @@ export function DoseLoggerModal({
         title: 'Dose logged',
         description: `${amount} ${formatUnit(unit, parseFloat(amount))} of ${substanceName}${estimatedDuration?.isEstimated && !durationOverride ? ' (estimated timeline)' : ''}`,
       })
+
+      // Check if a reminder timer was auto-started and notify the user
+      try {
+        const reminderStore = useReminderStore.getState()
+        const matchingSchedule = reminderStore.schedules.find(
+          s => s.enabled && s.substanceName.toLowerCase() === substanceName.toLowerCase()
+        )
+        if (matchingSchedule && reminderStore.autoStartEnabled) {
+          toast({
+            title: 'Reminder started',
+            description: `${formatIntervalMinutes(matchingSchedule.intervalMinutes)} timer started for ${substanceName}`,
+          })
+        }
+      } catch {
+        // Reminder store may not be available — skip
+      }
 
       setOpen(false)
       resetForm()
