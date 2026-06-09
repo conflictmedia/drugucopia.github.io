@@ -290,17 +290,25 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
     setTouchInspect(null)
   }, [])
 
-  /* ---- Build curve paths per route ---- */
+  /* ---- Build curve paths per route (ALL doses, not just primary) ---- */
   const routePaths = useMemo(() => {
     return group.routes.map((route) => {
-      const offsetMins =
-        (route.primary.doseTime.getTime() - group.windowStart.getTime()) / 60_000
-      const { timings } = route.primary
+      // Generate a curve for every dose in the route, not just the primary.
+      // This fixes the multi-dose (redosing) mobile timeline where only the
+      // first dose's curve was visible.
+      const doseCurves = route.doses.map((dose) => {
+        const offsetMins =
+          (dose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
+        const { timings } = dose
+        return {
+          stroke: mobileCurvePath(timings, offsetMins, group.windowDuration),
+          area: mobileAreaPath(timings, offsetMins, group.windowDuration),
+          offsetMins,
+        }
+      })
       return {
         route,
-        stroke: mobileCurvePath(timings, offsetMins, group.windowDuration),
-        area: mobileAreaPath(timings, offsetMins, group.windowDuration),
-        offsetMins,
+        doseCurves,
       }
     })
   }, [group])
@@ -455,25 +463,29 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
             })
           })()}
 
-          {/* Curve paths per route */}
-          {routePaths.map(({ route, stroke, area }) => {
+          {/* Curve paths per route — ALL doses in each route */}
+          {routePaths.map(({ route, doseCurves }) => {
             const paletteEntry = ROUTE_PALETTE[group.routes.indexOf(route) % ROUTE_PALETTE.length]
             return (
               <g key={route.route}>
-                <path
-                  d={area}
-                  fill={paletteEntry.fill}
-                  opacity="0.08"
-                />
-                <path
-                  d={stroke}
-                  fill="none"
-                  stroke={paletteEntry.stroke}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.85"
-                />
+                {doseCurves.map((curve, i) => (
+                  <g key={i}>
+                    <path
+                      d={curve.area}
+                      fill={paletteEntry.fill}
+                      opacity="0.08"
+                    />
+                    <path
+                      d={curve.stroke}
+                      fill="none"
+                      stroke={paletteEntry.stroke}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      opacity="0.85"
+                    />
+                  </g>
+                ))}
               </g>
             )
           })}
