@@ -552,7 +552,12 @@ function MobileBottomNav({
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-[30px] inset-x-0 z-50 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-base-100 border-t border-base-300" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      {/* Disclaimer bar — sits above the nav icons, inside the fixed nav container */}
+      <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning border-b border-warning/20 bg-base-100/95">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        <span>Educational and harm reduction purposes only.</span>
+      </div>
       <div className="flex">
         {items.map(({ id, label, icon: Icon }) => {
           const isLog = id === 'log'
@@ -720,7 +725,7 @@ function SubstanceDetail({
       </header>
 
       {/* Mobile content */}
-      <div className="md:hidden flex-1 overflow-y-auto pb-32">
+      <div className="md:hidden flex-1 overflow-y-auto pb-36">
         <div className="px-4 pt-4 pb-3 border-b border-base-300">
           <div className="flex items-start gap-3 mb-3">
             {primary && (
@@ -1645,7 +1650,7 @@ function HomeContent() {
           </div>
 
           {/* Mobile: Substances tab */}
-          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-32`}>
+          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-36`}>
             <div className="px-4 pt-3 pb-1">
               <CategoryChipRow selected={selectedCategory} onChange={handleCategoryChange} />
             </div>
@@ -1678,7 +1683,7 @@ function HomeContent() {
           </div>
 
           {/* Mobile: Timeline tab */}
-          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-32 px-4 pt-3 space-y-4`}>
+          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-36 px-4 pt-3 space-y-4`}>
             <MobileActiveReminders />
             <ActiveDosesTimeline />
             <ReminderSettings />
@@ -1686,7 +1691,7 @@ function HomeContent() {
           </div>
 
           {/* Mobile: History tab */}
-          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-32 px-4 pt-3`}>
+          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-36 px-4 pt-3`}>
             <DoseHistory />
           </div>
         </main>

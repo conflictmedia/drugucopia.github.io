@@ -252,7 +252,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   })
 
   const pushToSync = useCallback(async () => {
-    if (!cryptoKeyRef.current || !hashedRoomRef.current || isPushingRef.current || !isLoaded) return
+    if (!cryptoKeyRef.current || !hashedRoomRef.current || isPushingRef.current || !isLoaded || !reminderIsLoaded) return
     const db = getDb()
     if (!db) return
 
@@ -302,7 +302,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isPushingRef.current = false
     }
-  }, [isLoaded])
+  }, [isLoaded, reminderIsLoaded])
 
   // Subscribe to Zustand store changes OUTSIDE of React render cycle.
   // Updates refs and triggers debounced push without causing re-renders.
@@ -317,7 +317,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      if (syncStatusRef.current === 'synced' && state.isLoaded && initialSyncDoneRef.current) {
+      if (syncStatusRef.current === 'synced' && state.isLoaded && reminderIsLoaded && initialSyncDoneRef.current) {
         if (pushDebounceRef.current) {
           clearTimeout(pushDebounceRef.current)
           pushDebounceRef.current = null
@@ -344,7 +344,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      if (syncStatusRef.current === 'synced' && state.isLoaded && initialSyncDoneRef.current) {
+      if (syncStatusRef.current === 'synced' && isLoaded && state.isLoaded && initialSyncDoneRef.current) {
         if (pushDebounceRef.current) {
           clearTimeout(pushDebounceRef.current)
           pushDebounceRef.current = null
@@ -364,7 +364,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         pushDebounceRef.current = null
       }
     }
-  }, [pushToSync])
+  }, [pushToSync, isLoaded, reminderIsLoaded])
 
   const connectToSync = useCallback(async (rId?: string, pass?: string) => {
     const effectiveRId = rId ?? roomIdRef.current
@@ -396,10 +396,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
       const docRef = doc(db, 'secure_rooms', hashedRoomRef.current)
 
-      unsubscribeRef.current = onSnapshot(docRef, {
-        next: async (docSnap) => {
-          if (isPushingRef.current) return
+      // Track the latest unprocessed snapshot so we don't lose data
+      // when a push is in progress.  Instead of dropping the snapshot
+      // entirely, we queue it and process it once the push completes.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let pendingSnap: any = null
+      let isProcessingSnap = false
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const processSnapshot = async (docSnap: any) => {
+        isProcessingSnap = true
+        try {
           if (!docSnap.exists()) {
             // New room — nothing to pull, push local state immediately
             initialSyncDoneRef.current = true
@@ -475,6 +482,26 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             console.error('Decryption failed:', e)
             setSyncStatus('error')
           }
+        } finally {
+          isProcessingSnap = false
+          // Process any snapshot that arrived while we were busy
+          if (pendingSnap) {
+            const next = pendingSnap
+            pendingSnap = null
+            processSnapshot(next)
+          }
+        }
+      }
+
+      unsubscribeRef.current = onSnapshot(docRef, {
+        next: async (docSnap) => {
+          // If we're currently pushing or processing a previous snapshot,
+          // queue this one for later instead of dropping it.
+          if (isPushingRef.current || isProcessingSnap) {
+            pendingSnap = docSnap
+            return
+          }
+          processSnapshot(docSnap)
         },
         error: (err) => {
           console.error('Firestore snapshot error:', err)

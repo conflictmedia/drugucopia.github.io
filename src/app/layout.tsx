@@ -60,8 +60,11 @@ export default function RootLayout({
               {children}
             </main>
 
-            {/* Always-visible disclaimer */}
-            <div className="fixed bottom-0 md:bottom-0 inset-x-0 z-40 md:z-30 bg-base-100/95 backdrop-blur-sm border-t border-warning/20">
+            {/* Always-visible disclaimer
+                On mobile, the disclaimer is rendered inside the MobileBottomNav
+                component (in page.tsx) to avoid z-index/overlap conflicts.
+                This div is only visible on desktop (md:block hidden on mobile). */}
+            <div className="hidden md:block fixed bottom-0 inset-x-0 z-30 bg-base-100/95 backdrop-blur-sm border-t border-warning/20">
               <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
