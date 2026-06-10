@@ -253,6 +253,12 @@ export function ActiveReminders() {
 
 /**
  * MobileActiveReminders — compact version for mobile bottom nav timeline tab.
+ *
+ * Fixes applied:
+ * - Substance names are truncated so remaining time is always visible on narrow screens
+ * - Running reminders show a progress bar and urgency indicator (matching desktop)
+ * - Snoozed reminders are now displayed (were missing entirely)
+ * - Icons added to snooze buttons for consistency with desktop
  */
 export function MobileActiveReminders() {
   const activeReminders = useReminderStore((s) => s.activeReminders)
@@ -272,6 +278,7 @@ export function MobileActiveReminders() {
 
   const fired = activeReminders.filter((r) => r.status === 'fired')
   const running = activeReminders.filter((r) => r.status === 'running')
+  const snoozed = activeReminders.filter((r) => r.status === 'snoozed')
 
   return (
     <div className="space-y-2">
@@ -286,20 +293,21 @@ export function MobileActiveReminders() {
       </div>
 
       <div className="space-y-2">
+        {/* ── Fired reminders ── */}
         {fired.map((r) => (
           <div
             key={r.id}
             className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3"
           >
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <AlarmClock className="h-4 w-4 text-amber-500" />
-                <span className="font-medium text-sm">{r.substanceName}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <AlarmClock className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="font-medium text-sm truncate">{r.substanceName}</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-xs shrink-0"
                 onClick={() => dismissReminder(r.id)}
               >
                 Dismiss
@@ -313,44 +321,110 @@ export function MobileActiveReminders() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-xs gap-1"
                 onClick={() => snoozeReminder(r.id, 15)}
               >
+                <Coffee className="h-3 w-3" />
                 Snooze 15m
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="h-7 text-xs gap-1"
                 onClick={() => snoozeReminder(r.id, 60)}
               >
+                <Timer className="h-3 w-3" />
                 Snooze 1h
               </Button>
             </div>
           </div>
         ))}
 
+        {/* ── Running timers (with progress bar + urgency) ── */}
         {running.map((r) => {
           const remaining = new Date(r.firesAt).getTime() - now
+          const progress = Math.max(
+            0,
+            Math.min(
+              100,
+              ((r.intervalMs - remaining) / r.intervalMs) * 100,
+            ),
+          )
+          const isUrgent = remaining > 0 && remaining < 5 * 60_000
+
           return (
             <div
               key={r.id}
               className="rounded-lg border border-base-300 p-3"
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-500" />
-                  <span className="font-medium text-sm">{r.substanceName}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Clock className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-amber-500' : 'text-blue-500'}`} />
+                  <span className="font-medium text-sm truncate">{r.substanceName}</span>
                 </div>
-                <span className="text-sm font-mono tabular-nums text-neutral-content">
+                <span className={`text-sm font-mono tabular-nums shrink-0 ${isUrgent ? 'text-amber-500 font-bold' : 'text-neutral-content'}`}>
                   {formatRemainingTime(remaining)}
                 </span>
               </div>
-              <div className="flex justify-end mt-1.5">
+              {/* Progress bar */}
+              <div className="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? 'bg-amber-500' : 'bg-blue-500'}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className="text-[10px] text-neutral-content">
+                  Started{' '}
+                  {new Date(r.startedAt).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-[10px] text-neutral-content"
+                  className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
+                  onClick={() => dismissReminder(r.id)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* ── Snoozed timers ── */}
+        {snoozed.map((r) => {
+          const remaining = r.snoozedUntil
+            ? new Date(r.snoozedUntil).getTime() - now
+            : 0
+
+          return (
+            <div
+              key={r.id}
+              className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Coffee className="h-4 w-4 text-purple-500 shrink-0" />
+                  <span className="font-medium text-sm truncate">{r.substanceName}</span>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] border-purple-500/30 text-purple-400"
+                  >
+                    Snoozed
+                  </Badge>
+                </div>
+                <span className="text-sm font-mono tabular-nums text-purple-400 shrink-0">
+                  {formatRemainingTime(remaining)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end mt-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
                   onClick={() => dismissReminder(r.id)}
                 >
                   Cancel

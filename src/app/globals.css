@@ -161,7 +161,7 @@ html {
 @media (max-width: 767px) {
   :root {
     --mobile-header-height: 108px;
-    --mobile-bottomnav-height: calc(72px + env(safe-area-inset-bottom, 0px));
+    --mobile-bottomnav-height: calc(102px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -279,7 +279,7 @@ html {
   /* Hide visualizer controls on mobile (bottom nav area) */
   @media (max-width: 767px) {
     .visualizer-controls {
-      bottom: 5rem;
+      bottom: 7rem;
       right: 0.75rem;
     }
   }
