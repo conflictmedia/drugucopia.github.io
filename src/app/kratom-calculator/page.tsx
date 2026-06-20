@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, Suspense } from 'react'
 import {
   Leaf,
   Scale,
@@ -21,17 +21,23 @@ import {
   ChevronUp,
   SlidersHorizontal,
   Check,
+  Plus,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useDoseStore } from '@/store/dose-store'
+import { toast } from '@/hooks/use-toast'
+import { kratom } from '@/lib/substances/opioids/kratom'
+import type { DoseLog } from '@/types'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 /** Approximate mitragynine content of raw kratom leaf powder (%) */
-const BASE_MITRAGYNINE_PCT = 1.5
+const DEFAULT_MITRAGYNINE_PCT = 1.5
 const MAX_SAFE_LEAF_DOSE = 12
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -163,17 +169,17 @@ const EXTRACT_PRESETS = [0.1, 0.25, 0.5, 1]
 
 // ─── Conversion Helpers ────────────────────────────────────────────────────
 
-function percentToRatio(percent: number): number {
-  return percent / BASE_MITRAGYNINE_PCT
+function percentToRatio(percent: number, baseline: number): number {
+  return percent / baseline
 }
 
-function ratioToPercent(ratio: number): number {
-  return ratio * BASE_MITRAGYNINE_PCT
+function ratioToPercent(ratio: number, baseline: number): number {
+  return ratio * baseline
 }
 
-function getConcentrationFactor(mode: InputMode, value: number): number {
+function getConcentrationFactor(mode: InputMode, value: number, baseline: number): number {
   if (value <= 0) return 0
-  return mode === 'percent' ? percentToRatio(value) : value
+  return mode === 'percent' ? percentToRatio(value, baseline) : value
 }
 
 function leafToExtract(leafGrams: number, concentrationFactor: number): number {
@@ -208,6 +214,18 @@ function getTierStartPercent(tier: DoseTier): number {
 
 function getSpectrumPosition(grams: number): number {
   return Math.min((grams / MAX_SAFE_LEAF_DOSE) * 100, 105)
+}
+
+function getTierSpectrumColor(tier: DoseTier): string {
+  // More opaque, saturated colors for the spectrum bar so text is readable
+  switch (tier.name) {
+    case 'Threshold': return 'bg-emerald-500/50'
+    case 'Light': return 'bg-lime-500/50'
+    case 'Common': return 'bg-amber-500/50'
+    case 'Strong': return 'bg-orange-500/50'
+    case 'Heavy': return 'bg-red-500/50'
+    default: return 'bg-base-300'
+  }
 }
 
 // ─── Reusable Collapsible Section Component ─────────────────────────────────
@@ -257,15 +275,34 @@ function SectionToggle({
 
 // ─── Page Component ────────────────────────────────────────────────────────
 
-export default function KratomCalculatorPage() {
+function KratomCalculatorContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const addDose = useDoseStore(s => s.addDose)
+
   // ─── Inputs ──────────────────────────────────────────────────────────────
-  const [inputMode, setInputMode] = useState<InputMode>('percent')
-  const [extractValue, setExtractValue] = useState<string>('')
-  const [leafDose, setLeafDose] = useState<string>('')
-  const [extractAmountInput, setExtractAmountInput] = useState<string>('')
-  const [calcDirection, setCalcDirection] = useState<'leaf-to-extract' | 'extract-to-leaf'>('leaf-to-extract')
-  const [extractUnit, setExtractUnit] = useState<'g' | 'mg'>('g')
-  const [isEnhanced, setIsEnhanced] = useState<boolean>(false)
+  const [inputMode, setInputMode] = useState<InputMode>(() => {
+    const m = searchParams.get('mode')
+    return m === 'percent' || m === 'ratio' ? m : 'percent'
+  })
+  const [extractValue, setExtractValue] = useState<string>(() => searchParams.get('strength') ?? '')
+  const [leafDose, setLeafDose] = useState<string>(() => searchParams.get('leaf') ?? '')
+  const [extractAmountInput, setExtractAmountInput] = useState<string>(() => searchParams.get('extract') ?? '')
+  const [calcDirection, setCalcDirection] = useState<'leaf-to-extract' | 'extract-to-leaf'>(() => {
+    const d = searchParams.get('direction')
+    return d === 'leaf-to-extract' || d === 'extract-to-leaf' ? d : 'leaf-to-extract'
+  })
+  const [extractUnit, setExtractUnit] = useState<'g' | 'mg'>(() => {
+    const u = searchParams.get('unit')
+    return u === 'g' || u === 'mg' ? u : 'g'
+  })
+  const [isEnhanced, setIsEnhanced] = useState<boolean>(() => searchParams.get('enhanced') === 'true')
+  const [leafBaseline, setLeafBaseline] = useState<number>(() => {
+    const b = searchParams.get('baseline')
+    const v = b ? parseFloat(b) : NaN
+    return !isNaN(v) && v > 0 ? v : DEFAULT_MITRAGYNINE_PCT
+  })
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     pharmacology: false,
@@ -275,12 +312,29 @@ export default function KratomCalculatorPage() {
   })
   const [copied, setCopied] = useState(false)
 
+  // Sync URL when inputs change (replace, no scroll)
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (inputMode !== 'percent') params.set('mode', inputMode)
+    if (extractValue) params.set('strength', extractValue)
+    if (calcDirection !== 'leaf-to-extract') params.set('direction', calcDirection)
+    if (leafDose) params.set('leaf', leafDose)
+    if (extractAmountInput) params.set('extract', extractAmountInput)
+    if (extractUnit !== 'g') params.set('unit', extractUnit)
+    if (isEnhanced) params.set('enhanced', 'true')
+    if (leafBaseline !== DEFAULT_MITRAGYNINE_PCT) params.set('baseline', String(leafBaseline))
+
+    const query = params.toString()
+    const newUrl = query ? `${pathname}?${query}` : pathname
+    router.replace(newUrl, { scroll: false })
+  }, [inputMode, extractValue, calcDirection, leafDose, extractAmountInput, extractUnit, isEnhanced, leafBaseline, pathname, router])
+
   // ─── Derived values ──────────────────────────────────────────────────────
   const extractNumber = useMemo(() => parseFloat(extractValue), [extractValue])
   const concentrationFactor = useMemo(() => {
     if (isNaN(extractNumber) || extractNumber <= 0) return 0
-    return getConcentrationFactor(inputMode, extractNumber)
-  }, [extractNumber, inputMode])
+    return getConcentrationFactor(inputMode, extractNumber, leafBaseline)
+  }, [extractNumber, inputMode, leafBaseline])
 
   const leafGrams = useMemo(() => {
     const v = parseFloat(leafDose)
@@ -372,6 +426,46 @@ export default function KratomCalculatorPage() {
     })
   }, [activeLeafDose, activeExtractDose, calcDirection, extractValue, inputMode])
 
+  const handleLogDose = useCallback(() => {
+    if (!activeExtractDose || activeExtractDose <= 0) return
+    // Ensure store is loaded from localStorage before appending a new dose
+    useDoseStore.getState().initialize()
+    const now = new Date().toISOString()
+    const duration = kratom.routeData?.oral?.duration ?? null
+    const notes = [
+      'Calculated via Kratom Extract Dose Calculator.',
+      `Direction: ${calcDirection === 'leaf-to-extract' ? 'leaf → extract' : 'extract → leaf'}.`,
+      `Extract strength: ${inputMode === 'percent' ? `${extractValue}% mitragynine` : `${extractValue}× ratio`}.`,
+      `Leaf equivalent: ${formatGrams(activeLeafDose)}g.`,
+      `Leaf baseline: ${leafBaseline}% mitragynine.`,
+      isEnhanced ? 'Extract marked as enhanced/fortified.' : '',
+    ].filter(Boolean).join(' ')
+
+    const newLog: DoseLog = {
+      id: `dose_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      substanceId: kratom.id,
+      substanceName: kratom.name,
+      categories: kratom.categories,
+      amount: activeExtractDose,
+      unit: 'g',
+      route: 'oral',
+      timestamp: now,
+      duration,
+      notes: notes || null,
+      mood: null,
+      setting: null,
+      intensity: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    addDose(newLog)
+    toast({
+      title: 'Dose logged',
+      description: `${formatGrams(activeExtractDose)}g kratom extract logged (${inputMode === 'percent' ? `${extractValue}% mitragynine` : `${extractValue}× ratio`}).`,
+    })
+  }, [activeExtractDose, activeLeafDose, calcDirection, extractValue, inputMode, leafBaseline, isEnhanced, addDose])
+
   const activePresets = inputMode === 'percent' ? presetPercents : presetRatios
 
   return (
@@ -452,10 +546,10 @@ export default function KratomCalculatorPage() {
 
           {/* Extract value input */}
           <div className="mb-4">
-            <label className="mb-1.5 block text-xs font-medium text-neutral-content">
+            <label className="mb-1.5 block text-xs font-medium text-neutral-content text-center">
               {inputMode === 'percent' ? 'Mitragynine Content (%)' : 'Extract Ratio (×)'}
             </label>
-            <div className="relative max-w-xs">
+            <div className="relative max-w-xs mx-auto">
               <Input
                 type="number"
                 min="0.1"
@@ -472,7 +566,7 @@ export default function KratomCalculatorPage() {
           </div>
 
           {/* Preset buttons */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4 justify-center">
             {activePresets.map((p) => (
               <button
                 key={p.label}
@@ -529,8 +623,8 @@ export default function KratomCalculatorPage() {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="pt-3 max-w-xs">
-                    <label className="mb-1.5 block text-xs font-medium text-neutral-content">
+                  <div className="pt-3 max-w-xs mx-auto">
+                    <label className="mb-1.5 block text-xs font-medium text-neutral-content text-center">
                       Leaf baseline mitragynine (%)
                     </label>
                     <div className="relative">
@@ -539,15 +633,17 @@ export default function KratomCalculatorPage() {
                         min="0.1"
                         max="5"
                         step="0.1"
-                        defaultValue={BASE_MITRAGYNINE_PCT}
+                        value={leafBaseline}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value)
+                          setLeafBaseline(isNaN(v) || v <= 0 ? DEFAULT_MITRAGYNINE_PCT : v)
+                        }}
                         className="bg-base-200 border-base-300/50 pr-8"
-                        disabled
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-content">%</span>
                     </div>
                     <p className="text-xs text-neutral-content/70 mt-1">
-                      Currently fixed at {BASE_MITRAGYNINE_PCT}%. Future update will allow adjustment (typical leaf
-                      ranges 0.8–2.0%).
+                      Typical leaf ranges 0.8–2.0%. Default is {DEFAULT_MITRAGYNINE_PCT}%.
                     </p>
                   </div>
                 </motion.div>
@@ -574,11 +670,11 @@ export default function KratomCalculatorPage() {
                 )}
                 {inputMode === 'ratio' && !isNaN(extractNumber) && (
                   <span>
-                    {'≈'} <span className="font-semibold text-base-content">{ratioToPercent(extractNumber).toFixed(1)}% mitragynine</span>
+                    {'≈'} <span className="font-semibold text-base-content">{ratioToPercent(extractNumber, leafBaseline).toFixed(1)}% mitragynine</span>
                   </span>
                 )}
                 <span className="text-neutral-content/50">
-                  (base leaf {'≈'} {BASE_MITRAGYNINE_PCT}% mitragynine)
+                  (base leaf {'≈'} {leafBaseline}% mitragynine)
                 </span>
               </motion.div>
             )}
@@ -629,10 +725,10 @@ export default function KratomCalculatorPage() {
                       <Scale className="h-5 w-5" />
                       Leaf Powder Dose → Extract Equivalent
                     </h2>
-                    <label className="mb-1.5 block text-xs font-medium text-neutral-content">
+                    <label className="mb-1.5 block text-xs font-medium text-neutral-content text-center">
                       Leaf Powder Dose (grams)
                     </label>
-                    <div className="relative max-w-xs mb-4">
+                    <div className="relative max-w-xs mx-auto mb-4">
                       <Input
                         type="number"
                         min="0.1"
@@ -644,7 +740,7 @@ export default function KratomCalculatorPage() {
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-content pointer-events-none">g</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    <div className="flex flex-wrap gap-2 mb-2 justify-center">
                       {LEAF_PRESETS.map((g) => (
                         <button
                           key={g}
@@ -666,10 +762,10 @@ export default function KratomCalculatorPage() {
                       <FlaskConical className="h-5 w-5" />
                       Extract Amount → Leaf Powder Equivalent
                     </h2>
-                    <label className="mb-1.5 block text-xs font-medium text-neutral-content">
+                    <label className="mb-1.5 block text-xs font-medium text-neutral-content text-center">
                       Extract Amount
                     </label>
-                    <div className="flex gap-3 items-end mb-4 max-w-xs">
+                    <div className="flex gap-3 items-end mb-4 max-w-xs mx-auto">
                       <div className="relative flex-1">
                         <Input
                           type="number"
@@ -719,7 +815,7 @@ export default function KratomCalculatorPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    <div className="flex flex-wrap gap-2 mb-2 justify-center">
                       {EXTRACT_PRESETS.map((g) => (
                         <button
                           key={g}
@@ -784,6 +880,10 @@ export default function KratomCalculatorPage() {
                   <Button variant="outline" size="sm" onClick={handleCopyResult} className="h-8 px-3 text-xs">
                     {copied ? <Check className="h-3.5 w-3.5 mr-1.5" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
                     {copied ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleLogDose} className="h-8 px-3 text-xs">
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Log dose
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleReset} className="h-8 px-3 text-xs">
                     <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
@@ -876,7 +976,7 @@ export default function KratomCalculatorPage() {
               {doseTiers.map((tier, i) => (
                 <div
                   key={i}
-                  className={`absolute top-0 h-full ${tier.bgColor} ${tier.borderColor} border-r flex items-center justify-center text-[10px] font-medium ${tier.color} transition-all duration-300`}
+                  className={`absolute top-0 h-full ${getTierSpectrumColor(tier)} ${tier.borderColor} border-r flex items-center justify-center text-[10px] font-medium ${tier.color} transition-all duration-300`}
                   style={{
                     left: `${getTierStartPercent(tier)}%`,
                     width: `${getTierSpectrumPercent(tier)}%`,
@@ -1201,7 +1301,7 @@ export default function KratomCalculatorPage() {
           </table>
         </div>
         <p className="text-xs text-neutral-content mt-3">
-          Leaf powder assumed to contain ~{BASE_MITRAGYNINE_PCT}% mitragynine. Actual content varies by strain, source, and age (typically 0.8–2.0%).
+          Leaf powder assumed to contain ~{leafBaseline}% mitragynine. Actual content varies by strain, source, and age (typically 0.8–2.0%).
         </p>
       </SectionToggle>
 
@@ -1242,5 +1342,22 @@ export default function KratomCalculatorPage() {
         <p>This tool is intended for harm reduction and educational purposes only. It is not medical advice.</p>
       </footer>
     </div>
+  )
+}
+
+export default function KratomCalculatorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen px-4 py-8 lg:px-8 max-w-5xl mx-auto flex items-center justify-center">
+          <div className="text-center">
+            <Leaf className="h-10 w-10 text-emerald-400 animate-pulse mx-auto mb-3" />
+            <p className="text-sm text-neutral-content">Loading calculator...</p>
+          </div>
+        </div>
+      }
+    >
+      <KratomCalculatorContent />
+    </Suspense>
   )
 }
