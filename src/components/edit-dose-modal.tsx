@@ -323,7 +323,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="grid gap-2">
                 <Label>Amount</Label>
                 <Input
@@ -333,6 +333,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
                   placeholder="e.g., 100 or 5 mg"
                   value={amount}
                   onChange={handleAmountChange}
+                  className="text-base"
                 />
                 <p className="text-xs text-neutral-content">Type a unit after the amount (e.g. &quot;5 mg&quot;) to auto-select it</p>
               </div>
@@ -357,7 +358,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
 
             <div className="grid gap-2">
               <Label>Date &amp; Time</Label>
-              <Input type="datetime-local" value={timestamp} onChange={(e) => setTimestamp(e.target.value)} />
+              <Input type="datetime-local" value={timestamp} onChange={(e) => setTimestamp(e.target.value)} className="text-base" />
             </div>
 
             {/* ── Duration section ─────────────────────────────────────── */}
@@ -386,6 +387,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
+                className="text-base"
               />
             </div>
           </div>

@@ -228,7 +228,8 @@ export function InteractionSubstanceSelector({
               <span className="truncate max-w-[120px]">{sub.name}</span>
               <button
                 onClick={() => handleRemove(sub.id)}
-                className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                aria-label={`Remove ${sub.name}`}
+                className="tap-sm ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -239,7 +240,7 @@ export function InteractionSubstanceSelector({
               variant="ghost"
               size="sm"
               onClick={handleClearAll}
-              className="h-7 text-xs text-neutral-content hover:text-error"
+              className="tap-sm h-7 min-h-0 text-xs text-neutral-content hover:text-error px-2"
             >
               Clear all
             </Button>
@@ -312,7 +313,7 @@ export function InteractionSubstanceSelector({
                       setCategoryFilter((prev) => (prev === cat.id ? null : cat.id === 'all' ? null : cat.id))
                     }
                     className={cn(
-                      'px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap transition-colors border',
+                      'tap-sm inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border min-h-0',
                       categoryFilter === cat.id || (!categoryFilter && cat.id === 'all')
                         ? cat.id === 'all'
                           ? 'bg-primary/20 text-primary border-primary/40'
@@ -388,7 +389,7 @@ export function InteractionSubstanceSelector({
                           result.matchField !== 'class' &&
                           result.matchField !== 'category' &&
                           result.matchField !== 'description' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-base-200 text-neutral-content truncate max-w-[90px]">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-base-200 text-neutral-content truncate max-w-[140px]">
                               {result.matchField}
                             </span>
                           )}

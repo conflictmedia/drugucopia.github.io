@@ -472,7 +472,7 @@ function KratomCalculatorContent() {
   const activePresets = inputMode === 'percent' ? presetPercents : presetRatios
 
   return (
-    <div className="min-h-screen px-4 py-8 lg:px-8 max-w-5xl mx-auto">
+    <div className="min-h-screen px-4 pt-8 pb-8 lg:px-8 max-w-5xl mx-auto max-md:safe-area-pb-min">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <header className="mb-8">
         <div className="flex items-center gap-3 mb-3">

@@ -148,7 +148,7 @@ function InteractionsPageInner() {
       </div>
 
       {/* ── Mobile Content ── */}
-      <div className="md:hidden flex-1 overflow-y-auto pb-8">
+      <div className="md:hidden flex-1 overflow-y-auto safe-area-pb-min">
         {/* Hero */}
         <div className="px-4 pt-4 pb-3 border-b border-white/8">
           <div className="flex items-center gap-3 mb-2">
