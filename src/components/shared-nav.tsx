@@ -12,6 +12,7 @@ import {
   Sun,
   Menu,
   X,
+  Leaf,
   Search,
   Activity,
   Calculator,
@@ -27,6 +28,7 @@ const navItems = [
   { href: '/', label: 'Substances', icon: FlaskConical },
   { href: '/interactions', label: 'Interactions', icon: Shuffle },
   { href: '/dxm-calculator', label: 'DXM Calc', icon: Calculator },
+  { href: '/kratom-calculator', label: 'Kratom Calc', icon: Leaf },
   { href: '/harm-reduction', label: 'Harm Reduction', icon: Shield },
 ]
 
