@@ -13,6 +13,10 @@ import {
   Clock,
   Heart,
   Skull,
+  Sun,
+  Waves,
+  Orbit,
+  type LucideIcon,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -22,9 +26,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 // ─── DXM Plateau Definitions (mg/kg) ────────────────────────────────────────
 
 interface Plateau {
+  icon: LucideIcon
   name: string
   subtitle: string
-  emoji: string
   rangeMin: number
   rangeMax: number
   color: string
@@ -41,7 +45,7 @@ const plateaus: Plateau[] = [
   {
     name: 'First Plateau',
     subtitle: 'Mild Stimulation',
-    emoji: '☀️',
+    icon: Sun,
     rangeMin: 1.5,
     rangeMax: 2.5,
     color: 'text-green-400',
@@ -57,7 +61,7 @@ const plateaus: Plateau[] = [
   {
     name: 'Second Plateau',
     subtitle: 'Intoxication / Euphoria',
-    emoji: '🌊',
+    icon: Waves,
     rangeMin: 2.5,
     rangeMax: 7.5,
     color: 'text-cyan-400',
@@ -73,7 +77,7 @@ const plateaus: Plateau[] = [
   {
     name: 'Third Plateau',
     subtitle: 'Strong Dissociation',
-    emoji: '🌀',
+    icon: Orbit,
     rangeMin: 7.5,
     rangeMax: 15,
     color: 'text-purple-400',
@@ -89,7 +93,7 @@ const plateaus: Plateau[] = [
   {
     name: 'Fourth Plateau',
     subtitle: 'Extreme Dissociation',
-    emoji: '⚠️',
+    icon: AlertTriangle,
     rangeMin: 15,
     rangeMax: 20,
     color: 'text-red-400',
@@ -323,7 +327,7 @@ export default function DXMCalculatorPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-lg">{plateau.emoji}</span>
+                        <plateau.icon className={`h-5 w-5 ${plateau.color}`} aria-hidden="true" />
                         <span className={`text-lg font-bold ${plateau.color}`}>{plateau.name}</span>
                         <Badge
                           variant="outline"
@@ -567,7 +571,8 @@ export default function DXMCalculatorPage() {
                   <tr key={i}>
                     <td>
                       <span className={`font-semibold ${p.color}`}>
-                        {p.emoji} {p.name}
+                        <p.icon className={`h-4 w-4 inline mr-1 ${p.color}`} aria-hidden="true" />
+                        {p.name}
                       </span>
                     </td>
                     <td className="font-mono">
