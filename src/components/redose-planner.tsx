@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
-import { CalendarDays } from 'lucide-react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import { CalendarDays, Brain } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,53 @@ import { toast } from '@/hooks/use-toast'
 import { formatIntervalMinutes } from '@/lib/notification-utils'
 import { format } from 'date-fns'
 import type { DoseLog, Duration, ReminderSchedule } from '@/types'
+
+// ─── Duration parsing helpers ───────────────────────────────────────────────
+
+function parseDurationStringToMinutes(input: string): number | null {
+  if (!input || input.toLowerCase() === 'unknown') return null
+  const match = input.match(/(\d+(?:\.\d+)?)\s*(?:-\s*(\d+(?:\.\d+)?))?\s*(minutes?|hours?|hrs?|min|m|h)/i)
+  if (!match) return null
+  const min = parseFloat(match[1])
+  const max = match[2] ? parseFloat(match[2]) : min
+  const avg = (min + max) / 2
+  const unit = match[3].toLowerCase()
+  const multiplier = unit.startsWith('h') ? 60 : 1
+  return Math.round(avg * multiplier)
+}
+
+function calculateComedownReminderInterval(duration: Duration | null | undefined): number | null {
+  if (!duration) return null
+
+  const onset = parseDurationStringToMinutes(duration.onset)
+  const comeup = parseDurationStringToMinutes(duration.comeup)
+  const peak = parseDurationStringToMinutes(duration.peak)
+  const offset = parseDurationStringToMinutes(duration.offset)
+  const total = parseDurationStringToMinutes(duration.total)
+
+  if (offset !== null) {
+    const preOffset = (onset ?? 0) + (comeup ?? 0) + (peak ?? 0)
+    const fullTimeline = preOffset + offset
+
+    // If the full timeline is reasonably close to the stated total, use it.
+    // This gives the true 50% point of the offset phase.
+    if (total !== null && Math.abs(fullTimeline - total) <= Math.max(30, total * 0.25)) {
+      return preOffset + Math.round(offset / 2)
+    }
+
+    // If duration data is inconsistent (e.g., offset > total), interpret offset
+    // as the comedown duration and place the reminder at 50% of it.
+    if (total !== null && offset <= total) {
+      return Math.max(0, total - Math.round(offset / 2))
+    }
+
+    return Math.round(offset / 2)
+  }
+
+  // Fallback: half of total duration if offset is unavailable
+  if (total !== null) return Math.round(total / 2)
+  return null
+}
 
 interface RedosePlannerProps {
   open: boolean
@@ -57,24 +104,45 @@ export function RedosePlanner({
   logInitialDose = true,
   onPlanCreated,
 }: RedosePlannerProps) {
-  const [intervalHours, setIntervalHours] = useState(4)
-  const [intervalMinutes, setIntervalMinutes] = useState(0)
+  const smartInterval = useMemo(() => calculateComedownReminderInterval(duration), [duration])
+  const hasSmartInterval = smartInterval !== null && smartInterval > 0
+
+  const [useSmartTiming, setUseSmartTiming] = useState(hasSmartInterval)
+  const [intervalHours, setIntervalHours] = useState(() =>
+    hasSmartInterval ? Math.floor(smartInterval / 60) : 4,
+  )
+  const [intervalMinutes, setIntervalMinutes] = useState(() =>
+    hasSmartInterval ? smartInterval % 60 : 0,
+  )
   const [totalDoses, setTotalDoses] = useState(3)
   const [shouldLogInitialDose, setShouldLogInitialDose] = useState(logInitialDose)
 
-  const intervalMinutesTotal = intervalHours * 60 + intervalMinutes
+  // Reset interval fields to the smart estimate whenever the dialog opens with new duration data
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (open && smartInterval !== null) {
+      setIntervalHours(Math.floor(smartInterval / 60))
+      setIntervalMinutes(smartInterval % 60)
+    }
+  }, [open, smartInterval])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const effectiveIntervalMinutes = useMemo(() => {
+    if (useSmartTiming && smartInterval !== null) return smartInterval
+    return intervalHours * 60 + intervalMinutes
+  }, [useSmartTiming, smartInterval, intervalHours, intervalMinutes])
 
   const plannedTimes = useMemo(() => {
-    if (intervalMinutesTotal <= 0 || totalDoses <= 0) return []
+    if (effectiveIntervalMinutes <= 0 || totalDoses <= 0) return []
     const times: string[] = []
     for (let i = 1; i < totalDoses; i++) {
-      times.push(format(new Date(Date.now() + i * intervalMinutesTotal * 60_000), 'h:mm a'))
+      times.push(format(new Date(Date.now() + i * effectiveIntervalMinutes * 60_000), 'h:mm a'))
     }
     return times
-  }, [intervalMinutesTotal, totalDoses])
+  }, [effectiveIntervalMinutes, totalDoses])
 
   const handleCreatePlan = useCallback(() => {
-    if (intervalMinutesTotal <= 0 || totalDoses <= 0) {
+    if (effectiveIntervalMinutes <= 0 || totalDoses <= 0) {
       toast({
         title: 'Invalid plan',
         description: 'Interval must be greater than 0 and total doses must be at least 1.',
@@ -127,7 +195,7 @@ export function RedosePlanner({
     const scheduleData: Omit<ReminderSchedule, 'id' | 'createdAt' | 'updatedAt'> = {
       substanceName: substance.name,
       substanceId: substance.id,
-      intervalMinutes: intervalMinutesTotal,
+      intervalMinutes: effectiveIntervalMinutes,
       maxDosesPerDay: totalDoses,
       enabled: true,
       customMessage: `Time for your next dose of ${substance.name} (${baseAmount} ${baseUnit})`,
@@ -152,9 +220,13 @@ export function RedosePlanner({
       reminderStore.startTimer(initialDose)
     }
 
+    const timingLabel = useSmartTiming && smartInterval !== null
+      ? `smart comedown timing (~50% intensity, ${formatIntervalMinutes(effectiveIntervalMinutes)})`
+      : `every ${formatIntervalMinutes(effectiveIntervalMinutes)}`
+
     toast({
       title: 'Redose plan created',
-      description: `${totalDoses} doses of ${baseAmount} ${baseUnit} ${substance.name} planned, every ${formatIntervalMinutes(intervalMinutesTotal)}. Next redose${plannedTimes.length > 1 ? 's' : ''}: ${plannedTimes.slice(0, 3).join(', ')}${plannedTimes.length > 3 ? '...' : ''}.`,
+      description: `${totalDoses} doses of ${baseAmount} ${baseUnit} ${substance.name} planned, ${timingLabel}. Next redose${plannedTimes.length > 1 ? 's' : ''}: ${plannedTimes.slice(0, 3).join(', ')}${plannedTimes.length > 3 ? '...' : ''}.`,
     })
 
     onPlanCreated?.()
@@ -163,8 +235,8 @@ export function RedosePlanner({
     baseAmount,
     baseUnit,
     duration,
+    effectiveIntervalMinutes,
     intensity,
-    intervalMinutesTotal,
     mood,
     notes,
     onOpenChange,
@@ -173,9 +245,11 @@ export function RedosePlanner({
     route,
     setting,
     shouldLogInitialDose,
+    smartInterval,
     substance,
     timestamp,
     totalDoses,
+    useSmartTiming,
   ])
 
   return (
@@ -202,8 +276,40 @@ export function RedosePlanner({
             </p>
           </div>
 
+          {/* Smart timing toggle */}
+          {hasSmartInterval && (
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20">
+              <input
+                id="smart-timing"
+                type="checkbox"
+                checked={useSmartTiming}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setUseSmartTiming(checked)
+                  if (checked && smartInterval !== null) {
+                    setIntervalHours(Math.floor(smartInterval / 60))
+                    setIntervalMinutes(smartInterval % 60)
+                  }
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-base-300 text-indigo-500 focus:ring-indigo-500/20"
+              />
+              <div>
+                <label htmlFor="smart-timing" className="text-sm font-medium text-indigo-400 cursor-pointer flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5" />
+                  Smart comedown timing
+                </label>
+                <p className="text-xs text-neutral-content">
+                  Remind around 50% intensity during the comedown phase
+                  {smartInterval !== null && ` (~${formatIntervalMinutes(smartInterval)})`}.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-neutral-content">Interval between doses</Label>
+            <Label className="text-xs font-medium text-neutral-content">
+              {useSmartTiming && hasSmartInterval ? 'Interval (smart estimate)' : 'Interval between doses'}
+            </Label>
             <div className="flex items-center justify-center gap-3">
               <div className="flex items-center gap-1.5">
                 <Input
@@ -212,7 +318,11 @@ export function RedosePlanner({
                   max={24}
                   step={1}
                   value={intervalHours}
-                  onChange={(e) => setIntervalHours(Math.min(24, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => {
+                    setIntervalHours(Math.min(24, Math.max(0, parseInt(e.target.value) || 0)))
+                    setUseSmartTiming(false)
+                  }}
+                  disabled={useSmartTiming && hasSmartInterval}
                   className="w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-xs text-neutral-content">hr</span>
@@ -224,7 +334,11 @@ export function RedosePlanner({
                   max={59}
                   step={1}
                   value={intervalMinutes}
-                  onChange={(e) => setIntervalMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => {
+                    setIntervalMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))
+                    setUseSmartTiming(false)
+                  }}
+                  disabled={useSmartTiming && hasSmartInterval}
                   className="w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-xs text-neutral-content">min</span>
@@ -250,12 +364,12 @@ export function RedosePlanner({
             </div>
           </div>
 
-          {intervalMinutesTotal > 0 && totalDoses > 0 && (
+          {effectiveIntervalMinutes > 0 && totalDoses > 0 && (
             <div className="rounded-xl border border-base-300/50 bg-base-200/30 p-3">
               <p className="text-xs font-medium text-neutral-content mb-2 text-center">Planned times</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {Array.from({ length: totalDoses }).map((_, i) => {
-                  const time = new Date(Date.now() + i * intervalMinutesTotal * 60_000)
+                  const time = new Date(Date.now() + i * effectiveIntervalMinutes * 60_000)
                   return (
                     <span
                       key={i}
@@ -305,4 +419,3 @@ export function RedosePlanner({
     </Dialog>
   )
 }
-
