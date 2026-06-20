@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Loader2, AlertTriangle, Zap, Clock } from 'lucide-react'
+import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays } from 'lucide-react'
 import { substances, searchSubstancesRanked } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
@@ -28,6 +28,7 @@ import { getDurationForRoute } from '@/lib/duration-interpolation'
 import { DurationOverrideFields } from '@/components/duration-override-fields'
 import { useReminderStore } from '@/store/reminder-store'
 import { formatIntervalMinutes } from '@/lib/notification-utils'
+import { RedosePlanner } from '@/components/redose-planner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DoseLoggerModalProps {
@@ -782,6 +783,7 @@ export function DoseLoggerModal({
   const [mood, setMood] = useState('')
   const [setting, setSetting] = useState('')
   const [intensity] = useState([5])
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
 
   // Duration override state — null means "use whatever interpolation gives us"
   const [durationOverride, setDurationOverride] = useState<Duration | null>(null)
@@ -929,7 +931,7 @@ export function DoseLoggerModal({
       if (d.substanceName && !seen.has(d.substanceName)) {
         seen.set(d.substanceName, {
           name: d.substanceName,
-          id: d.substanceId,
+          id: d.substanceId || '',
           category: d.categories?.[0] || ''
         })
       }
@@ -1476,17 +1478,55 @@ export function DoseLoggerModal({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" className="w-full sm:w-auto">
+                Cancel
+              </Button>
             </DialogClose>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!substanceName || !amount || parseFloat(amount) <= 0}
+              onClick={() => setIsPlanDialogOpen(true)}
+              className="w-full sm:w-auto gap-2"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Plan redoses
+            </Button>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Log Dose
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
+
+      <RedosePlanner
+        open={isPlanDialogOpen}
+        onOpenChange={setIsPlanDialogOpen}
+        substance={
+          selectedSubstance
+            ? { id: selectedSubstance.id, name: selectedSubstance.name, categories: selectedSubstance.categories }
+            : { id: substanceId || `custom-${Date.now()}`, name: substanceName, categories }
+        }
+        baseAmount={parseFloat(amount) || 0}
+        baseUnit={unit}
+        route={route}
+        duration={resolvedDuration}
+        notes={notes || null}
+        mood={mood || null}
+        setting={setting || null}
+        intensity={intensity[0] ?? null}
+        timestamp={timestampModified ? new Date(timestamp).toISOString() : new Date().toISOString()}
+        logInitialDose={true}
+        onPlanCreated={() => {
+          // Don't close the dose logger modal automatically — let the user decide.
+          // But do clear the amount so they can log another dose if needed.
+          setAmount('')
+          setMathResult(null)
+        }}
+      />
     </Dialog>
   )
 }
