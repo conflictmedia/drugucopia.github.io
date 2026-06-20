@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
   Check,
   Plus,
+  CalendarDays,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +33,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { useDoseStore } from '@/store/dose-store'
 import { toast } from '@/hooks/use-toast'
 import { kratom } from '@/lib/substances/opioids/kratom'
+import { RedosePlanner } from '@/components/redose-planner'
 import type { DoseLog } from '@/types'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -311,6 +313,7 @@ function KratomCalculatorContent() {
     emergency: false,
   })
   const [copied, setCopied] = useState(false)
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
 
   // Sync URL when inputs change (replace, no scroll)
   useEffect(() => {
@@ -885,6 +888,10 @@ function KratomCalculatorContent() {
                     <Plus className="h-3.5 w-3.5 mr-1.5" />
                     Log dose
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => setIsPlanDialogOpen(true)} className="h-8 px-3 text-xs">
+                    <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                    Plan redoses
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleReset} className="h-8 px-3 text-xs">
                     <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                     Reset
@@ -1326,7 +1333,19 @@ function KratomCalculatorContent() {
         </div>
       </SectionToggle>
 
-      {/* ─── Footer Disclaimer ──────────────────────────────────────────── */}
+      {/* ─── Redose Planner ──────────────────────────────────────────────── */}
+      <RedosePlanner
+        open={isPlanDialogOpen}
+        onOpenChange={setIsPlanDialogOpen}
+        substance={kratom}
+        baseAmount={activeExtractDose}
+        baseUnit="g"
+        route="oral"
+        duration={kratom.routeData?.oral?.duration ?? null}
+        notes={`Calculated via Kratom Extract Dose Calculator. Direction: ${calcDirection === 'leaf-to-extract' ? 'leaf → extract' : 'extract → leaf'}. Extract strength: ${inputMode === 'percent' ? `${extractValue}% mitragynine` : `${extractValue}× ratio`}. Leaf equivalent: ${formatGrams(activeLeafDose)}g. Leaf baseline: ${leafBaseline}% mitragynine. ${isEnhanced ? 'Extract marked as enhanced/fortified.' : ''}`}
+        logInitialDose={true}
+      />
+
       <footer className="text-center py-6 text-xs text-neutral-content/50 space-y-1">
         <p>
           Information sourced from{' '}
