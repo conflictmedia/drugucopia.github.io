@@ -115,6 +115,13 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Mobile safe-area bottom padding with a minimum rem fallback so content
+   never sits flush against the iOS home indicator on pages without the
+   home-only MobileBottomNav (interactions, harm-reduction, calculators). */
+.safe-area-pb-min {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+}
+
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -143,14 +150,36 @@ html {
     min-height: 44px;
   }
 
+  /* Exempt compact inline action buttons (chip × remove, snooze, dismiss,
+     modal close, autocomplete suggestions, recent-substance chips) from the
+     44px tap-target rule. Use `.tap-sm` on any inline button that needs to
+     stay visually compact — keeps the layout intact while still allowing a
+     larger hit zone via padding. */
   .badge-tap-exempt,
   .badge,
-  [data-slot="badge"] {
+  [data-slot="badge"],
+  .tap-sm {
     min-height: unset;
   }
 
   nav button {
     min-height: 44px;
+  }
+
+  /* iOS Safari auto-zooms the viewport when an input is focused and its
+     computed font-size is < 16px. Force all form controls to 16px on mobile
+     to prevent the jarring zoom-then-unzoom on every focus. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Allow inputs that explicitly opt into a smaller size (e.g. inline
+     search filters inside fixed headers) to override the 16px rule. */
+  .input-sm,
+  .textarea-sm {
+    font-size: 0.875rem;
   }
 }
 

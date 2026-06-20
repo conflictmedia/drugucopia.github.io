@@ -598,7 +598,7 @@ function SubstanceDetail({
       </header>
 
       {/* Mobile content */}
-      <div className="md:hidden flex-1 overflow-y-auto pb-36">
+      <div className="md:hidden flex-1 overflow-y-auto pb-44">
         <div className="px-4 pt-4 pb-3 border-b border-base-300">
           <div className="flex items-start gap-3 mb-3">
             {primary && (
@@ -1524,7 +1524,7 @@ export function HomeContent() {
           </div>
 
           {/* Mobile: Substances tab */}
-          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-36`}>
+          <div className={`${mobileTab === 'substances' ? 'block md:hidden' : 'hidden'} pb-44`}>
             <div className="px-4 pt-3 pb-1">
               <CategoryChipRow selected={selectedCategory} onChange={handleCategoryChange} />
             </div>
@@ -1557,7 +1557,7 @@ export function HomeContent() {
           </div>
 
           {/* Mobile: Timeline tab */}
-          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-36 px-4 pt-3 space-y-4`}>
+          <div className={`${mobileTab === 'timeline' ? 'block md:hidden' : 'hidden'} pb-44 px-4 pt-3 space-y-4`}>
             <MobileActiveReminders />
             <ActiveDosesTimeline />
             <ReminderSettings />
@@ -1565,7 +1565,7 @@ export function HomeContent() {
           </div>
 
           {/* Mobile: History tab */}
-          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-36 px-4 pt-3`}>
+          <div className={`${mobileTab === 'history' ? 'block md:hidden' : 'hidden'} pb-44 px-4 pt-3`}>
             <DoseHistory />
           </div>
         </main>

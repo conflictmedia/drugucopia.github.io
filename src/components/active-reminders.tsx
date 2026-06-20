@@ -87,17 +87,18 @@ export function ActiveReminders() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 shrink-0"
+                    className="tap-sm h-7 w-7 shrink-0 min-h-0 p-0"
                     onClick={() => dismissReminder(r.id)}
+                    aria-label="Dismiss reminder"
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs gap-1"
+                    className="tap-sm h-7 min-h-0 text-xs gap-1 px-2"
                     onClick={() => dismissReminder(r.id)}
                   >
                     <Bell className="h-3 w-3" />
@@ -106,7 +107,7 @@ export function ActiveReminders() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs gap-1"
+                    className="tap-sm h-7 min-h-0 text-xs gap-1 px-2"
                     onClick={() => snoozeReminder(r.id, 15)}
                   >
                     <Coffee className="h-3 w-3" />
@@ -115,7 +116,7 @@ export function ActiveReminders() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs gap-1"
+                    className="tap-sm h-7 min-h-0 text-xs gap-1 px-2"
                     onClick={() => snoozeReminder(r.id, 60)}
                   >
                     <Timer className="h-3 w-3" />
@@ -169,7 +170,7 @@ export function ActiveReminders() {
                   />
                 </div>
                 <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[10px] text-neutral-content">
+                  <span className="text-xs text-neutral-content">
                     Started{' '}
                     {new Date(r.startedAt).toLocaleTimeString([], {
                       hour: 'numeric',
@@ -179,7 +180,7 @@ export function ActiveReminders() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
+                    className="tap-sm h-6 min-h-0 text-xs text-neutral-content hover:text-error px-1"
                     onClick={() => dismissReminder(r.id)}
                   >
                     Cancel
@@ -211,7 +212,7 @@ export function ActiveReminders() {
                     </span>
                     <Badge
                       variant="outline"
-                      className="text-[10px] border-purple-500/30 text-purple-400"
+                      className="text-xs border-purple-500/30 text-purple-400"
                     >
                       Snoozed
                     </Badge>
@@ -224,7 +225,7 @@ export function ActiveReminders() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
+                    className="tap-sm h-6 min-h-0 text-xs text-neutral-content hover:text-error px-1"
                     onClick={() => dismissReminder(r.id)}
                   >
                     Cancel
@@ -286,7 +287,7 @@ export function MobileActiveReminders() {
         <BellRing className="h-4 w-4 text-amber-500" />
         <h3 className="text-sm font-semibold">Reminders</h3>
         {fired.length > 0 && (
-          <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">
+          <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">
             {fired.length} due
           </Badge>
         )}
@@ -307,7 +308,7 @@ export function MobileActiveReminders() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs shrink-0"
+                className="tap-sm h-7 min-h-0 text-xs shrink-0 px-2"
                 onClick={() => dismissReminder(r.id)}
               >
                 Dismiss
@@ -317,11 +318,11 @@ export function MobileActiveReminders() {
               {schedules.find((s) => s.id === r.scheduleId)?.customMessage ||
                 `Time for your next dose of ${r.substanceName}`}
             </p>
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="tap-sm h-7 min-h-0 text-xs gap-1 px-2"
                 onClick={() => snoozeReminder(r.id, 15)}
               >
                 <Coffee className="h-3 w-3" />
@@ -330,7 +331,7 @@ export function MobileActiveReminders() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs gap-1"
+                className="tap-sm h-7 min-h-0 text-xs gap-1 px-2"
                 onClick={() => snoozeReminder(r.id, 60)}
               >
                 <Timer className="h-3 w-3" />
@@ -374,7 +375,7 @@ export function MobileActiveReminders() {
                 />
               </div>
               <div className="flex items-center justify-between mt-1.5">
-                <span className="text-[10px] text-neutral-content">
+                <span className="text-xs text-neutral-content">
                   Started{' '}
                   {new Date(r.startedAt).toLocaleTimeString([], {
                     hour: 'numeric',
@@ -384,7 +385,7 @@ export function MobileActiveReminders() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
+                  className="tap-sm h-6 min-h-0 text-xs text-neutral-content hover:text-error px-1"
                   onClick={() => dismissReminder(r.id)}
                 >
                   Cancel
@@ -411,7 +412,7 @@ export function MobileActiveReminders() {
                   <span className="font-medium text-sm truncate">{r.substanceName}</span>
                   <Badge
                     variant="outline"
-                    className="text-[10px] border-purple-500/30 text-purple-400"
+                    className="text-xs border-purple-500/30 text-purple-400"
                   >
                     Snoozed
                   </Badge>
@@ -424,7 +425,7 @@ export function MobileActiveReminders() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 text-[10px] text-neutral-content hover:text-error px-1"
+                  className="tap-sm h-6 min-h-0 text-xs text-neutral-content hover:text-error px-1"
                   onClick={() => dismissReminder(r.id)}
                 >
                   Cancel

@@ -119,7 +119,7 @@ const DialogContent = React.forwardRef<
 >(({ className, children, showCloseButton = true, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("modal-box", className)}
+    className={cn("modal-box max-sm:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]", className)}
     onClick={(e) => e.stopPropagation()}
     {...props}
   >
@@ -127,7 +127,8 @@ const DialogContent = React.forwardRef<
     {showCloseButton && (
       <button
         type="button"
-        className="btn btn-sm btn-circle btn-ghost absolute right-3 top-3"
+        aria-label="Close"
+        className="btn btn-circle btn-ghost tap-sm absolute right-3 top-3 h-8 w-8 min-h-0 p-0"
         onClick={() => {
           const dialog = document.querySelector('dialog[open]')
           if (dialog instanceof HTMLDialogElement) dialog.close()

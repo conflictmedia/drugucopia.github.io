@@ -1218,7 +1218,7 @@ export function DoseLoggerModal({
                       key={sub.id || sub.name}
                       type="button"
                       onClick={() => selectRecentSubstance(sub)}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors"
+                      className="tap-sm inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors min-h-0"
                     >
                       {sub.category && (
                         <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_DOTS[sub.category] || 'bg-zinc-500'}`} />
@@ -1253,7 +1253,7 @@ export function DoseLoggerModal({
                       transition={{ duration: 0.1 }}
                       className="absolute z-50 top-full mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl overflow-hidden"
                     >
-                      <div className="max-h-48 overflow-y-auto p-1">
+                      <div className="max-h-64 overflow-y-auto p-1">
                         {quickSuggestions.map((result, idx) => {
                           const sub = result.substance
                           const isActive = idx === quickActiveIndex
@@ -1272,23 +1272,23 @@ export function DoseLoggerModal({
                                 selectQuickSuggestion(sub.id, sub.name, cats)
                               }}
                               onMouseEnter={() => setQuickActiveIndex(idx)}
-                              className={`flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm text-left transition-colors ${isActive ? 'bg-accent text-accent-content' : 'hover:bg-accent/50'}`}
+                              className={`tap-sm flex items-center gap-2 w-full px-2.5 py-1.5 rounded-md text-sm text-left transition-colors min-h-0 ${isActive ? 'bg-accent text-accent-content' : 'hover:bg-accent/50'}`}
                             >
                               <span className={`w-2 h-2 rounded-full shrink-0 ${CATEGORY_DOTS[sub.categories[0]] || 'bg-zinc-500'}`} />
                               <span className="truncate font-medium">{sub.name}</span>
-                              <span className="text-[10px] text-neutral-content truncate ml-auto">{sub.class}</span>
+                              <span className="text-xs text-neutral-content truncate ml-auto">{sub.class}</span>
                             </button>
                           )
                         })}
                       </div>
-                      <div className="px-2.5 py-1.5 border-t border-base-300 text-[10px] text-neutral-content flex items-center justify-between">
+                      <div className="px-2.5 py-1.5 border-t border-base-300 text-xs text-neutral-content flex items-center justify-between">
                         <span>{quickSuggestions.length} result{quickSuggestions.length !== 1 ? 's' : ''}</span>
-                        <span>
-                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&uarr;&darr;</kbd>
+                        <span className="hidden sm:inline">
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[10px] font-mono">&uarr;&darr;</kbd>
                           {' / '}
-                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">Tab</kbd>
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[10px] font-mono">Tab</kbd>
                           {' '}navigate{' '}
-                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[9px] font-mono">&crarr;</kbd>
+                          <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 text-[10px] font-mono">&crarr;</kbd>
                           {' '}select
                         </span>
                       </div>
@@ -1386,7 +1386,7 @@ export function DoseLoggerModal({
               </Alert>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="grid gap-2">
                 <Label>Amount</Label>
                 <Input
@@ -1396,6 +1396,7 @@ export function DoseLoggerModal({
                   placeholder="e.g., 100 or 5 mg"
                   value={amount}
                   onChange={handleAmountChange}
+                  className="text-base"
                 />
                 <p className="text-xs text-neutral-content">Type a unit after the amount (e.g. &quot;5 mg&quot;, &quot;100μg&quot;) to auto-select it</p>
               </div>
@@ -1434,6 +1435,7 @@ export function DoseLoggerModal({
                   setTimestamp(e.target.value)
                   setTimestampModified(true)
                 }}
+                className="text-base"
               />
             </div>
 
@@ -1474,6 +1476,7 @@ export function DoseLoggerModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
+                className="text-base"
               />
             </div>
           </div>
