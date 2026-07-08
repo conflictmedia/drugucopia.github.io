@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X } from 'lucide-react'
+import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { substances, searchSubstancesRanked } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
@@ -21,6 +21,8 @@ import { formatIntervalMinutes } from '@/lib/notification-utils'
 import { RedosePlanner } from '@/components/redose-planner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/store/ui-store'
+import { cn } from '@/lib/utils'
+import { useMedia } from 'react-use'
 
 interface DoseLoggerModalProps {
   open?: boolean
@@ -109,10 +111,8 @@ const defaultRouteOptions: ComboboxOption[] = [
 
 // ─── Smart amount+unit parsing ────────────────────────────────────────────────
 
-/** All known unit values for auto-matching */
 const KNOWN_UNITS = unitOptions.map(u => u.value)
 
-/** Aliases: full words or common variations → canonical unit */
 const UNIT_ALIASES: Record<string, string> = {
   'micrograms': 'μg', 'microgram': 'μg', 'mcg': 'μg', 'ug': 'μg',
   'milligrams': 'mg', 'milligram': 'mg',
@@ -124,7 +124,6 @@ const UNIT_ALIASES: Record<string, string> = {
   'joints': 'joint', 'blunts': 'blunt', 'bowls': 'bowl', 'blinkers': 'blinker',
 }
 
-/** Units that imply a specific route of administration */
 const UNIT_TO_ROUTE: Record<string, string> = {
   'joint': 'smoked',
   'blunt': 'smoked',
@@ -139,21 +138,13 @@ const UNIT_TO_ROUTE: Record<string, string> = {
   'line': 'insufflation',
 }
 
-/**
- * Try to resolve a partial unit string to a known unit.
- * Fuzzy matches prefixes like "join" → "joint", "blun" → "blunt".
- */
 function resolveUnitFuzzy(typed: string): string | null {
   const lower = typed.toLowerCase().trim()
   if (!lower || lower.length < 2) return null
 
-  // Direct match
   if (KNOWN_UNITS.includes(lower)) return lower
-
-  // Alias match
   if (UNIT_ALIASES[lower]) return UNIT_ALIASES[lower]
 
-  // Fuzzy: check if typed is a prefix of any known unit
   const prefixMatches = KNOWN_UNITS.filter(u => u.startsWith(lower))
   if (prefixMatches.length === 1) {
     return prefixMatches[0]
@@ -163,7 +154,6 @@ function resolveUnitFuzzy(typed: string): string | null {
     return prefixMatches[0]
   }
 
-  // Fuzzy: check if typed is a prefix of any alias value
   for (const [alias, canonical] of Object.entries(UNIT_ALIASES)) {
     if (alias.startsWith(lower)) {
       return canonical
@@ -173,10 +163,6 @@ function resolveUnitFuzzy(typed: string): string | null {
   return null
 }
 
-/**
- * Parse "5 mg", "100μg", "2.5 g" → { amount: "5", unit: "mg" }.
- * Returns unit as null when only a number is typed.
- */
 function parseAmountUnit(input: string): { amount: string; unit: string | null } {
   const trimmed = input.trim()
   if (!trimmed) return { amount: '', unit: null }
@@ -203,10 +189,8 @@ function parseAmountUnit(input: string): { amount: string; unit: string | null }
 /*  Quick Input Parser - Extract substance, amount, unit from string   */
 /* ------------------------------------------------------------------ */
 
-/** Known routes for auto-matching */
 const KNOWN_ROUTES = ['oral', 'insufflation', 'inhalation', 'sublingual', 'rectal', 'intramuscular', 'transdermal', 'intravenous', 'smoked', 'vaped', 'snorted', 'nasal', 'subq', 'subcutaneous']
 
-/** Route aliases */
 const ROUTE_ALIASES: Record<string, string> = {
   'snorted': 'insufflation',
   'nasal': 'insufflation',
@@ -229,22 +213,9 @@ const ROUTE_ALIASES: Record<string, string> = {
   'drank': 'oral',
 }
 
-/** Pre-compiled route regexes */
 const ROUTE_REGEXES = [...KNOWN_ROUTES, ...Object.keys(ROUTE_ALIASES)]
   .map(r => ({ route: r, regex: new RegExp(`\\b${r}\\b`, 'i') }))
 
-/**
- * Evaluate a math expression found in the quick input.
- * Supports patterns like:
- *   "15 pills * 15mg"        → { result: 225, unit: "mg" }
- *   "3 tabs * 100ug"         → { result: 300, unit: "μg" }
- *   "2.5 capsules x 25 mg"   → { result: 62.5, unit: "mg" }
- *   "5 * 10mg"               → { result: 50, unit: "mg" }
- *   "2 pills + 1 pill * 50mg"→ { result: 100, unit: "mg" }
- *
- * Operators supported: *, x, ×, +, -, /
- * Returns null if no valid math expression is found.
- */
 export function evaluateMathExpression(
   input: string
 ): { result: number; unit: string; expression: string; matchStart: number; matchLength: number } | null {
@@ -347,11 +318,6 @@ export function evaluateMathExpression(
   }
 }
 
-/**
- * Parse a quick input string like "Caffeine 100 mg oral", "100mg LSD sublingual", "2 tabs MDMA insufflation"
- * Returns extracted substance name, amount, unit, and route.
- * Supports math expressions like "DXM 15 pills * 15mg".
- */
 function parseQuickInput(
   input: string,
   substanceList: typeof substances
@@ -382,7 +348,6 @@ function parseQuickInput(
     inputWithoutRoute = (trimmed.slice(0, routeIndex) + trimmed.slice(routeIndex + routeLength)).replace(/\s+/g, ' ').trim()
   }
 
-  // ── Try to detect and evaluate a math expression ─────────────────────
   const mathEval = evaluateMathExpression(inputWithoutRoute)
 
   if (mathEval) {
@@ -480,7 +445,6 @@ function parseQuickInput(
     }
   }
 
-  // ── Early exact match: check if the entire input IS a known substance name ──
   const fullInputLower = inputWithoutRoute.toLowerCase().trim()
   const fullExactMatch = substanceList.find(s =>
     s.name.toLowerCase() === fullInputLower ||
@@ -497,7 +461,6 @@ function parseQuickInput(
     return { substanceName: fullExactMatch.name, substanceId: fullExactMatch.id, amount: '', unit: null, route: extractedRoute, categories: cats, mathResult: null }
   }
 
-  // ── Standard parsing (no math expression detected) ───────────────────
   const amountWithUnitRegex = /(\d*\.?\d+)\s*([a-zA-Zμ]+)?/g
 
   let match
@@ -640,7 +603,6 @@ function parseQuickInput(
   return { substanceName, substanceId, amount: amountStr, unit: resolvedUnit, route: extractedRoute || unitImpliedRoute, categories, mathResult: null }
 }
 
-/** Format a unit with proper singular/plural based on amount */
 export function formatUnit(unit: string, amount: number): string {
   const invariantUnits = ['mg', 'g', 'μg', 'ml', 'mL']
   if (invariantUnits.includes(unit)) return unit
@@ -662,9 +624,22 @@ export function formatUnit(unit: string, amount: number): string {
   return unit
 }
 
-// Stable empty array so the conditional selector returns the same reference
-// when the modal is closed, avoiding unnecessary re-renders on dose changes.
 const EMPTY_DOSES: DoseLog[] = []
+
+function highlightMatch(text: string, query: string) {
+  if (!query.trim()) return text
+  const lower = text.toLowerCase()
+  const lowerQuery = query.toLowerCase().trim()
+  const index = lower.indexOf(lowerQuery)
+  if (index === -1) return text
+  return (
+    <>
+      {text.slice(0, index)}
+      <span className="font-semibold text-primary">{text.slice(index, index + lowerQuery.length)}</span>
+      {text.slice(index + lowerQuery.length)}
+    </>
+  )
+}
 
 export function DoseLoggerModal({
   open: controlledOpen,
@@ -679,8 +654,8 @@ export function DoseLoggerModal({
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const isMobile = useMedia('(max-width: 767px)', false)
 
-  // Sync dialog open state with the `open` prop
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -695,7 +670,6 @@ export function DoseLoggerModal({
     }
   }, [open])
 
-  // Close handler
   const handleClose = useCallback(() => {
     if (controlledOpen !== undefined) {
       onOpenChange?.(false)
@@ -704,7 +678,6 @@ export function DoseLoggerModal({
     }
   }, [controlledOpen, onOpenChange])
 
-  // Click outside to close
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -717,13 +690,10 @@ export function DoseLoggerModal({
     return () => dialog.removeEventListener('click', handler)
   }, [handleClose])
 
-  // Escape key closes via native dialog behavior
-
   const [loading, setLoading] = useState(false)
   const doses = useDoseStore(s => open ? s.doses : EMPTY_DOSES)
   const addDose = useDoseStore(s => s.addDose)
 
-  // Quick input state - single field that can parse substance + amount + unit
   const [quickInput, setQuickInput] = useState('')
   const [quickInputSubstanceQuery, setQuickInputSubstanceQuery] = useState('')
   const [mathResult, setMathResult] = useState<{ result: number; unit: string; expression: string } | null>(null)
@@ -749,7 +719,6 @@ export function DoseLoggerModal({
   const [intensity] = useState([5])
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
 
-  // Duration override state — null means "use whatever interpolation gives us"
   const [durationOverride, setDurationOverride] = useState<Duration | null>(null)
 
   useEffect(() => {
@@ -795,7 +764,6 @@ export function DoseLoggerModal({
     }
   }, [open, preselectedSubstanceId, preselectedRoute])
 
-  /* ── Quick Input handler - parses substance + amount + unit from single string ─── */
   const handleQuickInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setQuickInput(value)
@@ -842,7 +810,6 @@ export function DoseLoggerModal({
     quickInputRef.current?.focus()
   }, [])
 
-  // Quick input autocomplete suggestions
   const quickSuggestions = useMemo(() => {
     if (!quickInputSubstanceQuery.trim() || !showQuickSuggestions) return []
     return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
@@ -901,7 +868,6 @@ export function DoseLoggerModal({
 
   const selectedSubstance = useMemo(() => substances.find(s => s.id === substanceId), [substanceId, substances])
 
-  // Recent substances for quick-select chips (from dose history)
   const recentSubstances = useMemo(() => {
     const seen = new Map<string, { name: string; id: string; category: string }>()
     for (let i = doses.length - 1; i >= 0; i--) {
@@ -918,12 +884,10 @@ export function DoseLoggerModal({
     return Array.from(seen.values())
   }, [doses])
 
-  // Reset autocomplete active index when suggestions change
   useEffect(() => {
     setQuickActiveIndex(-1)
   }, [quickSuggestions.length])
 
-  // ── Duration resolution ──────────────────────────────────────────────────
   const estimatedDuration = useMemo(
     () => getDurationForRoute(selectedSubstance ?? null, route),
     [selectedSubstance, route]
@@ -938,12 +902,10 @@ export function DoseLoggerModal({
     return null
   }, [durationOverride, estimatedDuration])
 
-  // Reset override when route or substance changes
   useEffect(() => {
     setDurationOverride(null)
   }, [substanceId, route])
 
-  // ── Interaction detection ────────────────────────────────────────────────
   const activeDoses = useMemo(() => {
     return doses.filter(dose => {
       if (!dose.duration) return false
@@ -1013,7 +975,6 @@ export function DoseLoggerModal({
 
   const substanceOptions: ComboboxOption[] = useMemo(() => substances.map(s => ({ value: s.id, label: s.name })), [substances])
 
-  /* ── Smart amount input handler ──────────────────────────────────────── */
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
     const parsed = parseAmountUnit(raw)
@@ -1143,7 +1104,6 @@ export function DoseLoggerModal({
     handleSubmit()
   }
 
-  // If trigger is provided, render the trigger button that opens the modal
   if (trigger) {
     return (
       <>
@@ -1192,7 +1152,6 @@ export function DoseLoggerModal({
     )
   }
 
-  // No trigger: render the dialog directly (controlled by `open` prop)
   return (
     <dialog
       ref={dialogRef}
@@ -1448,7 +1407,7 @@ export function DoseLoggerModal({
           </div>
 
           <div className="grid gap-2">
-            <Label>Date & Time</Label>
+            <Label>Date &amp; Time</Label>
             <Input
               type="datetime-local"
               value={timestamp}
@@ -1495,7 +1454,7 @@ export function DoseLoggerModal({
               placeholder="Any additional notes about this experience..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              rows={isMobile ? 2 : 3}
               className="text-base"
             />
           </div>

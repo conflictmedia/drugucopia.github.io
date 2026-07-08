@@ -5,26 +5,28 @@ import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { MobileDrawer } from './MobileDrawer'
+import { MobileBottomNav } from './MobileBottomNav'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/toaster'
 import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
 import { SyncProvider } from '@/contexts/sync-context'
 import { ReminderProvider } from '@/components/reminder-provider'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LayoutClientProps {
   children: React.ReactNode
 }
 
 export function LayoutClient({ children }: LayoutClientProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Default to collapsed
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     setMounted(true)
-    // Load sidebar state from localStorage
     try {
       const saved = localStorage.getItem('drugucopia-sidebar-collapsed')
       if (saved !== null) {
@@ -34,7 +36,6 @@ export function LayoutClient({ children }: LayoutClientProps) {
   }, [])
 
   useEffect(() => {
-    // Close drawer on route change
     setDrawerOpen(false)
   }, [pathname])
 
@@ -61,13 +62,11 @@ export function LayoutClient({ children }: LayoutClientProps) {
   return (
     <SyncProvider>
       <ReminderProvider>
-        <div className="min-h-screen bg-transparent">
+        <div className="min-h-screen bg-transparent pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-0">
           <MilkdropBackgroundWrapper />
 
-          {/* Desktop Sidebar */}
           <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
-          {/* Main content area */}
           <div
             className={cn(
               'transition-all duration-300 ease-in-out',
@@ -84,9 +83,8 @@ export function LayoutClient({ children }: LayoutClientProps) {
             </main>
           </div>
 
-          {/* Mobile Drawer */}
           <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-
+          {isMobile && <MobileBottomNav />}
           <VisualizerControls />
           <Toaster />
         </div>
