@@ -12,8 +12,6 @@
 @custom-variant dark (&:is([data-theme="dark"] *));
 
 /* ─── Map shadcn-style color names → daisyUI semantic tokens ─── */
-/* This lets bg-background, text-foreground, bg-muted etc. resolve
-   to the correct daisyUI colours in both light & dark themes.       */
 @theme inline {
   --color-background: var(--color-base-100);
   --color-foreground: var(--color-base-content);
@@ -51,8 +49,8 @@
   --radius: 0.75rem;
 
   --color-base-100: oklch(0.985 0.002 80);
-  --color-base-200: oklch(1 0 0);
-  --color-base-300: oklch(0.96 0.01 250);
+  --color-base-200: oklch(0.98 0.002 80);
+  --color-base-300: oklch(0.92 0.008 250);
   --color-base-content: oklch(0.145 0.005 250);
 
   --color-primary: oklch(0.25 0.06 250);
@@ -61,11 +59,11 @@
   --color-secondary: oklch(0.96 0.01 250);
   --color-secondary-content: oklch(0.25 0.06 250);
 
-  --color-accent: oklch(0.95 0.02 250);
+  --color-accent: oklch(0.94 0.02 250);
   --color-accent-content: oklch(0.25 0.06 250);
 
   --color-neutral: oklch(0.96 0.005 250);
-  --color-neutral-content: oklch(0.50 0.02 250);
+  --color-neutral-content: oklch(0.45 0.02 250);
 
   --color-info: oklch(0.55 0.18 250);
   --color-success: oklch(0.65 0.18 150);
@@ -77,22 +75,22 @@
 [data-theme="dark"] {
   --radius: 0.75rem;
 
-  --color-base-100: oklch(0.14 0.005 250);
-  --color-base-200: oklch(0.18 0.006 250);
-  --color-base-300: oklch(0.23 0.008 250);
+  --color-base-100: oklch(0.12 0.005 250);
+  --color-base-200: oklch(0.16 0.006 250);
+  --color-base-300: oklch(0.22 0.008 250);
   --color-base-content: oklch(0.85 0.010 250);
 
   --color-primary: oklch(0.92 0.06 0.0);
   --color-primary-content: oklch(0.16 0.005 250);
 
-  --color-secondary: oklch(0.23 0.008 250);
+  --color-secondary: oklch(0.22 0.008 250);
   --color-secondary-content: oklch(0.68 0.010 250);
 
-  --color-accent: oklch(0.23 0.01 250);
+  --color-accent: oklch(0.22 0.01 250);
   --color-accent-content: oklch(0.68 0.010 250);
 
-  --color-neutral: oklch(0.23 0.005 250);
-  --color-neutral-content: oklch(1.0 0.010 250);
+  --color-neutral: oklch(0.22 0.005 250);
+  --color-neutral-content: oklch(0.65 0.010 250);
 
   --color-info: oklch(0.65 0.18 250);
   --color-success: oklch(0.70 0.18 150);
@@ -111,92 +109,8 @@
   }
 }
 
-.safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* Mobile safe-area bottom padding with a minimum rem fallback so content
-   never sits flush against the iOS home indicator on pages without the
-   home-only MobileBottomNav (interactions, harm-reduction, calculators). */
-.safe-area-pb-min {
-  padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
-}
-
-.scrollbar-none {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  background: transparent;
-}
-
-.overflow-y-auto,
-.overflow-y-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
-@media (max-width: 767px) {
-
-  button,
-  [role="button"],
-  a {
-    min-height: 44px;
-  }
-
-  /* Exempt compact inline action buttons (chip × remove, snooze, dismiss,
-     modal close, autocomplete suggestions, recent-substance chips) from the
-     44px tap-target rule. Use `.tap-sm` on any inline button that needs to
-     stay visually compact — keeps the layout intact while still allowing a
-     larger hit zone via padding. */
-  .badge-tap-exempt,
-  .badge,
-  [data-slot="badge"],
-  .tap-sm {
-    min-height: unset;
-  }
-
-  nav button {
-    min-height: 44px;
-  }
-
-  /* iOS Safari auto-zooms the viewport when an input is focused and its
-     computed font-size is < 16px. Force all form controls to 16px on mobile
-     to prevent the jarring zoom-then-unzoom on every focus. */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-
-  /* Allow inputs that explicitly opt into a smaller size (e.g. inline
-     search filters inside fixed headers) to override the 16px rule. */
-  .input-sm,
-  .textarea-sm {
-    font-size: 0.875rem;
-  }
-}
-
-.overscroll-none {
-  overscroll-behavior: none;
-}
-
-@media (max-width: 767px) {
-  :root {
-    --mobile-header-height: 108px;
-    --mobile-bottomnav-height: calc(102px + env(safe-area-inset-bottom, 0px));
-  }
-}
-
 /* ─── Custom Utilities ─── */
 @layer base {
-
   .glass {
     background: color-mix(in oklch, var(--color-base-100) 80%, transparent);
     backdrop-filter: blur(16px) saturate(180%);
@@ -204,8 +118,6 @@ html {
     border: 1px solid var(--color-base-300);
   }
 
-  /* Dark-mode glass: remove blur/saturate that causes gradient artifacts
-     from the mesh-gradient background bleeding through */
   [data-theme="dark"] .glass {
     background: oklch(0.15 0.005 250 / 95%);
     backdrop-filter: none;
@@ -213,35 +125,24 @@ html {
     border-color: oklch(0.25 0.008 250 / 50%);
   }
 
-  /* Navbar: always solid opaque background — no glass/blur effects */
-  .nav-bar {
-    background: var(--color-base-100);
-    border-color: oklch(0.25 0.008 250 / 40%);
-  }
-
   .card {
     overflow: clip;
   }
 
-  [data-theme="dark"] .nav-bar {
-    background: oklch(0.14 0.005 250);
-    border-color: oklch(0.25 0.008 250 / 40%);
+  .card-transparent {
+    background: rgba(0, 0, 0, 0.3) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 
-  /* Dark-mode badge-outline: use muted grey border instead of bright base-content */
-  [data-theme="dark"] .badge-outline {
-    border-color: oklch(0.35 0.010 250 / 60%);
-    color: oklch(0.68 0.010 250);
-  }
-
-  /* Dark-mode ghost button: use grey text instead of bright base-content */
-  [data-theme="dark"] .btn-ghost {
-    color: oklch(0.68 0.010 250);
-  }
-
-  [data-theme="dark"] .btn-ghost:hover {
-    background: oklch(0.20 0.006 250 / 60%);
-    color: oklch(0.75 0.010 250);
+  [data-theme="light"] .card-transparent {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
   }
 
   .gradient-text {
@@ -258,14 +159,39 @@ html {
     background-clip: text;
   }
 
-  .mesh-gradient {
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    overflow: hidden;
-    pointer-events: none;
+  /* Glow utilities */
+  .glow-teal { box-shadow: 0 0 20px oklch(0.55 0.15 250 / 15%), 0 0 40px oklch(0.55 0.15 250 / 5%); }
+  .glow-amber { box-shadow: 0 0 20px oklch(0.75 0.15 85 / 15%); }
+  .glow-indigo { box-shadow: 0 0 20px oklch(0.55 0.20 275 / 15%); }
+  .glow-purple { box-shadow: 0 0 20px oklch(0.55 0.20 300 / 15%); }
+  .glow-cyan { box-shadow: 0 0 20px oklch(0.65 0.15 200 / 15%); }
+  .glow-pink { box-shadow: 0 0 20px oklch(0.65 0.18 350 / 15%); }
+  .glow-green { box-shadow: 0 0 20px oklch(0.65 0.18 150 / 15%); }
+  .glow-red { box-shadow: 0 0 20px oklch(0.60 0.20 25 / 15%); }
+
+  .card-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
+  .card-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px oklch(0 0 0 / 20%);
+  }
+
+  [data-theme="light"] .card-lift:hover {
+    box-shadow: 0 8px 30px oklch(0 0 0 / 8%);
+  }
+
+  .pulse-danger {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px oklch(0.55 0.20 25 / 20%); }
+    50% { box-shadow: 0 0 20px oklch(0.55 0.20 25 / 35%); }
+  }
+
+  /* ─── Milkdrop / Visualizer ─── */
   .milkdrop-canvas {
     position: fixed;
     inset: 0;
@@ -274,6 +200,54 @@ html {
     display: block;
     pointer-events: none;
     z-index: -1;
+  }
+
+  .mesh-gradient {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .mesh-gradient::before,
+  .mesh-gradient::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.12;
+    animation: float 20s ease-in-out infinite;
+  }
+
+  .mesh-gradient::before {
+    width: 600px;
+    height: 600px;
+    background: oklch(0.55 0.18 250);
+    top: -200px;
+    right: -200px;
+  }
+
+  .mesh-gradient::after {
+    width: 500px;
+    height: 500px;
+    background: oklch(0.55 0.15 300);
+    bottom: -150px;
+    left: -150px;
+    animation-delay: -10s;
+    animation-direction: reverse;
+  }
+
+  [data-theme="dark"] .mesh-gradient::before,
+  [data-theme="dark"] .mesh-gradient::after {
+    opacity: 0.06;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(50px, -30px) scale(1.05); }
+    50% { transform: translate(-20px, 40px) scale(0.95); }
+    75% { transform: translate(-40px, -20px) scale(1.02); }
   }
 
   .visualizer-controls {
@@ -305,218 +279,101 @@ html {
     border-color: oklch(0.85 0.005 250 / 60%);
   }
 
-  /* Hide visualizer controls on mobile (bottom nav area) */
   @media (max-width: 767px) {
     .visualizer-controls {
-      bottom: 7rem;
+      bottom: 6rem;
       right: 0.75rem;
     }
   }
 
-  .mesh-gradient::before,
-  .mesh-gradient::after {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    animation: float 20s ease-in-out infinite;
+  /* ─── Safe area utilities ─── */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  .mesh-gradient::before {
-    width: 600px;
-    height: 600px;
-    background: oklch(0.55 0.18 250);
-    top: -200px;
-    right: -200px;
+  .safe-area-pb-min {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .mesh-gradient::after {
-    width: 500px;
-    height: 500px;
-    background: oklch(0.55 0.15 300);
-    bottom: -150px;
-    left: -150px;
-    animation-delay: -10s;
-    animation-direction: reverse;
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  /* Tone down mesh-gradient in dark mode so it doesn't bleed
-     through semi-transparent elements */
-  [data-theme="dark"] .mesh-gradient::before,
-  [data-theme="dark"] .mesh-gradient::after {
-    opacity: 0.08;
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
-  @keyframes float {
-
-    0%,
-    100% {
-      transform: translate(0, 0) scale(1);
+  /* ─── Mobile tap targets ─── */
+  @media (max-width: 767px) {
+    button, [role="button"], a {
+      min-height: 44px;
     }
-
-    25% {
-      transform: translate(50px, -30px) scale(1.05);
+    .badge-tap-exempt, .badge, [data-slot="badge"], .tap-sm {
+      min-height: unset;
     }
-
-    50% {
-      transform: translate(-20px, 40px) scale(0.95);
+    input, textarea, select {
+      font-size: 16px;
     }
-
-    75% {
-      transform: translate(-40px, -20px) scale(1.02);
+    .input-sm, .textarea-sm {
+      font-size: 0.875rem;
     }
   }
 
-  .glow-teal {
-    box-shadow: 0 0 20px oklch(0.55 0.15 250 / 15%), 0 0 40px oklch(0.55 0.15 250 / 5%);
+  .overscroll-none {
+    overscroll-behavior: none;
   }
 
-  .glow-teal-strong {
-    box-shadow: 0 0 30px oklch(0.55 0.15 250 / 25%), 0 0 60px oklch(0.55 0.15 250 / 10%);
+  /* ─── DaisyUI overrides ─── */
+  .btn {
+    @apply transition-all duration-200;
   }
 
-  .glow-amber {
-    box-shadow: 0 0 20px oklch(0.75 0.15 85 / 15%);
+  .btn-primary {
+    @apply shadow-sm shadow-primary/20 hover:shadow-primary/30;
   }
 
-  .glow-indigo {
-    box-shadow: 0 0 20px oklch(0.55 0.20 275 / 15%);
+  .badge {
+    @apply transition-all duration-200;
   }
 
-  .glow-purple {
-    box-shadow: 0 0 20px oklch(0.55 0.20 300 / 15%);
+  .alert {
+    @apply shadow-sm;
   }
 
-  .glow-cyan {
-    box-shadow: 0 0 20px oklch(0.65 0.15 200 / 15%);
+  /* ─── Scrollbar styling ─── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
-  .glow-pink {
-    box-shadow: 0 0 20px oklch(0.65 0.18 350 / 15%);
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 
-  .glow-green {
-    box-shadow: 0 0 20px oklch(0.65 0.18 150 / 15%);
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-base-300);
+    border-radius: 9999px;
   }
 
-  .glow-red {
-    box-shadow: 0 0 20px oklch(0.60 0.20 25 / 15%);
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-neutral-content);
   }
 
-  .glow-slate {
-    box-shadow: 0 0 20px oklch(0.55 0.02 260 / 15%);
+  /* ─── Loading shimmer ─── */
+  .shimmer {
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 60%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
   }
 
-  .glow-teal-cat {
-    box-shadow: 0 0 20px oklch(0.65 0.12 180 / 15%);
-  }
-
-  .glow-zinc {
-    box-shadow: 0 0 20px oklch(0.55 0.02 260 / 15%);
-  }
-
-  .gradient-border {
-    position: relative;
-  }
-
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, oklch(0.55 0.15 250 / 30%), oklch(0.55 0.15 300 / 30%), oklch(0.55 0.12 160 / 30%));
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  .gradient-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, oklch(0.55 0.12 250 / 30%), transparent);
-    border: none;
-  }
-
-  @keyframes pulse-glow {
-
-    0%,
-    100% {
-      box-shadow: 0 0 8px oklch(0.55 0.20 25 / 20%);
-    }
-
-    50% {
-      box-shadow: 0 0 20px oklch(0.55 0.20 25 / 35%);
-    }
-  }
-
-  .pulse-danger {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  .card-lift {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-
-  .card-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px oklch(0 0 0 / 20%);
-  }
-
-  :root .card-lift:hover {
-    box-shadow: 0 8px 30px oklch(0 0 0 / 8%);
-  }
-
-  /* ─── Transparent Card (black/glass background to see milkdrop behind) ─── */
-  .card-transparent {
-    background: rgba(0, 0, 0, 0.3) !important;
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border-color: rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
-
-  [data-theme="light"] .card-transparent {
-    background: rgba(255, 255, 255, 0.45) !important;
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border-color: rgba(0, 0, 0, 0.08) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
-  }
-
-  /* ─── Transparent Alert (glass banner for interaction summary) ─── */
-  .alert-transparent {
-    background: rgba(0, 0, 0, 0.25) !important;
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border-color: rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  }
-
-  [data-theme="light"] .alert-transparent {
-    background: rgba(255, 255, 255, 0.4) !important;
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border-color: rgba(0, 0, 0, 0.06) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-  }
-
-  /* ─── Transparent dropdown/popover (for substance selector) ─── */
-  .dropdown-transparent {
-    background: rgba(8, 8, 20, 0.88) !important;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-color: rgba(255, 255, 255, 0.12) !important;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
-  }
-
-  [data-theme="light"] .dropdown-transparent {
-    background: rgba(255, 255, 255, 0.92) !important;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-color: rgba(0, 0, 0, 0.1) !important;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
 }

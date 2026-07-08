@@ -1,28 +1,39 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 
-// Dynamic import wrapper to avoid SSR issues with WebGL
+// Lazy load to avoid SSR
+const MilkdropBackground = lazy(() =>
+  import('@/components/milkdrop-background').then((mod) => ({
+    default: mod.MilkdropBackground,
+  }))
+)
+
 export function MilkdropBackgroundWrapper() {
-  const [MilkdropBackground, setComponent] = useState<React.ComponentType<{ isDark: boolean }> | null>(null)
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    // Dynamic import to skip SSR
-    import('@/components/milkdrop-background').then((mod) => {
-      setComponent(() => mod.MilkdropBackground)
-    })
   }, [])
 
-  if (!mounted || !MilkdropBackground) {
-    // Fallback: render the CSS mesh-gradient when WebGL isn't loaded yet
-    return <div className="mesh-gradient" />
+  if (!mounted) {
+    return <div className="mesh-gradient" style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }} />
   }
 
   const isDark = resolvedTheme === 'dark'
 
-  return <MilkdropBackground isDark={isDark} />
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="mesh-gradient"
+          style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }}
+        />
+      }
+    >
+      <MilkdropBackground isDark={isDark} />
+    </Suspense>
+  )
 }
