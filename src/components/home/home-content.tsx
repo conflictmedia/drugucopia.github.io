@@ -110,7 +110,7 @@ const SubstanceCard = memo(function SubstanceCard({ substance, onSelect }: Subst
         <p className="text-sm text-neutral-content line-clamp-3">{substance.description}</p>
         <div className="flex flex-wrap gap-1">
           {substance.commonNames.slice(0, 2).map((name, i) => (
-            <span key={i} className="badge badge-secondary text-xs max-w-[140px] text-left block overflow-hidden text-ellipsis whitespace-nowrap" title={name}>{name}</span>
+            <span key={i} className="badge badge-outline text-neutral-content/70 text-xs max-w-[140px] text-left block overflow-hidden text-ellipsis whitespace-nowrap" title={name}>{name}</span>
           ))}
         </div>
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1119,7 +1119,7 @@ export function HomeContent() {
     return result
   }, [selectedCategory, deferredQuery])
 
-  const handleDoseLogged = useCallback(() => {}, [])
+  const handleDoseLogged = useCallback(() => { }, [])
 
   const handleSelectSubstance = useCallback((substance: Substance) => {
     setSelectedSubstance(substance)
@@ -1213,11 +1213,10 @@ export function HomeContent() {
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none md:hidden -mx-4 px-4 mb-4">
             <button
               onClick={() => handleCategoryChange('all')}
-              className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
-                selectedCategory === 'all'
+              className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${selectedCategory === 'all'
                   ? 'bg-base-content text-base-100 border-base-content'
                   : 'bg-base-200 text-neutral-content border-base-300'
-              }`}
+                }`}
             >
               All
             </button>
@@ -1228,11 +1227,10 @@ export function HomeContent() {
                 <button
                   key={cat.id}
                   onClick={() => handleCategoryChange(cat.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${
-                    isActive
+                  className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${isActive
                       ? 'bg-base-content text-base-100 border-base-content'
                       : 'bg-base-200 text-neutral-content border-base-300'
-                  }`}
+                    }`}
                 >
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
                   {cat.name}
