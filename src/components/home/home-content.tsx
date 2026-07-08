@@ -305,7 +305,7 @@ function DosageDurationPanel({
                     <span className={`text-xs px-2 py-0.5 rounded capitalize font-medium ${levelColors[level] || ''}`}>
                       {level}
                     </span>
-                    <span className="badge badge-secondary font-mono text-xs">{amount}</span>
+                    <span className="badge badge-secondary font-mono text-xs">{amount as string}</span>
                   </div>
                 )
               })}
@@ -339,7 +339,7 @@ function DosageDurationPanel({
                       {phase}
                     </span>
                     <span className="badge badge-secondary font-mono text-xs text-right max-w-[160px] whitespace-normal">
-                      {time}
+                      {time as string}
                     </span>
                   </div>
                 )
@@ -1214,8 +1214,8 @@ export function HomeContent() {
             <button
               onClick={() => handleCategoryChange('all')}
               className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${selectedCategory === 'all'
-                  ? 'bg-base-content text-base-100 border-base-content'
-                  : 'bg-base-200 text-neutral-content border-base-300'
+                ? 'bg-base-content text-base-100 border-base-content'
+                : 'bg-base-200 text-neutral-content border-base-300'
                 }`}
             >
               All
@@ -1228,8 +1228,8 @@ export function HomeContent() {
                   key={cat.id}
                   onClick={() => handleCategoryChange(cat.id)}
                   className={`flex-shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors ${isActive
-                      ? 'bg-base-content text-base-100 border-base-content'
-                      : 'bg-base-200 text-neutral-content border-base-300'
+                    ? 'bg-base-content text-base-100 border-base-content'
+                    : 'bg-base-200 text-neutral-content border-base-300'
                     }`}
                 >
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />

@@ -17,7 +17,7 @@ interface LayoutClientProps {
 }
 
 export function LayoutClient({ children }: LayoutClientProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Default to collapsed
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
@@ -30,7 +30,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
       if (saved !== null) {
         setSidebarCollapsed(JSON.parse(saved))
       }
-    } catch {}
+    } catch { }
   }, [])
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
       const next = !prev
       try {
         localStorage.setItem('drugucopia-sidebar-collapsed', JSON.stringify(next))
-      } catch {}
+      } catch { }
       return next
     })
   }

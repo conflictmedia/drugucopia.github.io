@@ -122,10 +122,10 @@ function validateDose(raw: Record<string, unknown>, index: number): DoseLog {
         : [],
     duration: raw.duration != null && typeof raw.duration === 'object'
       ? (raw.duration as DoseLog['duration'])
-      : undefined,
-    mood: typeof raw.mood === 'string' && raw.mood.trim() ? raw.mood.trim() : undefined,
-    setting: typeof raw.setting === 'string' && raw.setting.trim() ? raw.setting.trim() : undefined,
-    notes: typeof raw.notes === 'string' && raw.notes.trim() ? raw.notes.trim() : undefined,
+      : null,
+    mood: typeof raw.mood === 'string' && raw.mood.trim() ? raw.mood.trim() : null,
+    setting: typeof raw.setting === 'string' && raw.setting.trim() ? raw.setting.trim() : null,
+    notes: typeof raw.notes === 'string' && raw.notes.trim() ? raw.notes.trim() : null,
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
   }
@@ -310,7 +310,7 @@ function parsePsyloJSON(text: string): ImportResult {
       .filter(Boolean)
       .join(' | ') || undefined
 
-    let duration: DoseLog['duration'] = undefined
+    let duration: DoseLog['duration'] = null
     if (raw.onsetAt || raw.peakAt || raw.offsetAt) {
       const onset = raw.onsetAt ? new Date(raw.onsetAt as string) : null
       const peak = raw.peakAt ? new Date(raw.peakAt as string) : null
@@ -343,9 +343,9 @@ function parsePsyloJSON(text: string): ImportResult {
       route,
       timestamp,
       duration: duration ?? null,
-      notes: notesStr,
-      mood: undefined,
-      setting: undefined,
+      notes: notesStr || null,
+      mood: null,
+      setting: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -479,7 +479,7 @@ function parsePWJournalJSON(text: string): ImportResult {
       } else if (isEstimate) {
         combinedNotes.push('Estimated dose')
       }
-      const finalNotes = combinedNotes.join(' | ') || undefined
+      const finalNotes = combinedNotes.join(' | ') || null
 
       // Handle duration from endTime
       let duration: DoseLog['duration'] = null
@@ -516,8 +516,8 @@ function parsePWJournalJSON(text: string): ImportResult {
         timestamp,
         duration,
         notes: finalNotes,
-        mood: undefined,
-        setting: undefined,
+        mood: null,
+        setting: null,
         createdAt,
         updatedAt: new Date().toISOString(),
       })
@@ -676,8 +676,8 @@ export function DoseHistory() {
     const text = await file.text()
     const result = type === 'json' ? parseJSON(text)
       : type === 'psylo' ? parsePsyloJSON(text)
-      : type === 'pwjournal' ? parsePWJournalJSON(text)
-      : parseCSV(text)
+        : type === 'pwjournal' ? parsePWJournalJSON(text)
+          : parseCSV(text)
 
     if (!result.ok) {
       toast({

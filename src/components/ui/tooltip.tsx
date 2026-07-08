@@ -17,11 +17,23 @@ function Tooltip({
   )
 }
 
+interface TooltipTriggerProps extends React.HTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean
+}
+
 function TooltipTrigger({
   children,
   className,
+  asChild,
   ...props
-}: React.HTMLAttributes<HTMLButtonElement>) {
+}: TooltipTriggerProps) {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement<any>, {
+      className: cn("inline-flex", className, (children.props as any).className),
+      ...props,
+    })
+  }
+
   return (
     <button
       type="button"
@@ -37,14 +49,17 @@ function TooltipContent({
   className,
   children,
   sideOffset = 4,
+  side,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
   sideOffset?: number
+  side?: string
 }) {
   return (
     <div
       className={cn(
         "tooltip bg-primary text-primary-content z-50 w-fit rounded-md px-3 py-1.5 text-xs",
+        side === "top" && "tooltip-top",
         className
       )}
       {...props}

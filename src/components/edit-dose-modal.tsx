@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import {
   Dialog,
   DialogContent,
@@ -86,7 +89,6 @@ const UNIT_ALIASES: Record<string, string> = {
   'joints': 'joint', 'blunts': 'blunt', 'bowls': 'bowl', 'blinkers': 'blinker',
 }
 
-/** Units that imply a specific route of administration */
 const UNIT_TO_ROUTE: Record<string, string> = {
   'joint': 'smoked',
   'blunt': 'smoked',
@@ -99,35 +101,24 @@ const UNIT_TO_ROUTE: Record<string, string> = {
   'capsule': 'oral',
   'tablet': 'oral',
   'line': 'insufflated',
-  
 }
 
-/**
- * Try to resolve a partial unit string to a known unit.
- * Fuzzy matches prefixes like "join" → "joint", "blun" → "blunt".
- */
 function resolveUnitFuzzy(typed: string): string | null {
   const lower = typed.toLowerCase().trim()
   if (!lower || lower.length < 2) return null
 
-  // Direct match
   if (KNOWN_UNITS.includes(lower)) return lower
-
-  // Alias match
   if (UNIT_ALIASES[lower]) return UNIT_ALIASES[lower]
 
-  // Fuzzy: check if typed is a prefix of any known unit
   const prefixMatches = KNOWN_UNITS.filter(u => u.startsWith(lower))
   if (prefixMatches.length === 1) {
     return prefixMatches[0]
   }
   if (prefixMatches.length > 1) {
-    // Sort by length and return the shortest match
     prefixMatches.sort((a, b) => a.length - b.length)
     return prefixMatches[0]
   }
 
-  // Fuzzy: check if typed is a prefix of any alias value
   for (const [alias, canonical] of Object.entries(UNIT_ALIASES)) {
     if (alias.startsWith(lower)) {
       return canonical
@@ -148,65 +139,102 @@ function parseAmountUnit(input: string): { amount: string; unit: string | null }
     if (!unitStr) return { amount: amountStr, unit: null }
 
     const lower = unitStr.toLowerCase()
-    
-    // Direct match
+
     if (KNOWN_UNITS.includes(lower)) return { amount: amountStr, unit: lower }
-    
-    // Alias match
     if (UNIT_ALIASES[lower]) return { amount: amountStr, unit: UNIT_ALIASES[lower] }
-    
-    // Fuzzy match for partial units (e.g., "join" → "joint", "blun" → "blunt")
+
     const fuzzyMatch = resolveUnitFuzzy(lower)
     if (fuzzyMatch) return { amount: amountStr, unit: fuzzyMatch }
-    
+
     return { amount: amountStr, unit: lower }
   }
 
   return { amount: trimmed, unit: null }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Validation Schema                                                  */
+/* ------------------------------------------------------------------ */
+
+const doseSchema = z.object({
+  substanceId: z.string().optional(),
+  substanceName: z.string().min(1, 'Substance name is required'),
+  amount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+    message: 'Amount must be a positive number',
+  }),
+  unit: z.string().min(1, 'Unit is required'),
+  route: z.string().min(1, 'Route of administration is required'),
+  timestamp: z.string().min(1, 'Date & time are required'),
+  notes: z.string().optional(),
+  mood: z.string().optional(),
+  setting: z.string().optional(),
+})
+
+type DoseFormValues = z.infer<typeof doseSchema>
+
 export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseModalProps) {
   const updateDose = useDoseStore(s => s.updateDose)
   const [loading, setLoading] = useState(false)
 
-  const [substanceId, setSubstanceId] = useState(dose.substanceId)
-  const [substanceName, setSubstanceName] = useState(dose.substanceName)
-  const [amount, setAmount] = useState(String(dose.amount))
-  const [unit, setUnit] = useState(dose.unit)
-  const [route, setRoute] = useState(dose.route)
-  const [timestamp, setTimestamp] = useState(format(new Date(dose.timestamp), "yyyy-MM-dd'T'HH:mm"))
-  const [notes, setNotes] = useState(dose.notes ?? '')
-  const [mood, setMood] = useState(dose.mood ?? '')
-  const [setting, setSetting] = useState(dose.setting ?? '')
-
   // Duration override — initialise from existing dose duration
   const [durationOverride, setDurationOverride] = useState<Duration | null>(dose.duration ?? null)
 
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<DoseFormValues>({
+    resolver: zodResolver(doseSchema),
+    defaultValues: {
+      substanceId: dose.substanceId,
+      substanceName: dose.substanceName,
+      amount: String(dose.amount),
+      unit: dose.unit,
+      route: dose.route,
+      timestamp: format(new Date(dose.timestamp), "yyyy-MM-dd'T'HH:mm"),
+      notes: dose.notes ?? '',
+      mood: dose.mood ?? '',
+      setting: dose.setting ?? '',
+    },
+  })
+
+  // Watch fields for reactivity
+  const substanceId = watch('substanceId')
+  const substanceName = watch('substanceName')
+  const amount = watch('amount')
+  const unit = watch('unit')
+  const route = watch('route')
+  const timestamp = watch('timestamp')
+  const notes = watch('notes')
+  const mood = watch('mood')
+  const setting = watch('setting')
+
   useEffect(() => {
-    setSubstanceId(dose.substanceId)
-    setSubstanceName(dose.substanceName)
-    setAmount(String(dose.amount))
-    setUnit(dose.unit)
-    setRoute(dose.route)
-    setTimestamp(format(new Date(dose.timestamp), "yyyy-MM-dd'T'HH:mm"))
-    setNotes(dose.notes ?? '')
-    setMood(dose.mood ?? '')
-    setSetting(dose.setting ?? '')
+    reset({
+      substanceId: dose.substanceId,
+      substanceName: dose.substanceName,
+      amount: String(dose.amount),
+      unit: dose.unit,
+      route: dose.route,
+      timestamp: format(new Date(dose.timestamp), "yyyy-MM-dd'T'HH:mm"),
+      notes: dose.notes ?? '',
+      mood: dose.mood ?? '',
+      setting: dose.setting ?? '',
+    })
     setDurationOverride(dose.duration ?? null)
-  }, [dose])
+  }, [dose, reset])
 
   const substanceOptions: ComboboxOption[] = useMemo(() => substances.map(s => ({ value: s.id, label: s.name })), [substances])
   const selectedSubstance = substances.find(s => s.id === substanceId)
 
-  // Interpolated estimate for the current substance+route combo
   const estimatedDuration = useMemo(
     () => getDurationForRoute(selectedSubstance ?? null, route),
     [selectedSubstance, route]
   )
 
-  // When route/substance changes, reset override to null so interpolation takes over
-  // (but keep existing dose.duration if the route hasn't changed)
-  const prevRouteRef = useState(dose.route)
   useEffect(() => {
     if (route !== dose.route || substanceId !== dose.substanceId) {
       setDurationOverride(null)
@@ -232,50 +260,45 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
   const handleSubstanceChange = (value: string) => {
     const found = substances.find(s => s.id === value)
     if (found) {
-      setSubstanceId(found.id)
-      setSubstanceName(found.name)
+      setValue('substanceId', found.id)
+      setValue('substanceName', found.name)
     } else {
-      setSubstanceId(`custom-${Date.now()}`)
-      setSubstanceName(value)
+      setValue('substanceId', `custom-${Date.now()}`)
+      setValue('substanceName', value)
     }
     setDurationOverride(null)
   }
 
-  /* ── Smart amount input handler ──────────────────────────────────────── */
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
     const parsed = parseAmountUnit(raw)
-    setAmount(parsed.amount)
+    setValue('amount', parsed.amount, { shouldValidate: true })
     if (parsed.unit) {
-      setUnit(parsed.unit)
-      // Auto-set route if this unit implies one
+      setValue('unit', parsed.unit, { shouldValidate: true })
       if (UNIT_TO_ROUTE[parsed.unit]) {
-        setRoute(UNIT_TO_ROUTE[parsed.unit])
+        setValue('route', UNIT_TO_ROUTE[parsed.unit], { shouldValidate: true })
       }
     }
   }
 
-  const handleSave = async () => {
-    if (!substanceName || !amount) {
-      toast({ title: 'Missing fields', description: 'Substance name and amount are required.', variant: 'destructive' })
-      return
-    }
+  const handleSave = async (values: DoseFormValues) => {
     setLoading(true)
     await new Promise(r => setTimeout(r, 150))
 
     try {
+      const parsedAmount = parseFloat(values.amount)
       const updated: DoseLog = {
         ...dose,
-        substanceId,
-        substanceName,
-        amount: parseFloat(amount),
-        unit,
-        route,
-        timestamp: new Date(timestamp).toISOString(),
+        substanceId: values.substanceId,
+        substanceName: values.substanceName,
+        amount: parsedAmount,
+        unit: values.unit,
+        route: values.route,
+        timestamp: new Date(values.timestamp).toISOString(),
         duration: resolvedDuration,
-        notes: notes || null,
-        mood: mood || null,
-        setting: setting || null,
+        notes: values.notes || null,
+        mood: values.mood || null,
+        setting: values.setting || null,
         updatedAt: new Date().toISOString(),
       }
 
@@ -283,7 +306,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
 
       toast({
         title: 'Dose updated',
-        description: `${amount} ${formatUnit(unit, parseFloat(amount))} of ${substanceName}`,
+        description: `${values.amount} ${formatUnit(values.unit, parsedAmount)} of ${values.substanceName}`,
       })
 
       if (onSaved) onSaved(updated)
@@ -293,11 +316,6 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
     } finally {
       setLoading(false)
     }
-  }
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    handleSave()
   }
 
   return (
@@ -310,17 +328,20 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
           </DialogTitle>
           <DialogDescription>Correct any details for this dose entry.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit}>
+        <form onSubmit={handleSubmit(handleSave)}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Substance</Label>
               <Combobox
                 options={substanceOptions}
-                value={substanceId}
+                value={substanceId || ''}
                 onChange={handleSubstanceChange}
                 placeholder="Select from list or type custom..."
                 allowCustom
               />
+              {errors.substanceName && (
+                <p className="text-xs text-red-500">{errors.substanceName.message}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -335,11 +356,23 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
                   onChange={handleAmountChange}
                   className="text-base"
                 />
-                <p className="text-xs text-neutral-content">Type a unit after the amount (e.g. &quot;5 mg&quot;) to auto-select it</p>
+                <p className="text-xs text-neutral-content font-light leading-snug">Type a unit after the amount (e.g. &quot;5 mg&quot;) to auto-select it</p>
+                {errors.amount && (
+                  <p className="text-xs text-red-500">{errors.amount.message}</p>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label>Unit</Label>
-                <Combobox options={unitOptions} value={unit} onChange={setUnit} placeholder="Select or type custom..." allowCustom />
+                <Combobox
+                  options={unitOptions}
+                  value={unit}
+                  onChange={(val) => setValue('unit', val, { shouldValidate: true })}
+                  placeholder="Select or type custom..."
+                  allowCustom
+                />
+                {errors.unit && (
+                  <p className="text-xs text-red-500">{errors.unit.message}</p>
+                )}
               </div>
             </div>
 
@@ -350,15 +383,26 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
                   ? Object.keys(selectedSubstance.routeData).map(r => ({ value: r, label: r }))
                   : defaultRouteOptions}
                 value={route}
-                onChange={setRoute}
+                onChange={(val) => setValue('route', val, { shouldValidate: true })}
                 placeholder="Select or type custom..."
                 allowCustom
               />
+              {errors.route && (
+                <p className="text-xs text-red-500">{errors.route.message}</p>
+              )}
             </div>
 
             <div className="grid gap-2">
               <Label>Date &amp; Time</Label>
-              <Input type="datetime-local" value={timestamp} onChange={(e) => setTimestamp(e.target.value)} className="text-base" />
+              <Input
+                type="datetime-local"
+                value={timestamp}
+                onChange={(e) => setValue('timestamp', e.target.value, { shouldValidate: true })}
+                className="text-base"
+              />
+              {errors.timestamp && (
+                <p className="text-xs text-red-500">{errors.timestamp.message}</p>
+              )}
             </div>
 
             {/* ── Duration section ─────────────────────────────────────── */}
@@ -372,12 +416,24 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
 
             <div className="grid gap-2">
               <Label>Mood (optional)</Label>
-              <Combobox options={moodOptions} value={mood} onChange={setMood} placeholder="Select or type custom..." allowCustom />
+              <Combobox
+                options={moodOptions}
+                value={mood || ''}
+                onChange={(val) => setValue('mood', val)}
+                placeholder="Select or type custom..."
+                allowCustom
+              />
             </div>
 
             <div className="grid gap-2">
               <Label>Setting (optional)</Label>
-              <Combobox options={settingOptions} value={setting} onChange={setSetting} placeholder="Select or type custom..." allowCustom />
+              <Combobox
+                options={settingOptions}
+                value={setting || ''}
+                onChange={(val) => setValue('setting', val)}
+                placeholder="Select or type custom..."
+                allowCustom
+              />
             </div>
 
             <div className="grid gap-2">
@@ -385,7 +441,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
               <Textarea
                 placeholder="Any additional notes..."
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => setValue('notes', e.target.value)}
                 rows={3}
                 className="text-base"
               />
