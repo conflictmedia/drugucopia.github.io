@@ -141,17 +141,6 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
 
         {/* Footer */}
         <div className="border-t border-base-300/50 p-3 space-y-1 shrink-0">
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors hover:bg-base-300/50 text-neutral-content hover:text-base-content"
-          >
-            {mounted && (theme === 'dark' ? (
-              <Sun className="h-5 w-5 shrink-0" />
-            ) : (
-              <Moon className="h-5 w-5 shrink-0" />
-            ))}
-            <span>{mounted && (theme === 'dark' ? 'Light' : 'Dark')}</span>
-          </button>
           <a
             href="https://github.com/drugucopia/drugucopia"
             target="_blank"

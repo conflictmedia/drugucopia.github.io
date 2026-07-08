@@ -114,24 +114,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Footer */}
       <div className="border-t border-base-300/50 p-3 space-y-1 shrink-0">
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className={cn(
-            'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-            'hover:bg-base-300/50 text-neutral-content hover:text-base-content'
-          )}
-          title={collapsed ? 'Toggle theme' : undefined}
-        >
-          {mounted && (theme === 'dark' ? (
-            <Sun className="h-5 w-5 shrink-0" />
-          ) : (
-            <Moon className="h-5 w-5 shrink-0" />
-          ))}
-          <span className={cn('truncate transition-opacity duration-200', collapsed && 'opacity-0 w-0')}>
-            {mounted && (theme === 'dark' ? 'Light' : 'Dark')}
-          </span>
-        </button>
-
         <a
           href="https://github.com/drugucopia/drugucopia"
           target="_blank"
