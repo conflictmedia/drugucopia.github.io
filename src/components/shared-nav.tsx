@@ -16,6 +16,7 @@ import {
   Search,
   Activity,
   Calculator,
+  BarChart3,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -27,6 +28,7 @@ import { searchSubstancesRanked } from '@/lib/substances/index'
 const navItems = [
   { href: '/', label: 'Substances', icon: FlaskConical },
   { href: '/interactions', label: 'Interactions', icon: Shuffle },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dxm-calculator', label: 'DXM Calc', icon: Calculator },
   { href: '/kratom-calculator', label: 'Kratom Calc', icon: Leaf },
   { href: '/harm-reduction', label: 'Harm Reduction', icon: Shield },

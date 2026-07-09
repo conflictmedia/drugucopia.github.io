@@ -9,15 +9,16 @@ import {
   Leaf,
   Calculator,
   Activity,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/', label: 'Substances', icon: FlaskConical },
   { href: '/interactions', label: 'Interactions', icon: Shuffle },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dxm-calculator', label: 'DXM', icon: Calculator },
   { href: '/kratom-calculator', label: 'Kratom', icon: Leaf },
-  { href: '/harm-reduction', label: 'Harm', icon: Shield },
 ]
 
 export function MobileBottomNav() {
