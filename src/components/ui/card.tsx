@@ -23,11 +23,11 @@ import { cn } from "@/lib/utils"
  * should use `<Card />` or `<Card variant="elevated" />` instead.
  */
 const variantClasses = {
-  default: "card bg-base-100/80 text-base-content border border-base-300/70 shadow-sm backdrop-blur-sm",
-  elevated: "card bg-base-200/80 text-base-content border border-base-300/70 shadow-sm backdrop-blur-sm",
-  outline: "card bg-base-100/80 text-base-content border border-base-300/70 backdrop-blur-sm",
+  default: "card bg-base-100 text-base-content border border-base-300 shadow-sm",
+  elevated: "card bg-base-200 text-base-content border border-base-300 shadow-sm",
+  outline: "card bg-base-100 text-base-content border border-base-300",
   ghost: "card bg-transparent text-base-content",
-  flat: "card bg-base-200/70 text-base-content backdrop-blur-sm",
+  flat: "card bg-base-200 text-base-content",
 } as const
 
 export type CardVariant = keyof typeof variantClasses

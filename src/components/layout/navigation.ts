@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   BarChart3,
@@ -7,130 +7,153 @@ import {
   Leaf,
   Shield,
   Shuffle,
-} from 'lucide-react'
-
-export const TRACK_VIEWS = new Set(['dose-log', 'timeline', 'history'])
+} from "lucide-react";
 
 export interface NavItem {
-  id: 'library' | 'interactions' | 'track' | 'analytics' | 'dxm' | 'kratom' | 'safety'
-  href: string
-  label: string
-  icon: LucideIcon
-  section: 'explore' | 'track' | 'tools'
+  id:
+    | "library"
+    | "interactions"
+    | "track"
+    | "analytics"
+    | "dxm"
+    | "kratom"
+    | "safety";
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  section: "explore" | "track" | "tools";
+  /**
+   * DaisyUI semantic color token used for the item's icon. Inactive items
+   * render the icon at ~70% opacity in this color; active items render at
+   * full opacity. This gives each section a stable theme-aware accent so
+   * the sidebar reads as more colorful instead of monochrome neutral.
+   */
+  color:
+    | "primary"
+    | "secondary"
+    | "accent"
+    | "info"
+    | "success"
+    | "warning"
+    | "error";
 }
 
 export const NAV_ITEMS: NavItem[] = [
   {
-    id: 'library',
-    href: '/',
-    label: 'Library',
+    id: "library",
+    href: "/",
+    label: "Library",
     icon: FlaskConical,
-    section: 'explore',
+    section: "explore",
+    color: "primary",
   },
   {
-    id: 'interactions',
-    href: '/interactions',
-    label: 'Interactions',
+    id: "interactions",
+    href: "/interactions",
+    label: "Interactions",
     icon: Shuffle,
-    section: 'explore',
+    section: "explore",
+    color: "secondary",
   },
   {
-    id: 'track',
-    href: '/?view=dose-log',
-    label: 'Track',
+    id: "track",
+    href: "/dose-log",
+    label: "Track",
     icon: Activity,
-    section: 'track',
+    section: "track",
+    color: "accent",
   },
   {
-    id: 'analytics',
-    href: '/analytics',
-    label: 'Analytics',
+    id: "analytics",
+    href: "/analytics",
+    label: "Analytics",
     icon: BarChart3,
-    section: 'tools',
+    section: "tools",
+    color: "info",
   },
   {
-    id: 'dxm',
-    href: '/dxm-calculator',
-    label: 'DXM Calculator',
+    id: "dxm",
+    href: "/dxm-calculator",
+    label: "DXM Calculator",
     icon: Calculator,
-    section: 'tools',
+    section: "tools",
+    color: "warning",
   },
   {
-    id: 'kratom',
-    href: '/kratom-calculator',
-    label: 'Kratom Calculator',
+    id: "kratom",
+    href: "/kratom-calculator",
+    label: "Kratom Calculator",
     icon: Leaf,
-    section: 'tools',
+    section: "tools",
+    color: "success",
   },
   {
-    id: 'safety',
-    href: '/harm-reduction',
-    label: 'Safety',
+    id: "safety",
+    href: "/harm-reduction",
+    label: "Safety",
     icon: Shield,
-    section: 'explore',
+    section: "explore",
+    color: "error",
   },
-]
+];
 
 export const NAV_SECTIONS: Array<{
-  title: string
-  section: NavItem['section']
+  title: string;
+  section: NavItem["section"];
 }> = [
-  { title: 'Explore', section: 'explore' },
-  { title: 'Track', section: 'track' },
-  { title: 'Tools', section: 'tools' },
-]
+  { title: "Explore", section: "explore" },
+  { title: "Track", section: "track" },
+  { title: "Tools", section: "tools" },
+];
 
 export const MOBILE_DOCK_ITEMS = NAV_ITEMS.filter((item) =>
-  ['library', 'interactions', 'track', 'analytics', 'safety'].includes(item.id),
-)
+  ["library", "interactions", "track", "analytics", "safety"].includes(item.id),
+);
 
-export function isTrackView(view: string | null) {
-  return !!view && TRACK_VIEWS.has(view)
-}
-
-export function isNavItemActive(
-  item: NavItem,
-  pathname: string,
-  view: string | null,
-) {
+export function isNavItemActive(item: NavItem, pathname: string) {
+  // Normalize trailing slash: with `trailingSlash: true` in next.config.ts,
+  // `/dose-log` becomes `/dose-log/`. Strip it so comparisons work either way.
+  const p = pathname.replace(/\/$/, "") || "/";
   switch (item.id) {
-    case 'library':
-      return pathname === '/' && !isTrackView(view)
-    case 'track':
-      return pathname === '/' && isTrackView(view)
-    case 'interactions':
-      return pathname.startsWith('/interactions')
-    case 'analytics':
-      return pathname.startsWith('/analytics')
-    case 'dxm':
-      return pathname.startsWith('/dxm-calculator')
-    case 'kratom':
-      return pathname.startsWith('/kratom-calculator')
-    case 'safety':
-      return pathname.startsWith('/harm-reduction')
+    case "library":
+      // Library is active on bare `/` (no trailing path, no view param).
+      return p === "/";
+    case "track":
+      return p.startsWith("/dose-log");
+    case "interactions":
+      return p.startsWith("/interactions");
+    case "analytics":
+      return p.startsWith("/analytics");
+    case "dxm":
+      return p.startsWith("/dxm-calculator");
+    case "kratom":
+      return p.startsWith("/kratom-calculator");
+    case "safety":
+      return p.startsWith("/harm-reduction");
     default:
-      return false
+      return false;
   }
 }
 
-export function getPageTitle(pathname: string, view: string | null) {
-  if (pathname === '/' && isTrackView(view)) return 'Track'
-
-  switch (pathname) {
-    case '/':
-      return 'Library'
-    case '/interactions':
-      return 'Interactions'
-    case '/analytics':
-      return 'Analytics'
-    case '/dxm-calculator':
-      return 'DXM Calculator'
-    case '/kratom-calculator':
-      return 'Kratom Calculator'
-    case '/harm-reduction':
-      return 'Safety'
+export function getPageTitle(pathname: string) {
+  // Normalize trailing slash (see isNavItemActive for rationale).
+  const p = pathname.replace(/\/$/, "") || "/";
+  switch (p) {
+    case "/":
+      return "Library";
+    case "/interactions":
+      return "Interactions";
+    case "/dose-log":
+      return "Track";
+    case "/analytics":
+      return "Analytics";
+    case "/dxm-calculator":
+      return "DXM Calculator";
+    case "/kratom-calculator":
+      return "Kratom Calculator";
+    case "/harm-reduction":
+      return "Safety";
     default:
-      return 'Drugucopia'
+      return "Drugucopia";
   }
 }
-
