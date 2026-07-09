@@ -34,7 +34,6 @@ import {
   Tooltip,
   ReferenceArea,
   ReferenceLine,
-  ReferenceDot,
 } from 'recharts'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -136,16 +135,10 @@ interface PhaseBandConfig {
   endMs: number
 }
 
-interface DoseMarkerConfig {
-  t: number
-  color: string
-}
-
 interface ChartConfig {
   data: ChartDataPoint[]
   series: DoseSeries[]
   phaseBands: PhaseBandConfig[]
-  doseMarkers: DoseMarkerConfig[]
   windowStartMs: number
   windowEndMs: number
 }
@@ -330,13 +323,7 @@ function buildChartConfig(
     endMs: windowStartMs + (bandOffsetMins + band.endFrac * bandDose.timings.totalDuration) * 60_000,
   }))
 
-  // Dose markers — one per dose at its start time (intensity = 0)
-  const doseMarkers: DoseMarkerConfig[] = series.map(s => ({
-    t: s.dose.doseTime.getTime(),
-    color: s.palette.stroke,
-  }))
-
-  return { data, series, phaseBands, doseMarkers, windowStartMs, windowEndMs }
+  return { data, series, phaseBands, windowStartMs, windowEndMs }
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
@@ -754,7 +741,10 @@ function GroupCard({
               )}
 
               {/* One Area per dose. isEnded is computed fresh from nowTs so
-                  ended doses fade out without re-sampling the chart data. */}
+                  ended doses fade out without re-sampling the chart data.
+                  dot=false + activeDot=false ensures Recharts doesn't render
+                  default dots at data points (which would look like stray
+                  markers at curve peaks and start/end points). */}
               {config.series.map((s, i) => {
                 const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
                 return (
@@ -768,22 +758,11 @@ function GroupCard({
                     opacity={doseEnded ? 0.4 : 1}
                     isAnimationActive={false}
                     connectNulls
+                    dot={false}
+                    activeDot={false}
                   />
                 )
               })}
-
-              {/* Dose markers */}
-              {config.doseMarkers.map((m, i) => (
-                <ReferenceDot
-                  key={`marker-${i}`}
-                  x={m.t}
-                  y={0}
-                  r={3}
-                  fill={m.color}
-                  stroke="var(--color-base-100)"
-                  strokeWidth={1}
-                />
-              ))}
             </AreaChart>
           </ResponsiveContainer>
         </div>
