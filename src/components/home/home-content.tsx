@@ -2,8 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
-import dynamic from 'next/dynamic'
-import { Clock, Activity, CalendarDays, History } from 'lucide-react'
 
 import {
   substances,
@@ -11,131 +9,9 @@ import {
   type SubstanceCategory,
 } from '@/lib/substances/index'
 import { categories } from '@/lib/categories'
-import { useDoseStore } from '@/store/dose-store'
-import { useReminderStore } from '@/store/reminder-store'
 
 import { LibraryHero, CategoryFilterBar, SubstanceGrid } from './library'
 import { SubstanceDetail } from './detail'
-
-// F1 — Lazy-load the heavy client-only components so the home grid's
-// initial bundle stays small. These all pull in zustand stores, the
-// substances DB, and (for the chart) a chunk of SVG/d3-style code that
-// is wasted bytes on first paint of the substance list.
-const DoseHistory = dynamic(
-  () => import('@/components/dose-history').then((m) => m.DoseHistory),
-  { ssr: false, loading: () => null },
-)
-const DoseStats = dynamic(
-  () => import('@/components/dose-stats').then((m) => m.DoseStats),
-  { ssr: false, loading: () => null },
-)
-const IntensityTimelineChart = dynamic(
-  () => import('@/components/intensity-timeline-chart').then((m) => m.IntensityTimelineChart),
-  { ssr: false, loading: () => null },
-)
-const ActiveReminders = dynamic(
-  () => import('@/components/active-reminders').then((m) => m.ActiveReminders),
-  { ssr: false, loading: () => null },
-)
-const ReminderSettings = dynamic(
-  () => import('@/components/reminder-settings').then((m) => m.ReminderSettings),
-  { ssr: false, loading: () => null },
-)
-const SyncConflicts = dynamic(
-  () => import('@/components/sync-conflicts').then((m) => m.SyncConflicts),
-  { ssr: false, loading: () => null },
-)
-
-// ─── TRACK WORKSPACE (dose-log view) ────────────────────────────────────────
-// This view will be redesigned in Phase 4. For now it stays inline so the
-// existing ?view=dose-log route keeps working unchanged.
-
-function TrackWorkspace() {
-  const doses = useDoseStore((state) => state.doses)
-  const schedules = useReminderStore((state) => state.schedules)
-  const activeReminders = useReminderStore((state) => state.activeReminders)
-
-  const todayKey = new Date().toISOString().slice(0, 10)
-  const todayCount = useMemo(
-    () => doses.filter((dose) => dose.timestamp.slice(0, 10) === todayKey).length,
-    [doses, todayKey],
-  )
-
-  const activeCount = useMemo(
-    () => activeReminders.filter((reminder) => reminder.status !== 'dismissed').length,
-    [activeReminders],
-  )
-
-  const trackSections = [
-    { id: 'track-reminders', label: 'Reminders', icon: Clock },
-    { id: 'track-timeline', label: 'Timeline', icon: Activity },
-    { id: 'track-insights', label: 'Insights', icon: CalendarDays },
-    { id: 'track-history', label: 'History', icon: History },
-  ]
-
-  const jumpToSection = (id: string) => {
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
-  return (
-    <section className="card border border-base-300/70 bg-base-100/70 backdrop-blur-sm shadow-sm scroll-mt-28">
-      <div className="card-body gap-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-2">
-            <div className="badge badge-outline badge-sm">Track workspace</div>
-            <h2 className="text-2xl font-semibold tracking-tight">Dose log, reminders, and session view</h2>
-            <p className="max-w-2xl text-sm text-neutral-content">
-              Review active reminders, follow your current session timeline, and keep your dose history organized in one place.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {trackSections.map((section) => {
-              const Icon = section.icon
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => jumpToSection(section.id)}
-                  className="btn btn-sm btn-ghost gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {section.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="stats stats-vertical border border-base-300/70 bg-base-100/70 shadow-sm lg:stats-horizontal">
-          <div className="stat">
-            <div className="stat-title">Total logs</div>
-            <div className="stat-value text-2xl">{doses.length}</div>
-            <div className="stat-desc">All recorded doses</div>
-          </div>
-          <div className="stat">
-            <div className="stat-title">Today</div>
-            <div className="stat-value text-2xl">{todayCount}</div>
-            <div className="stat-desc">Doses logged today</div>
-          </div>
-          <div className="stat">
-            <div className="stat-title">Active reminders</div>
-            <div className="stat-value text-2xl">{activeCount}</div>
-            <div className="stat-desc">Running or fired timers</div>
-          </div>
-          <div className="stat">
-            <div className="stat-title">Schedules</div>
-            <div className="stat-value text-2xl">{schedules.length}</div>
-            <div className="stat-desc">Saved reminder rules</div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 // ─── ROOT COMPONENT ───────────────────────────────────────────────────────────
 export function HomeContent() {
@@ -149,6 +25,19 @@ export function HomeContent() {
   const lastProcessedSubstanceRef = useRef<string | null>(null)
   const deferredQuery = useDeferredValue(searchQuery)
 
+  // Backwards-compat redirect: the Track workspace used to live at
+  // /?view=dose-log (inline in this component). It now lives at /dose-log.
+  // Forward any old ?view=... links to the new page so bookmarks and
+  // external links don't break. Uses window.location for a hard redirect
+  // because router.replace on same-pathname doesn't reliably clear the
+  // search param under output:export + trailingSlash:true.
+  useEffect(() => {
+    const view = searchParams.get('view')
+    if (view === 'dose-log' || view === 'timeline' || view === 'history') {
+      window.location.replace('/dose-log')
+    }
+  }, [searchParams])
+
   // Listen for search events from the app shell search input
   useEffect(() => {
     const handler = (e: Event) => {
@@ -159,7 +48,7 @@ export function HomeContent() {
     return () => window.removeEventListener('drugucopia:search', handler)
   }, [])
 
-  // Handle URL query parameters
+  // Handle URL query parameters (deep-link to a substance via ?substance=)
   useEffect(() => {
     const substanceId = searchParams.get('substance')
     if (substanceId) {
@@ -177,13 +66,8 @@ export function HomeContent() {
   }, [searchParams, selectedSubstance])
 
   const handleBackFromDetail = useCallback(() => {
-    const viewParam = searchParams.get('view')
-    if (viewParam) {
-      router.push(`${pathname}?view=${viewParam}`)
-    } else {
-      router.push(pathname)
-    }
-  }, [searchParams, router, pathname])
+    router.push(pathname)
+  }, [router, pathname])
 
   const handleCategoryClickFromDetail = useCallback(
     (category: SubstanceCategory) => {
@@ -228,14 +112,9 @@ export function HomeContent() {
     (substance: Substance) => {
       setSelectedSubstance(substance)
       lastProcessedSubstanceRef.current = substance.id
-      const viewParam = searchParams.get('view')
-      router.push(
-        viewParam
-          ? `${pathname}?substance=${substance.id}&view=${viewParam}`
-          : `${pathname}?substance=${substance.id}`,
-      )
+      router.push(`${pathname}?substance=${substance.id}`)
     },
-    [searchParams, router, pathname],
+    [router, pathname],
   )
 
   const handleCategoryChange = useCallback(
@@ -260,49 +139,6 @@ export function HomeContent() {
         onCategoryClick={handleCategoryClickFromDetail}
         router={router}
       />
-    )
-  }
-
-  const viewParam = searchParams.get('view')
-  const showDoseLog = viewParam === 'dose-log' || viewParam === 'timeline' || viewParam === 'history'
-
-  // ── Dose-log view (Phase 4 target — kept inline for now) ──
-  if (showDoseLog) {
-    return (
-      <div className="container mx-auto px-4 py-6 lg:px-6 lg:py-10">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <TrackWorkspace />
-
-          <section id="track-reminders" className="space-y-6 scroll-mt-28">
-            <ActiveReminders />
-
-            <details className="collapse collapse-arrow border border-base-300/70 bg-base-100/70 backdrop-blur-sm shadow-sm">
-              <summary className="collapse-title text-base font-semibold">
-                Reminder settings
-              </summary>
-              <div className="collapse-content pt-0">
-                <p className="mb-3 text-sm text-neutral-content">
-                  Adjust auto-start behavior, notification permissions, sounds, and recurring schedules.
-                </p>
-                <ReminderSettings />
-              </div>
-            </details>
-          </section>
-
-          <section id="track-timeline" className="scroll-mt-28">
-            <IntensityTimelineChart />
-          </section>
-
-          <section id="track-insights" className="space-y-6 scroll-mt-28">
-            <DoseStats />
-            <SyncConflicts />
-          </section>
-
-          <section id="track-history" className="scroll-mt-28">
-            <DoseHistory />
-          </section>
-        </div>
-      </div>
     )
   }
 
