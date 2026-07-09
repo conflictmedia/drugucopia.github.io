@@ -17,6 +17,7 @@
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-tabs": "^1.1.12",
     "@reactuses/core": "^6.0.5",
+    "@swc/helpers": "0.5.23",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-table": "^8.21.3",
     "clsx": "^2.1.1",
@@ -60,6 +61,12 @@
     "node-gyp": "^12.2.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@swc/helpers": "0.5.23",
+    "next": {
+      "@swc/helpers": "0.5.23"
+    }
   },
   "allowScripts": {
     "@firebase/util@1.15.1": true,
