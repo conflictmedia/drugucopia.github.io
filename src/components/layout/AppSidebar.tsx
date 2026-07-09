@@ -2,9 +2,9 @@
 
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Github } from 'lucide-react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { type MouseEvent } from 'react'
-import { NAV_ITEMS, NAV_SECTIONS, isNavItemActive } from './navigation'
+import { NAV_ITEMS, NAV_SECTIONS, isNavItemActive, type NavItem } from './navigation'
 import { cn } from '@/lib/utils'
 
 interface AppSidebarProps {
@@ -13,20 +13,33 @@ interface AppSidebarProps {
   onToggle: () => void
 }
 
+/**
+ * Literal class name lookup so Tailwind's content scanner sees every
+ * `text-<color>` and `bg-<color>` utility at build time. Dynamic
+ * template strings like `text-${color}` would be purged.
+ *
+ * Active: full-opacity text color + a 10% background tint + ring.
+ * Inactive: 70%-opacity text color (icon still visibly tinted).
+ */
+const COLOR_CLASSES: Record<
+  NavItem['color'],
+  { active: string; inactive: string }
+> = {
+  primary: { active: 'text-primary bg-primary/10 ring-primary/30', inactive: 'text-primary/70' },
+  secondary: { active: 'text-secondary bg-secondary/10 ring-secondary/30', inactive: 'text-secondary/70' },
+  accent: { active: 'text-accent bg-accent/10 ring-accent/30', inactive: 'text-accent/70' },
+  info: { active: 'text-info bg-info/10 ring-info/30', inactive: 'text-info/70' },
+  success: { active: 'text-success bg-success/10 ring-success/30', inactive: 'text-success/70' },
+  warning: { active: 'text-warning bg-warning/10 ring-warning/30', inactive: 'text-warning/70' },
+  error: { active: 'text-error bg-error/10 ring-error/30', inactive: 'text-error/70' },
+}
+
 export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const view = searchParams.get('view')
 
   const navigate = (href: string) => {
     onNavigate?.()
-
-    if (pathname === '/') {
-      router.replace(href)
-      return
-    }
-
     router.push(href)
   }
 
@@ -95,8 +108,9 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
                 <span>{section.title}</span>
               </li>
               {items.map((item) => {
-                const isActive = isNavItemActive(item, pathname, view)
+                const isActive = isNavItemActive(item, pathname)
                 const Icon = item.icon
+                const colorClass = COLOR_CLASSES[item.color]
 
                 return (
                   <li key={item.id} className="w-full">
@@ -108,9 +122,18 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
                         type="button"
                         onClick={() => navigate(item.href)}
                         className={cn(
-                          'w-full min-w-0',
-                          isActive && 'menu-active lg:ring-1 lg:ring-primary/20',
-                          !expanded && 'lg:!flex lg:!justify-center lg:!items-center lg:!gap-0 lg:!px-1.5 lg:min-h-11',
+                          // Layout: icon + label on ONE line, centered
+                          // both horizontally and vertically. Override
+                          // daisyUI .menu defaults which left-align.
+                          'flex w-full items-center justify-center gap-2 min-h-11 px-2 rounded-md transition-colors',
+                          // Icon/text color: each item uses its assigned
+                          // semantic color. Active = full opacity + bg
+                          // tint + ring; inactive = 70% opacity so the
+                          // color is still visible but recedes.
+                          isActive
+                            ? cn(colorClass.active, 'lg:ring-1')
+                            : colorClass.inactive,
+                          !expanded && 'lg:!px-1.5 lg:!gap-0',
                         )}
                         title={item.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -139,7 +162,7 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
             rel="noopener noreferrer"
             className={cn(
               'btn btn-ghost btn-block',
-              expanded ? 'justify-start' : 'lg:!flex lg:!justify-center lg:!items-center lg:!gap-0 lg:px-1.5 lg:min-h-11',
+              expanded ? 'justify-center' : 'lg:!flex lg:!justify-center lg:!items-center lg:!gap-0 lg:px-1.5 lg:min-h-11',
             )}
             title="GitHub"
             aria-label="GitHub"
@@ -152,5 +175,3 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
     </aside>
   )
 }
-
-

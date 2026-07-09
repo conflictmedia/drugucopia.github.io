@@ -15,7 +15,7 @@
    ─────────────────────────────────────────────────────────────────── */
 @plugin "daisyui" {
   themes:
-    drugucopia --default --prefersdark,
+    drugucopia,
     drugucopia-light,
     dracula,
     night,
@@ -24,8 +24,7 @@
     sunset,
     synthwave,
     halloween,
-    aqua,
-    forest,
+    aqua --default --prefersdark forest,
     luxury,
     business,
     coffee;
@@ -87,32 +86,37 @@
 /* ═══════════════════════════════════════════════════════════════════
    THEME: drugucopia  (default + prefersdark)
    ═══════════════════════════════════════════════════════════════════
-   The canonical "Drugucopia" dark theme — neutral-dark canvas with a
-   warm off-white primary, used for the single most important action
-   per region. `--depth: 1` adds a subtle shadow + 3D lift to daisyUI
-   components (buttons, cards, alerts) on this theme only. */
+   The canonical "Drugucopia" dark theme — warm neutral-dark canvas with
+   a warm amber primary (the "Drugucopia" brand accent), a teal secondary,
+   and a muted purple accent. `--depth: 1` adds a subtle shadow + 3D lift
+   to daisyUI components on this theme only. */
 @plugin "daisyui/theme" {
   name: "drugucopia";
   default: true;
   prefersdark: true;
   color-scheme: dark;
 
-  --color-base-100: oklch(0.130 0.008 60);
-  --color-base-200: oklch(0.170 0.008 60);
-  --color-base-300: oklch(0.230 0.008 60);
-  --color-base-content: oklch(0.880 0.006 60);
+  --color-base-100: oklch(0.13 0.03 60);
+  --color-base-200: oklch(0.17 0.03 60);
+  --color-base-300: oklch(0.23 0.03 60);
+  --color-base-content: oklch(0.88 0.021 60);
 
-  --color-primary: oklch(0.92 0.06 0);
-  --color-primary-content: oklch(0.16 0.005 250);
+  /* Warm amber — the Drugucopia brand accent. Hue 75 = warm yellow-amber,
+     not pink (hue 0 was wrong). Lightness 0.80 keeps it readable as a
+     button background with dark text. */
+  --color-primary: oklch(0.8 0.13 75);
+  --color-primary-content: oklch(0.16 0.02 60);
 
-  --color-secondary: oklch(0.22 0.008 250);
-  --color-secondary-content: oklch(0.68 0.01 250);
+  /* Teal secondary — cool counterpoint to the warm primary. */
+  --color-secondary: oklch(0.65 0.13 195);
+  --color-secondary-content: oklch(0.12 0.03 195);
 
-  --color-accent: oklch(0.22 0.01 250);
-  --color-accent-content: oklch(0.68 0.01 250);
+  /* Muted purple accent — tertiary brand color. */
+  --color-accent: oklch(0.68 0.15 300);
+  --color-accent-content: oklch(0.14 0.03 300);
 
-  --color-neutral: oklch(0.230 0.006 60);
-  --color-neutral-content: oklch(0.700 0.004 60);
+  --color-neutral: oklch(0.23 0.022 60);
+  --color-neutral-content: oklch(0.7 0.015 60);
 
   --color-info: oklch(0.65 0.18 250);
   --color-info-content: oklch(0.14 0.03 250);
@@ -139,41 +143,45 @@
 /* ═══════════════════════════════════════════════════════════════════
    THEME: drugucopia-light
    ═══════════════════════════════════════════════════════════════════
-   A "light" theme that still works on top of the milkdrop background —
-   the base canvas stays a translucent dark neutral so the WebGL viz
-   shows through, but text, primary, accent etc. use lighter values
-   more typical of a daylight palette. This theme is registered so the
-   `system` virtual theme can resolve to it on OS light preference
-   without producing a jarring white-on-milkdrop UI. It is NOT in the
-   theme picker. */
+   A "light" variant of the Drugucopia theme — same warm amber primary,
+   teal secondary, and purple accent as the dark theme, but with a
+   lighter base canvas. The base stays a low-tint dark neutral so the
+   milkdrop WebGL background still shows through (a true white base
+   would clash). This theme is registered so the `system` virtual theme
+   can resolve to it on OS light preference without producing a jarring
+   white-on-milkdrop UI. It is NOT in the theme picker. */
 @plugin "daisyui/theme" {
   name: "drugucopia-light";
   default: false;
   prefersdark: false;
   color-scheme: light;
 
-  --color-base-100: oklch(0.150 0.010 250);
-  --color-base-200: oklch(0.190 0.010 250);
-  --color-base-300: oklch(0.250 0.010 250);
-  --color-base-content: oklch(0.920 0.007 250);
+  --color-base-100: oklch(0.15 0.035 60);
+  --color-base-200: oklch(0.19 0.035 60);
+  --color-base-300: oklch(0.25 0.035 60);
+  --color-base-content: oklch(0.92 0.025 60);
 
-  --color-primary: oklch(0.45 0.18 250);
-  --color-primary-content: oklch(0.97 0.01 250);
+  /* Same warm amber primary as the dark theme, but darker so it reads
+     on the lighter base canvas. */
+  --color-primary: oklch(0.68 0.14 75);
+  --color-primary-content: oklch(0.14 0.02 60);
 
-  --color-secondary: oklch(0.55 0.16 200);
-  --color-secondary-content: oklch(0.97 0.01 200);
+  /* Teal secondary — matches the dark theme. */
+  --color-secondary: oklch(0.58 0.13 195);
+  --color-secondary-content: oklch(0.13 0.03 195);
 
-  --color-accent: oklch(0.6 0.18 40);
-  --color-accent-content: oklch(0.97 0.01 40);
+  /* Muted purple accent — matches the dark theme. */
+  --color-accent: oklch(0.62 0.15 300);
+  --color-accent-content: oklch(0.13 0.03 300);
 
-  --color-neutral: oklch(0.250 0.008 250);
-  --color-neutral-content: oklch(0.740 0.006 250);
+  --color-neutral: oklch(0.25 0.025 60);
+  --color-neutral-content: oklch(0.74 0.017 60);
 
   --color-info: oklch(0.6 0.18 230);
-  --color-info-content: oklch(0.97 0.01 230);
+  --color-info-content: oklch(0.13 0.03 230);
 
   --color-success: oklch(0.6 0.18 150);
-  --color-success-content: oklch(0.97 0.01 150);
+  --color-success-content: oklch(0.13 0.03 150);
 
   --color-warning: oklch(0.7 0.17 85);
   --color-warning-content: oklch(0.16 0.03 85);
@@ -203,18 +211,18 @@
 @plugin "daisyui/theme" {
   name: "dracula";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.018 277);
-  --color-base-200: oklch(0.180 0.018 277);
-  --color-base-300: oklch(0.240 0.018 277);
-  --color-base-content: oklch(0.910 0.013 277);
+  --color-base-100: oklch(0.14 0.045 277);
+  --color-base-200: oklch(0.18 0.045 277);
+  --color-base-300: oklch(0.24 0.045 277);
+  --color-base-content: oklch(0.91 0.032 277);
   --color-primary: oklch(0.754 0.183 346.812);
   --color-primary-content: oklch(0.151 0.036 346.812);
   --color-secondary: oklch(0.742 0.148 301.883);
   --color-secondary-content: oklch(0.148 0.029 301.883);
   --color-accent: oklch(0.834 0.124 66.558);
   --color-accent-content: oklch(0.167 0.024 66.558);
-  --color-neutral: oklch(0.240 0.014 277);
-  --color-neutral-content: oklch(0.700 0.010 277);
+  --color-neutral: oklch(0.24 0.035 277);
+  --color-neutral-content: oklch(0.7 0.025 277);
   --color-info: oklch(0.883 0.093 212.846);
   --color-info-content: oklch(0.176 0.018 212.846);
   --color-success: oklch(0.871 0.219 148.024);
@@ -236,18 +244,18 @@
 @plugin "daisyui/theme" {
   name: "night";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.015 232);
-  --color-base-200: oklch(0.180 0.015 232);
-  --color-base-300: oklch(0.240 0.015 232);
-  --color-base-content: oklch(0.910 0.010 232);
+  --color-base-100: oklch(0.14 0.04 232);
+  --color-base-200: oklch(0.18 0.04 232);
+  --color-base-300: oklch(0.24 0.04 232);
+  --color-base-content: oklch(0.91 0.028 232);
   --color-primary: oklch(0.754 0.138 232.661);
   --color-primary-content: oklch(0.151 0.028 232.661);
   --color-secondary: oklch(0.68 0.158 276.934);
   --color-secondary-content: oklch(0.136 0.032 276.934);
   --color-accent: oklch(0.724 0.176 350.048);
   --color-accent-content: oklch(0.145 0.035 350.048);
-  --color-neutral: oklch(0.240 0.012 232);
-  --color-neutral-content: oklch(0.700 0.008 232);
+  --color-neutral: oklch(0.24 0.03 232);
+  --color-neutral-content: oklch(0.7 0.021 232);
   --color-info: oklch(0.685 0.148 237.251);
   --color-info-content: oklch(0.137 0.03 237.251);
   --color-success: oklch(0.785 0.132 181.911);
@@ -269,18 +277,18 @@
 @plugin "daisyui/theme" {
   name: "black";
   color-scheme: dark;
-  --color-base-100: oklch(0.080 0.000 0);
-  --color-base-200: oklch(0.120 0.000 0);
-  --color-base-300: oklch(0.180 0.000 0);
-  --color-base-content: oklch(0.920 0.000 0);
+  --color-base-100: oklch(0.08 0 0);
+  --color-base-200: oklch(0.12 0 0);
+  --color-base-300: oklch(0.18 0 0);
+  --color-base-content: oklch(0.92 0 0);
   --color-primary: oklch(0.55 0 0);
   --color-primary-content: oklch(0.97 0 0);
   --color-secondary: oklch(0.55 0 0);
   --color-secondary-content: oklch(0.97 0 0);
   --color-accent: oklch(0.55 0 0);
   --color-accent-content: oklch(0.97 0 0);
-  --color-neutral: oklch(0.200 0.000 0);
-  --color-neutral-content: oklch(0.700 0.000 0);
+  --color-neutral: oklch(0.2 0 0);
+  --color-neutral-content: oklch(0.7 0 0);
   --color-info: oklch(0.452 0.313 264.052);
   --color-info-content: oklch(0.09 0.063 264.052);
   --color-success: oklch(0.52 0.176 142.495);
@@ -302,18 +310,18 @@
 @plugin "daisyui/theme" {
   name: "dim";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.012 264);
-  --color-base-200: oklch(0.180 0.012 264);
-  --color-base-300: oklch(0.240 0.012 264);
-  --color-base-content: oklch(0.900 0.008 264);
+  --color-base-100: oklch(0.14 0.038 264);
+  --color-base-200: oklch(0.18 0.038 264);
+  --color-base-300: oklch(0.24 0.038 264);
+  --color-base-content: oklch(0.9 0.027 264);
   --color-primary: oklch(0.861 0.141 139.549);
   --color-primary-content: oklch(0.172 0.028 139.549);
   --color-secondary: oklch(0.734 0.165 35.353);
   --color-secondary-content: oklch(0.147 0.033 35.353);
   --color-accent: oklch(0.742 0.133 311.379);
   --color-accent-content: oklch(0.148 0.027 311.379);
-  --color-neutral: oklch(0.240 0.010 264);
-  --color-neutral-content: oklch(0.700 0.007 264);
+  --color-neutral: oklch(0.24 0.028 264);
+  --color-neutral-content: oklch(0.7 0.02 264);
   --color-info: oklch(0.861 0.142 206.182);
   --color-info-content: oklch(0.172 0.028 206.182);
   --color-success: oklch(0.862 0.142 166.534);
@@ -335,18 +343,18 @@
 @plugin "daisyui/theme" {
   name: "sunset";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.015 30);
-  --color-base-200: oklch(0.180 0.015 30);
-  --color-base-300: oklch(0.240 0.015 30);
-  --color-base-content: oklch(0.910 0.010 30);
+  --color-base-100: oklch(0.14 0.04 30);
+  --color-base-200: oklch(0.18 0.04 30);
+  --color-base-300: oklch(0.24 0.04 30);
+  --color-base-content: oklch(0.91 0.028 30);
   --color-primary: oklch(0.747 0.158 39.947);
   --color-primary-content: oklch(0.149 0.032 39.947);
   --color-secondary: oklch(0.725 0.177 2.72);
   --color-secondary-content: oklch(0.145 0.035 2.72);
   --color-accent: oklch(0.713 0.166 299.844);
   --color-accent-content: oklch(0.143 0.033 299.844);
-  --color-neutral: oklch(0.240 0.012 30);
-  --color-neutral-content: oklch(0.700 0.008 30);
+  --color-neutral: oklch(0.24 0.03 30);
+  --color-neutral-content: oklch(0.7 0.021 30);
   --color-info: oklch(0.856 0.085 206.015);
   --color-info-content: oklch(0.171 0.017 206.015);
   --color-success: oklch(0.856 0.085 144.778);
@@ -368,18 +376,18 @@
 @plugin "daisyui/theme" {
   name: "synthwave";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.020 300);
-  --color-base-200: oklch(0.180 0.020 300);
-  --color-base-300: oklch(0.240 0.020 300);
-  --color-base-content: oklch(0.910 0.014 300);
+  --color-base-100: oklch(0.14 0.05 300);
+  --color-base-200: oklch(0.18 0.05 300);
+  --color-base-300: oklch(0.24 0.05 300);
+  --color-base-content: oklch(0.91 0.035 300);
   --color-primary: oklch(0.71 0.202 349.761);
   --color-primary-content: oklch(0.142 0.04 349.761);
   --color-secondary: oklch(0.82 0.111 230.318);
   --color-secondary-content: oklch(0.164 0.022 230.318);
   --color-accent: oklch(0.75 0.183 55.934);
   --color-accent-content: oklch(0.15 0.037 55.934);
-  --color-neutral: oklch(0.240 0.016 300);
-  --color-neutral-content: oklch(0.700 0.011 300);
+  --color-neutral: oklch(0.24 0.038 300);
+  --color-neutral-content: oklch(0.7 0.027 300);
   --color-info: oklch(0.74 0.16 232.661);
   --color-info-content: oklch(0.148 0.032 232.661);
   --color-success: oklch(0.77 0.152 181.912);
@@ -401,18 +409,18 @@
 @plugin "daisyui/theme" {
   name: "halloween";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.020 65);
-  --color-base-200: oklch(0.180 0.020 65);
-  --color-base-300: oklch(0.240 0.020 65);
-  --color-base-content: oklch(0.910 0.014 65);
+  --color-base-100: oklch(0.14 0.05 65);
+  --color-base-200: oklch(0.18 0.05 65);
+  --color-base-300: oklch(0.24 0.05 65);
+  --color-base-content: oklch(0.91 0.035 65);
   --color-primary: oklch(0.775 0.204 60.62);
   --color-primary-content: oklch(0.155 0.041 60.62);
   --color-secondary: oklch(0.46 0.248 305.03);
   --color-secondary-content: oklch(0.92 0.05 305.03);
   --color-accent: oklch(0.648 0.223 136.073);
   --color-accent-content: oklch(0.13 0.045 136.073);
-  --color-neutral: oklch(0.240 0.016 65);
-  --color-neutral-content: oklch(0.700 0.011 65);
+  --color-neutral: oklch(0.24 0.038 65);
+  --color-neutral-content: oklch(0.7 0.027 65);
   --color-info: oklch(0.546 0.215 262.88);
   --color-info-content: oklch(0.109 0.043 262.88);
   --color-success: oklch(0.627 0.169 149.213);
@@ -434,18 +442,18 @@
 @plugin "daisyui/theme" {
   name: "aqua";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.018 200);
-  --color-base-200: oklch(0.180 0.018 200);
-  --color-base-300: oklch(0.240 0.018 200);
-  --color-base-content: oklch(0.910 0.013 200);
+  --color-base-100: oklch(0.14 0.045 200);
+  --color-base-200: oklch(0.18 0.045 200);
+  --color-base-300: oklch(0.24 0.045 200);
+  --color-base-content: oklch(0.91 0.032 200);
   --color-primary: oklch(0.857 0.144 198.645);
   --color-primary-content: oklch(0.171 0.029 198.645);
   --color-secondary: oklch(0.607 0.108 309.782);
   --color-secondary-content: oklch(0.121 0.022 309.782);
   --color-accent: oklch(0.934 0.102 94.555);
   --color-accent-content: oklch(0.187 0.02 94.555);
-  --color-neutral: oklch(0.240 0.014 200);
-  --color-neutral-content: oklch(0.700 0.010 200);
+  --color-neutral: oklch(0.24 0.035 200);
+  --color-neutral-content: oklch(0.7 0.025 200);
   --color-info: oklch(0.546 0.215 262.88);
   --color-info-content: oklch(0.109 0.043 262.88);
   --color-success: oklch(0.627 0.169 149.213);
@@ -467,18 +475,18 @@
 @plugin "daisyui/theme" {
   name: "forest";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.015 150);
-  --color-base-200: oklch(0.180 0.015 150);
-  --color-base-300: oklch(0.240 0.015 150);
-  --color-base-content: oklch(0.910 0.010 150);
+  --color-base-100: oklch(0.14 0.04 150);
+  --color-base-200: oklch(0.18 0.04 150);
+  --color-base-300: oklch(0.24 0.04 150);
+  --color-base-content: oklch(0.91 0.028 150);
   --color-primary: oklch(0.686 0.185 148.958);
   --color-primary-content: oklch(0.137 0.037 148.958);
   --color-secondary: oklch(0.698 0.135 168.327);
   --color-secondary-content: oklch(0.14 0.027 168.327);
   --color-accent: oklch(0.706 0.119 185.713);
   --color-accent-content: oklch(0.141 0.024 185.713);
-  --color-neutral: oklch(0.240 0.012 150);
-  --color-neutral-content: oklch(0.700 0.008 150);
+  --color-neutral: oklch(0.24 0.03 150);
+  --color-neutral-content: oklch(0.7 0.021 150);
   --color-info: oklch(0.721 0.191 231.6);
   --color-info-content: oklch(0.144 0.038 231.6);
   --color-success: oklch(0.648 0.15 160);
@@ -500,18 +508,18 @@
 @plugin "daisyui/theme" {
   name: "luxury";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.012 60);
-  --color-base-200: oklch(0.180 0.012 60);
-  --color-base-300: oklch(0.240 0.012 60);
-  --color-base-content: oklch(0.910 0.008 60);
+  --color-base-100: oklch(0.14 0.035 60);
+  --color-base-200: oklch(0.18 0.035 60);
+  --color-base-300: oklch(0.24 0.035 60);
+  --color-base-content: oklch(0.91 0.025 60);
   --color-primary: oklch(1 0 0);
   --color-primary-content: oklch(0.2 0 0);
   --color-secondary: oklch(0.276 0.064 261.069);
   --color-secondary-content: oklch(0.955 0.013 261.069);
   --color-accent: oklch(0.367 0.051 338.825);
   --color-accent-content: oklch(0.934 0.01 338.825);
-  --color-neutral: oklch(0.240 0.010 60);
-  --color-neutral-content: oklch(0.700 0.007 60);
+  --color-neutral: oklch(0.24 0.025 60);
+  --color-neutral-content: oklch(0.7 0.017 60);
   --color-info: oklch(0.791 0.121 237.133);
   --color-info-content: oklch(0.158 0.024 237.133);
   --color-success: oklch(0.781 0.192 132.154);
@@ -533,18 +541,18 @@
 @plugin "daisyui/theme" {
   name: "business";
   color-scheme: dark;
-  --color-base-100: oklch(0.130 0.010 250);
-  --color-base-200: oklch(0.170 0.010 250);
-  --color-base-300: oklch(0.230 0.010 250);
-  --color-base-content: oklch(0.900 0.007 250);
+  --color-base-100: oklch(0.13 0.035 250);
+  --color-base-200: oklch(0.17 0.035 250);
+  --color-base-300: oklch(0.23 0.035 250);
+  --color-base-content: oklch(0.9 0.025 250);
   --color-primary: oklch(0.417 0.099 251.473);
   --color-primary-content: oklch(0.95 0.02 251.473);
   --color-secondary: oklch(0.641 0.027 229.389);
   --color-secondary-content: oklch(0.128 0.005 229.389);
   --color-accent: oklch(0.673 0.167 35.791);
   --color-accent-content: oklch(0.135 0.033 35.791);
-  --color-neutral: oklch(0.230 0.008 250);
-  --color-neutral-content: oklch(0.700 0.006 250);
+  --color-neutral: oklch(0.23 0.025 250);
+  --color-neutral-content: oklch(0.7 0.017 250);
   --color-info: oklch(0.626 0.143 240.033);
   --color-info-content: oklch(0.125 0.029 240.033);
   --color-success: oklch(0.702 0.094 156.596);
@@ -566,18 +574,18 @@
 @plugin "daisyui/theme" {
   name: "coffee";
   color-scheme: dark;
-  --color-base-100: oklch(0.140 0.015 50);
-  --color-base-200: oklch(0.180 0.015 50);
-  --color-base-300: oklch(0.240 0.015 50);
-  --color-base-content: oklch(0.900 0.010 50);
+  --color-base-100: oklch(0.14 0.04 50);
+  --color-base-200: oklch(0.18 0.04 50);
+  --color-base-300: oklch(0.24 0.04 50);
+  --color-base-content: oklch(0.9 0.028 50);
   --color-primary: oklch(0.72 0.123 62.756);
   --color-primary-content: oklch(0.144 0.025 62.756);
   --color-secondary: oklch(0.345 0.029 199.194);
   --color-secondary-content: oklch(0.869 0.006 199.194);
   --color-accent: oklch(0.426 0.074 224.389);
   --color-accent-content: oklch(0.885 0.015 224.389);
-  --color-neutral: oklch(0.240 0.012 50);
-  --color-neutral-content: oklch(0.700 0.008 50);
+  --color-neutral: oklch(0.24 0.03 50);
+  --color-neutral-content: oklch(0.7 0.021 50);
   --color-info: oklch(0.795 0.063 184.558);
   --color-info-content: oklch(0.159 0.013 184.558);
   --color-success: oklch(0.747 0.072 131.116);
@@ -633,37 +641,21 @@
     display: none;
   }
 
-  /* ─── Phase 2: legacy glass / card-transparent now resolve to a lightly
-     translucent surface with a subtle backdrop blur. New code should use
-     <Card /> or <Card variant="..." /> from @/components/ui/card. These
-     aliases exist only so existing markup doesn't break visually during
-     the incremental migration. ─── */
+  /* ─── Phase 2: legacy glass / card-transparent now resolve to a solid
+     surface. New code should use <Card /> or <Card variant="..." /> from
+     @/components/ui/card. These aliases exist only so existing markup
+     doesn't break visually during the incremental migration. ─── */
   .glass,
   .card-transparent {
-    background-color: color-mix(
-      in oklab,
-      var(--color-base-100) 80%,
-      transparent
-    ) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid
-      color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
+    background-color: var(--color-base-100) !important;
+    border: 1px solid var(--color-base-300) !important;
     box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.05) !important;
   }
 
   [data-theme] .glass,
   [data-theme] .card-transparent {
-    background-color: color-mix(
-      in oklab,
-      var(--color-base-100) 80%,
-      transparent
-    ) !important;
-    border-color: color-mix(
-      in oklab,
-      var(--color-base-300) 70%,
-      transparent
-    ) !important;
+    background-color: var(--color-base-100) !important;
+    border-color: var(--color-base-300) !important;
   }
 
   @media (max-width: 767px) {
@@ -802,7 +794,10 @@
   .mesh-gradient::before {
     width: 600px;
     height: 600px;
-    background: oklch(0.55 0.18 250);
+    /* Theme-aware: uses the theme's primary color so the background
+       mesh picks up each theme's personality. Falls back to a blue
+       default on :root without a data-theme. */
+    background: var(--color-primary, oklch(0.55 0.18 250));
     top: -200px;
     right: -200px;
   }
@@ -810,16 +805,21 @@
   .mesh-gradient::after {
     width: 500px;
     height: 500px;
-    background: oklch(0.55 0.15 300);
+    /* Theme-aware: uses the theme's secondary color. */
+    background: var(--color-secondary, oklch(0.55 0.15 300));
     bottom: -150px;
     left: -150px;
     animation-delay: -10s;
     animation-direction: reverse;
   }
 
+  /* When a theme is active, boost the mesh opacity so the theme's
+     primary/secondary colors are actually visible behind the content.
+     Previously this was 0.06 (barely visible); now 0.15 so themes
+     visibly tint the background. */
   [data-theme] .mesh-gradient::before,
   [data-theme] .mesh-gradient::after {
-    opacity: 0.06;
+    opacity: 0.15;
   }
 
   @keyframes float {
