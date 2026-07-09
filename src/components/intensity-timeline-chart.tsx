@@ -1,4 +1,4 @@
-'use client'
+// 'use client'
 
 /**
  * Interactive intensity timeline — Recharts-based replacement for the old
@@ -143,6 +143,17 @@ interface ChartConfig {
   windowEndMs: number
 }
 
+/** Window zoom options for the timeline. `null` = auto-fit (show all doses). */
+const WINDOW_OPTIONS = [
+  { hours: 1, label: '1h' },
+  { hours: 4, label: '4h' },
+  { hours: 12, label: '12h' },
+  { hours: 24, label: '24h' },
+  { hours: null, label: 'All' },
+] as const
+
+export type WindowHours = number | null
+
 /** Compute the dose-height-scaled intensity (0–100, clamped) for a single
  *  dose at a given timestamp. Used by the chart sampler, the tooltip, and
  *  the header combined-intensity badge so they all agree on the same value.
@@ -274,9 +285,12 @@ function buildChartConfig(
   group: SubstanceGroup,
   visibleRoutes: RouteGroup[],
   sampleCount: number,
+  windowOverride?: { startMs: number; endMs: number } | null,
 ): ChartConfig {
-  const windowStartMs = group.windowStart.getTime()
-  const windowEndMs = windowStartMs + group.windowDuration * 60_000
+  // Use the override window (from the zoom selector) if provided, otherwise
+  // fall back to the auto-fit window that covers all doses in the group.
+  const windowStartMs = windowOverride?.startMs ?? group.windowStart.getTime()
+  const windowEndMs = windowOverride?.endMs ?? (windowStartMs + group.windowDuration * 60_000)
   const sampleIntervalMs = (windowEndMs - windowStartMs) / sampleCount
 
   // Build dose series
@@ -336,6 +350,10 @@ export function IntensityTimelineChart() {
   const [selectedRoutes, setSelectedRoutes] = useState<Record<string, string | null>>({})
   const [selectedDoses, setSelectedDoses] = useState<Record<string, string | null>>({})
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
+  // 2.1: window zoom selector. null = auto-fit (show all doses). When set to
+  // a number, the chart clamps to [now - hours, now]. This lets users zoom
+  // into recent activity instead of seeing a wide auto-fit window.
+  const [windowHours, setWindowHours] = useState<WindowHours>(null)
   // Fix 3.2: nowTs is the ONLY thing that changes every 60s. It's passed down
   // as a prop so children can use it for the "now" line position and header
   // badges WITHOUT invalidating their memoized chart-data config.
@@ -405,37 +423,61 @@ export function IntensityTimelineChart() {
 
   return (
     <div className="space-y-4">
-      {/* Substance toggle chips (when >1 group) */}
-      {groups.length > 1 && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {groups.map(g => {
-            const hidden = hiddenSubstances.has(g.key)
-            const color = getCategoryColor(g.categories)
+      {/* Top toolbar: substance toggle chips + window zoom selector */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        {/* Substance toggle chips (when >1 group) */}
+        {groups.length > 1 ? (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {groups.map(g => {
+              const hidden = hiddenSubstances.has(g.key)
+              const color = getCategoryColor(g.categories)
+              return (
+                <button
+                  key={g.key}
+                  onClick={() => setHiddenSubstances(prev => {
+                    const next = new Set(prev)
+                    if (next.has(g.key)) next.delete(g.key)
+                    else next.add(g.key)
+                    return next
+                  })}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'
+                    }`}
+                  style={{ borderColor: hidden ? undefined : color, color }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, opacity: hidden ? 0.3 : 1 }} />
+                  {g.substanceName}
+                </button>
+              )
+            })}
+            {hiddenSubstances.size > 0 && (
+              <button onClick={() => setHiddenSubstances(new Set())} className="text-[10px] text-neutral-content hover:text-base-content ml-0.5">
+                Show all
+              </button>
+            )}
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {/* 2.1: Window zoom selector */}
+        <div className="flex items-center gap-0.5 bg-base-200 rounded-lg p-0.5 shrink-0">
+          {WINDOW_OPTIONS.map(opt => {
+            const isActive = windowHours === opt.hours
             return (
               <button
-                key={g.key}
-                onClick={() => setHiddenSubstances(prev => {
-                  const next = new Set(prev)
-                  if (next.has(g.key)) next.delete(g.key)
-                  else next.add(g.key)
-                  return next
-                })}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'
+                key={opt.label}
+                onClick={() => setWindowHours(opt.hours)}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${isActive
+                    ? 'bg-primary text-primary-content'
+                    : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'
                   }`}
-                style={{ borderColor: hidden ? undefined : color, color }}
               >
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, opacity: hidden ? 0.3 : 1 }} />
-                {g.substanceName}
+                {opt.label}
               </button>
             )
           })}
-          {hiddenSubstances.size > 0 && (
-            <button onClick={() => setHiddenSubstances(new Set())} className="text-[10px] text-neutral-content hover:text-base-content ml-0.5">
-              Show all
-            </button>
-          )}
         </div>
-      )}
+      </div>
 
       {/* Per-substance chart cards */}
       {visibleGroups.map(group => (
@@ -451,6 +493,7 @@ export function IntensityTimelineChart() {
           isExpanded={expandedGroup === group.key}
           onToggleExpand={() => setExpandedGroup(prev => prev === group.key ? null : group.key)}
           nowTs={nowTs}
+          windowHours={windowHours}
         />
       ))}
     </div>
@@ -472,11 +515,13 @@ interface GroupCardProps {
   /** Current time in ms — passed from parent so the 60s tick re-renders
    *  the now-line / phase badges WITHOUT recomputing chart data. */
   nowTs: number
+  /** 2.1: Window zoom override. null = auto-fit. A number = [now - hours, now]. */
+  windowHours: WindowHours
 }
 
 function GroupCard({
   group, getCategoryColor, selectedRoute, selectedDose,
-  onRouteClick, onDoseClick, isExpanded, onToggleExpand, nowTs,
+  onRouteClick, onDoseClick, isExpanded, onToggleExpand, nowTs, windowHours,
 }: GroupCardProps) {
   const [isMobile, setIsMobile] = useState(false)
   // mounted gate — prevents ResponsiveContainer from rendering before the
@@ -508,12 +553,26 @@ function GroupCard({
   }, [group, selectedRoute, selectedDose])
 
   const sampleCount = isMobile ? 80 : 120
+  // 2.1: compute the window override from the zoom selector. When windowHours
+  // is set, clamp to [now - hours, now]. The override is memoized separately
+  // from the chart config so the config memo only invalidates when the
+  // override actually changes (not on every 60s tick).
+  const windowOverride = useMemo(() => {
+    if (windowHours === null) return null
+    const endMs = nowTs
+    const startMs = endMs - windowHours * 60 * 60 * 1000
+    return { startMs, endMs }
+  }, [windowHours, nowTs])
+
   // Fix 3.2: buildChartConfig is pure — it does NOT depend on nowTs, so this
   // memo is stable across the 60s tick. Only the now-line position (which
   // reads nowTs directly in JSX below) updates every minute.
+  // Note: when windowHours is set, the override DOES depend on nowTs (the
+  // window slides with time), so the config will recompute on each tick —
+  // that's intentional and correct for a "last N hours" view.
   const config = useMemo(
-    () => buildChartConfig(group, visibleRoutes, sampleCount),
-    [group, visibleRoutes, sampleCount],
+    () => buildChartConfig(group, visibleRoutes, sampleCount, windowOverride),
+    [group, visibleRoutes, sampleCount, windowOverride],
   )
 
   const now = nowTs
@@ -659,6 +718,19 @@ function GroupCard({
       </CardHeader>
 
       <CardContent className="pt-0">
+        {/* 2.4: Mobile phase strip — a compact at-a-glance bar showing the 4
+            phases (onset/comeup/peak/offset) with proportional widths and a
+            "now" marker. Only shown on mobile, above the full chart. Gives a
+            quick "which phase am I in" read without needing to parse the chart. */}
+        {isMobile && allActive && (
+          <MobilePhaseStrip
+            group={group}
+            nowTs={nowTs}
+            windowStartMs={config.windowStartMs}
+            windowEndMs={config.windowEndMs}
+          />
+        )}
+
         {/* Phase labels row */}
         <div className="relative h-4 mb-1">
           {config.phaseBands.map(band => {
@@ -864,6 +936,95 @@ function GroupCard({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+// ─── Mobile Phase Strip (2.4) ──────────────────────────────────────────────
+
+interface MobilePhaseStripProps {
+  group: SubstanceGroup
+  nowTs: number
+  windowStartMs: number
+  windowEndMs: number
+}
+
+/**
+ * Compact at-a-glance phase bar for mobile.
+ *
+ * Shows the 4 phases (onset/comeup/peak/offset) of the primary dose as
+ * proportional colored segments, with a "now" marker showing where in the
+ * timeline the user currently is. This gives a quick "which phase am I in"
+ * read without needing to parse the full Recharts chart below it.
+ *
+ * Inspired by the old MobilePhaseBar's PhaseProgressBar, but simpler —
+ * just the phase strip + now marker, no SVG curves (those are in the
+ * Recharts chart below).
+ */
+function MobilePhaseStrip({ group, nowTs, windowStartMs, windowEndMs }: MobilePhaseStripProps) {
+  const primaryDose = group.primary
+  const { timings } = primaryDose
+  const doseStartMs = primaryDose.doseTime.getTime()
+
+  // Compute the "now" position as a percentage of the dose's total duration
+  const elapsedMins = (nowTs - doseStartMs) / 60_000
+  const nowPct = (elapsedMins / timings.totalDuration) * 100
+
+  // Only show the strip if "now" is within the dose's active range
+  if (nowPct < 0 || nowPct > 100) return null
+
+  // Phase segments with proportional widths
+  const phases = [
+    { key: 'onset' as const, end: timings.onsetEnd, color: phaseColors.onset.bar },
+    { key: 'comeup' as const, end: timings.comeupEnd, color: phaseColors.comeup.bar },
+    { key: 'peak' as const, end: timings.peakEnd, color: phaseColors.peak.bar },
+    { key: 'offset' as const, end: timings.offsetEnd, color: phaseColors.offset.bar },
+  ]
+
+  // Current phase for the label
+  const currentPhase = getPhaseStatus(primaryDose.doseTime, timings).phase
+  const remaining = Math.max(0, timings.offsetEnd - elapsedMins)
+
+  return (
+    <div className="mb-3">
+      {/* Phase label + remaining time */}
+      <div className="flex items-center justify-between mb-1">
+        <span className={`text-xs font-medium ${phaseColors[currentPhase]?.text || ''}`}>
+          {formatPhaseName(currentPhase)}
+        </span>
+        {remaining > 0 && (
+          <span className="text-[10px] text-neutral-content flex items-center gap-0.5">
+            <Timer className="h-2.5 w-2.5" />
+            {formatMinutes(remaining)} left
+          </span>
+        )}
+      </div>
+
+      {/* Phase progress bar with proportional segments */}
+      <div className="relative h-2.5 rounded-full overflow-hidden flex">
+        {phases.map((p, i) => {
+          const start = i === 0 ? 0 : phases[i - 1].end
+          const widthPct = Math.max(1, ((p.end - start) / timings.totalDuration) * 100)
+          const isPast = elapsedMins >= p.end
+          const isCurrent = currentPhase === p.key
+          return (
+            <div
+              key={p.key}
+              className={`${p.color} transition-all duration-500 ${isPast || isCurrent ? 'opacity-100' : 'opacity-30'
+                }`}
+              style={{ width: `${widthPct}%` }}
+            />
+          )
+        })}
+
+        {/* Now marker — white vertical line at the current position */}
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-white shadow-sm pointer-events-none"
+          style={{ left: `${Math.min(100, Math.max(0, nowPct))}%`, transform: 'translateX(-50%)' }}
+        >
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white shadow" />
+        </div>
+      </div>
+    </div>
   )
 }
 
