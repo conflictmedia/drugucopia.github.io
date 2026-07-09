@@ -4,14 +4,20 @@
   themes:
     light --default,
     dark --prefersdark,
-    cupcake,
-    synthwave,
-    dracula,
-    nord,
-    emerald,
-    sunset,
+    /* Only dark DaisyUI themes are registered — light themes are excluded
+       so no colored base-100 overlay tints the milkdrop background. */
+      aqua,
+    black,
+    business,
     coffee,
-    retro;
+    dim,
+    dracula,
+    forest,
+    halloween,
+    luxury,
+    night,
+    sunset,
+    synthwave;
 }
 
 @source "../components";
@@ -54,31 +60,18 @@
   --font-mono: var(--font-ibm-plex-mono);
 }
 
-/* ─── Light Theme ─── */
-[data-theme="light"] {
-  --radius: 0.75rem;
-
-  --color-base-100: oklch(0.985 0.002 80);
-  --color-base-200: oklch(0.98 0.002 80);
-  --color-base-300: oklch(0.92 0.008 250);
-  --color-base-content: oklch(0.145 0.005 250);
-
-  --color-primary: oklch(0.25 0.06 250);
-  --color-primary-content: oklch(0.98 0 0);
-
-  --color-secondary: oklch(0.96 0.01 250);
-  --color-secondary-content: oklch(0.25 0.06 250);
-
-  --color-accent: oklch(0.94 0.02 250);
-  --color-accent-content: oklch(0.25 0.06 250);
-
-  --color-neutral: oklch(0.96 0.005 250);
-  --color-neutral-content: oklch(0.45 0.02 250);
-
-  --color-info: oklch(0.55 0.18 250);
-  --color-success: oklch(0.65 0.18 150);
-  --color-warning: oklch(0.75 0.15 85);
-  --color-error: oklch(0.577 0.245 27.325);
+/* ─── Prevent DaisyUI theme base colors from tinting the milkdrop ───
+   Many DaisyUI dark themes (synthwave, aqua, etc.) define highly saturated
+   base-100 values. Elements using bg-base-100 (header, cards, mobile nav)
+   then act as a colored overlay on the milkdrop. Override base-100/200/300
+   to neutral dark so only primary/secondary/accent carry the theme color. */
+[data-theme]:not([data-theme="dark"]):not([data-theme="light"]) {
+  --color-base-100: oklch(0.12 0.005 250) !important;
+  --color-base-200: oklch(0.16 0.006 250) !important;
+  --color-base-300: oklch(0.22 0.008 250) !important;
+  --color-neutral: oklch(0.22 0.005 250) !important;
+  --color-neutral-content: oklch(0.65 0.01 250) !important;
+  background-color: transparent !important;
 }
 
 /* ─── Dark Theme ─── */
@@ -152,17 +145,30 @@
      the incremental migration. ─── */
   .glass,
   .card-transparent {
-    background-color: color-mix(in oklab, var(--color-base-100) 80%, transparent) !important;
+    background-color: color-mix(
+      in oklab,
+      var(--color-base-100) 80%,
+      transparent
+    ) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
+    border: 1px solid
+      color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
     box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.05) !important;
   }
 
-  [data-theme="dark"] .glass,
-  [data-theme="dark"] .card-transparent {
-    background-color: color-mix(in oklab, var(--color-base-100) 80%, transparent) !important;
-    border-color: color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
+  [data-theme] .glass,
+  [data-theme] .card-transparent {
+    background-color: color-mix(
+      in oklab,
+      var(--color-base-100) 80%,
+      transparent
+    ) !important;
+    border-color: color-mix(
+      in oklab,
+      var(--color-base-300) 70%,
+      transparent
+    ) !important;
   }
 
   @media (max-width: 767px) {
@@ -229,10 +235,6 @@
     box-shadow: 0 8px 30px oklch(0 0 0 / 20%);
   }
 
-  [data-theme="light"] .card-lift:hover {
-    box-shadow: 0 8px 30px oklch(0 0 0 / 8%);
-  }
-
   /* Disable hover lift on mobile — touch devices don't have hover, and the
      transform forces a compositing-layer promotion on every card. */
   @media (max-width: 767px) {
@@ -243,9 +245,7 @@
       transform: none;
       box-shadow: none;
     }
-    [data-theme="light"] .card-lift:hover {
-      box-shadow: none;
-    }
+
     /* Keep the tap feedback from .card-lift:active defined inline in components */
   }
 
@@ -322,8 +322,8 @@
     animation-direction: reverse;
   }
 
-  [data-theme="dark"] .mesh-gradient::before,
-  [data-theme="dark"] .mesh-gradient::after {
+  [data-theme] .mesh-gradient::before,
+  [data-theme] .mesh-gradient::after {
     opacity: 0.06;
   }
 
@@ -367,11 +367,6 @@
     gap: 0.75rem;
   }
 
-  [data-theme="light"] .visualizer-controls-panel {
-    background: oklch(0.98 0.002 80 / 92%);
-    border-color: oklch(0.85 0.005 250 / 60%);
-  }
-
   @media (max-width: 767px) {
     .visualizer-controls {
       bottom: 6rem;
@@ -400,10 +395,6 @@
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.6);
       backdrop-filter: blur(4px);
-    }
-
-    [data-theme="light"] .modal-backdrop {
-      background: rgba(0, 0, 0, 0.4);
     }
 
     @keyframes slide-up {
@@ -446,10 +437,6 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       background: rgba(0, 0, 0, 0.6);
-    }
-
-    [data-theme="light"] .sticky-nav {
-      background: rgba(255, 255, 255, 0.8);
     }
   }
 
