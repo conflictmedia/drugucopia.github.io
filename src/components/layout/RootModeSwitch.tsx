@@ -16,7 +16,11 @@ export function RootModeSwitch() {
   const trackActive = isTrackView(view)
 
   const navigate = (href: string) => {
-    router.replace(href)
+    // Use `router.push` instead of `router.replace` so search params are
+    // reliably cleared on same-pathname navigation (e.g. /?view=dose-log → /).
+    // `router.replace` on same-pathname does not always clear search params
+    // in Next.js App Router. See AppSidebar / MobileBottomNav for details.
+    router.push(href)
   }
 
   return (
@@ -44,3 +48,5 @@ export function RootModeSwitch() {
     </div>
   )
 }
+
+
