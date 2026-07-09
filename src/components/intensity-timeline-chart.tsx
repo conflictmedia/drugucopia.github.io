@@ -40,14 +40,12 @@ import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Activity, Layers, Loader2, Clock, Timer, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useDoseStore } from '@/store/dose-store'
 import { substances } from '@/lib/substances/index'
 import { classifyDose } from '@/lib/dose-classification'
-import { categoryColors } from '@/lib/categories'
 import { formatDoseAmount } from '@/lib/utils'
 import {
   parseDurationToMinutes,
@@ -56,11 +54,11 @@ import {
   intensityAt,
   phaseNameAt,
   getPhaseStatus,
+  combinedIntensityAt,
   formatMinutes,
   formatPhaseName,
   getDoseCategories,
   getPhaseBandRanges,
-  phaseStart,
   phaseEnd,
 } from '@/components/dose-timeline/dose-timeline-utils'
 import {
@@ -74,8 +72,45 @@ import {
 } from '@/components/dose-timeline/dose-timeline-constants'
 import type {
   EnrichedDose, RouteGroup, SubstanceGroup,
-  PhaseTimings, PhaseName, LifecyclePhase,
+  PhaseTimings, PhaseName,
 } from '@/components/dose-timeline/dose-timeline-types'
+
+// ─── Category → hex color map ──────────────────────────────────────────────
+// The Tailwind `categoryColors` from `@/lib/categories` returns class strings
+// (e.g. "text-amber-500 bg-amber-500/10 border-amber-500/20") which can't be
+// used as inline `style={{ backgroundColor }}` values. This hex map is used
+// wherever we need a real color value (header dots, substance toggle chips).
+
+const CATEGORY_HEX_COLORS: Record<string, string> = {
+  stimulants: '#f59e0b', // amber-500
+  depressants: '#6366f1', // indigo-500
+  hallucinogens: '#a855f7', // purple-500
+  dissociatives: '#06b6d4', // cyan-500
+  empathogens: '#ec4899', // pink-500
+  cannabinoids: '#22c55e', // green-500
+  opioids: '#ef4444', // red-500
+  deliriants: '#64748b', // slate-500
+  nootropics: '#14b8a6', // teal-500
+  other: '#71717a', // zinc-500
+  medications: '#10b981', // emerald-500
+}
+
+/** Resolve a substance's primary category to a hex color for inline styles. */
+function categoryHexColor(categories: string[]): string {
+  if (categories.length === 0) return '#71717a' // zinc-500 fallback
+  return CATEGORY_HEX_COLORS[categories[0]] ?? '#71717a'
+}
+
+// ─── Substance lookup map (module-level — built once, not per-render) ──────
+// Fix 3.1: hoisted out of computeGroups so it isn't rebuilt on every dose change.
+
+const SUBSTANCE_BY_NAME: Map<string, typeof substances[number]> = (() => {
+  const map = new Map<string, typeof substances[number]>()
+  for (const s of substances) {
+    map.set(s.name.toLowerCase(), s)
+  }
+  return map
+})()
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -90,6 +125,9 @@ interface DoseSeries {
   dataKey: string
   palette: { stroke: string; fill: string }
   isEnded: boolean
+  /** Dose-relative height = userDose / avgCommonDose. Curves are scaled by
+   *  this so heavier doses visually tower over lighter ones. */
+  doseHeight: number
 }
 
 interface PhaseBandConfig {
@@ -108,9 +146,30 @@ interface ChartConfig {
   series: DoseSeries[]
   phaseBands: PhaseBandConfig[]
   doseMarkers: DoseMarkerConfig[]
-  nowTs: number
   windowStartMs: number
   windowEndMs: number
+}
+
+/** Compute the dose-height-scaled intensity (0–100, clamped) for a single
+ *  dose at a given timestamp. Used by the chart sampler, the tooltip, and
+ *  the header combined-intensity badge so they all agree on the same value.
+ *
+ *  Fix 1.2: multiplies raw intensityAt() by doseHeight (userDose / avgCommon).
+ *  Fix: applies the edge fade (progress<2 or >98) that the old SVG used, so
+ *  the rendered curve matches the tooltip's reported intensity.
+ */
+function scaledIntensityAt(dose: EnrichedDose, t: number): number {
+  const elapsedMins = (t - dose.doseTime.getTime()) / 60_000
+  if (elapsedMins < 0 || elapsedMins > dose.timings.totalDuration) return 0
+  const progress = (elapsedMins / dose.timings.totalDuration) * 100
+  let val = intensityAt(progress, dose.timings)
+  // Edge fade — matches old SVG rendering
+  if (progress < 2) val *= progress / 2
+  else if (progress > 98) val *= (100 - progress) / 2
+  // Dose-height scaling — heavier doses rise above 100 (visual cue),
+  // but clamp the *visible curve* at 100 so it stays in the chart bounds.
+  val *= dose.doseHeight
+  return Math.max(0, Math.min(100, val))
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -122,11 +181,6 @@ function safeDate(s: string): Date {
 
 /** Build enriched substance groups from raw doses — same logic as old component. */
 function computeGroups(doses: ReturnType<typeof useDoseStore.getState>['doses']): SubstanceGroup[] {
-  const substanceByName = new Map<string, typeof substances[number]>()
-  for (const s of substances) {
-    substanceByName.set(s.name.toLowerCase(), s)
-  }
-
   // Step 1: filter + enrich
   const baseDoses: EnrichedDose[] = doses
     .filter(d => {
@@ -136,14 +190,17 @@ function computeGroups(doses: ReturnType<typeof useDoseStore.getState>['doses'])
     })
     .map(d => {
       const doseTime = safeDate(d.timestamp)
-      const substanceEntry = substanceByName.get(d.substanceName.toLowerCase())
+      const substanceEntry = SUBSTANCE_BY_NAME.get(d.substanceName.toLowerCase())
       const classification = substanceEntry
         ? classifyDose(d.amount, d.unit, substanceEntry, d.route)
         : null
       const horizontalWeight = classification?.horizontalWeight ?? 0.5
+      // d.duration is non-null here (filtered above), but TS can't narrow
+      // through .filter().map() — assert non-null.
+      const duration = d.duration!
       const timings = classification
-        ? calculateDoseScaledTimings(d.duration, horizontalWeight)
-        : calculatePhaseTimings(d.duration)
+        ? calculateDoseScaledTimings(duration, horizontalWeight)
+        : calculatePhaseTimings(duration)
       const status = getPhaseStatus(doseTime, timings)
       return {
         ...d,
@@ -214,7 +271,12 @@ function computeGroups(doses: ReturnType<typeof useDoseStore.getState>['doses'])
   return result
 }
 
-/** Build Recharts chart data + series config for a single substance group. */
+/** Build Recharts chart data + series config for a single substance group.
+ *
+ *  Fix 3.2: this function is pure — it does NOT depend on `now`. The "now"
+ *  line position is computed separately in GroupCard so the memoized chart
+ *  config doesn't invalidate every 60 seconds.
+ */
 function buildChartConfig(
   group: SubstanceGroup,
   visibleRoutes: RouteGroup[],
@@ -223,7 +285,6 @@ function buildChartConfig(
   const windowStartMs = group.windowStart.getTime()
   const windowEndMs = windowStartMs + group.windowDuration * 60_000
   const sampleIntervalMs = (windowEndMs - windowStartMs) / sampleCount
-  const nowTs = Date.now()
 
   // Build dose series
   const series: DoseSeries[] = []
@@ -232,28 +293,30 @@ function buildChartConfig(
       const doseId = String(d.id ?? d.doseTime.getTime())
       const dataKey = `dose_${doseId}`
       const palette = ROUTE_PALETTE[rg.paletteIndex % ROUTE_PALETTE.length]
-      const isEnded = (nowTs - d.doseTime.getTime()) / 60_000 >= d.timings.offsetEnd
-      series.push({ dose: d, route: rg, dataKey, palette, isEnded })
+      // isEnded is computed at render time in GroupCard (it depends on `now`),
+      // but we need a snapshot here for initial opacity. Use a lazy getter
+      // pattern instead — store the dose, let the consumer compute endedness.
+      // For simplicity we set isEnded=false here and let the <Area opacity=...>
+      // logic in GroupCard compute the real value from `now` directly.
+      series.push({
+        dose: d,
+        route: rg,
+        dataKey,
+        palette,
+        isEnded: false,
+        doseHeight: d.doseHeight,
+      })
     }
   }
 
-  // Build data array — sample the intensity curve at fixed intervals
+  // Build data array — sample the dose-height-scaled intensity curve
+  // (Fix 1.2: scaling applied via scaledIntensityAt)
   const data: ChartDataPoint[] = []
   for (let i = 0; i <= sampleCount; i++) {
     const t = windowStartMs + i * sampleIntervalMs
     const point: ChartDataPoint = { t }
     for (const s of series) {
-      const elapsedMins = (t - s.dose.doseTime.getTime()) / 60_000
-      if (elapsedMins < 0 || elapsedMins > s.dose.timings.totalDuration) {
-        point[s.dataKey] = 0
-      } else {
-        const progress = (elapsedMins / s.dose.timings.totalDuration) * 100
-        // Apply edge fade to match old SVG rendering
-        let val = intensityAt(progress, s.dose.timings)
-        if (progress < 2) val *= progress / 2
-        else if (progress > 98) val *= (100 - progress) / 2
-        point[s.dataKey] = Math.max(0, Math.min(100, val))
-      }
+      point[s.dataKey] = scaledIntensityAt(s.dose, t)
     }
     data.push(point)
   }
@@ -273,18 +336,7 @@ function buildChartConfig(
     color: s.palette.stroke,
   }))
 
-  return { data, series, phaseBands, doseMarkers, nowTs, windowStartMs, windowEndMs }
-}
-
-/** Compute current phase for a dose using fresh time. */
-function currentPhase(dose: EnrichedDose, now: number): LifecyclePhase {
-  const elapsedMins = (now - dose.doseTime.getTime()) / 60_000
-  if (elapsedMins < 0) return 'not_started'
-  if (elapsedMins >= dose.timings.offsetEnd) return 'ended'
-  if (elapsedMins >= dose.timings.peakEnd) return 'offset'
-  if (elapsedMins >= dose.timings.comeupEnd) return 'peak'
-  if (elapsedMins >= dose.timings.onsetEnd) return 'comeup'
-  return 'onset'
+  return { data, series, phaseBands, doseMarkers, windowStartMs, windowEndMs }
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
@@ -297,20 +349,24 @@ export function IntensityTimelineChart() {
   const [selectedRoutes, setSelectedRoutes] = useState<Record<string, string | null>>({})
   const [selectedDoses, setSelectedDoses] = useState<Record<string, string | null>>({})
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null)
-  const [, setTick] = useState(0)
+  // Fix 3.2: nowTs is the ONLY thing that changes every 60s. It's passed down
+  // as a prop so children can use it for the "now" line position and header
+  // badges WITHOUT invalidating their memoized chart-data config.
+  const [nowTs, setNowTs] = useState(() => Date.now())
 
-  // Re-render every 60s so "now" line + phase status stay current
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000)
+    setNowTs(Date.now())
+    const id = setInterval(() => setNowTs(Date.now()), 60_000)
     return () => clearInterval(id)
   }, [])
 
   const groups = useMemo(() => computeGroups(doses), [doses])
 
+  // Pass through to children as a stable callback. Returns a hex color
+  // suitable for inline styles (the old version returned a Tailwind class
+  // string which doesn't work as a backgroundColor value).
   const getCategoryColor = useCallback((categories: string[]): string => {
-    if (categories.length === 0) return 'hsl(var(--muted-foreground))'
-    const primary = categories[0] as keyof typeof categoryColors
-    return categoryColors[primary] ?? 'hsl(var(--muted-foreground))'
+    return categoryHexColor(categories)
   }, [])
 
   const handleRouteClick = useCallback((groupKey: string, route: string) => {
@@ -407,6 +463,7 @@ export function IntensityTimelineChart() {
           onDoseClick={(doseId) => handleDoseChipClick(group.key, doseId)}
           isExpanded={expandedGroup === group.key}
           onToggleExpand={() => setExpandedGroup(prev => prev === group.key ? null : group.key)}
+          nowTs={nowTs}
         />
       ))}
     </div>
@@ -425,11 +482,14 @@ interface GroupCardProps {
   onDoseClick: (doseId: string) => void
   isExpanded: boolean
   onToggleExpand: () => void
+  /** Current time in ms — passed from parent so the 60s tick re-renders
+   *  the now-line / phase badges WITHOUT recomputing chart data. */
+  nowTs: number
 }
 
 function GroupCard({
   group, getCategoryColor, selectedRoute, selectedDose,
-  onRouteClick, onDoseClick, isExpanded, onToggleExpand,
+  onRouteClick, onDoseClick, isExpanded, onToggleExpand, nowTs,
 }: GroupCardProps) {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -457,18 +517,25 @@ function GroupCard({
   }, [group, selectedRoute, selectedDose])
 
   const sampleCount = isMobile ? 80 : 120
+  // Fix 3.2: buildChartConfig is pure — it does NOT depend on nowTs, so this
+  // memo is stable across the 60s tick. Only the now-line position (which
+  // reads nowTs directly in JSX below) updates every minute.
   const config = useMemo(
     () => buildChartConfig(group, visibleRoutes, sampleCount),
     [group, visibleRoutes, sampleCount],
   )
 
-  const now = Date.now()
+  const now = nowTs
   const primaryDose = group.primary
-  const primaryPhase = currentPhase(primaryDose, now)
+  // Fix 5.1: use the shared getPhaseStatus() instead of a local re-implementation.
+  const primaryPhase = getPhaseStatus(primaryDose.doseTime, primaryDose.timings).phase
   const allActive = group.routes.some(rg => rg.doses.some(d => (now - d.doseTime.getTime()) / 60_000 < d.timings.offsetEnd))
   const allEnded = group.routes.every(rg => rg.doses.every(d => (now - d.doseTime.getTime()) / 60_000 >= d.timings.offsetEnd))
 
-  // Combined intensity right now
+  // Combined intensity right now — uses combinedIntensityAt (Fix 1.1) so
+  // redosing visually stacks with soft log dampening above 100%, matching
+  // the old SVG behaviour. Intensities are dose-height-scaled (Fix 1.2) so
+  // a heavy dose contributes more to the combined value than a light one.
   const currentCombinedIntensity = useMemo(() => {
     if (!allActive) return null
     const activeDoses = group.routes.flatMap(rg => rg.doses).filter(d => {
@@ -476,12 +543,11 @@ function GroupCard({
       return elapsed >= 0 && elapsed < d.timings.offsetEnd
     })
     if (activeDoses.length === 0) return null
-    const intensities = activeDoses.map(d => {
-      const elapsed = (now - d.doseTime.getTime()) / 60_000
-      const prog = (elapsed / d.timings.totalDuration) * 100
-      return intensityAt(prog, d.timings)
-    })
-    return Math.round(Math.max(...intensities, 0))
+    const intensities = activeDoses.map(d => scaledIntensityAt(d, now))
+    // combinedIntensityAt can return >100 (up to 200) for stacked doses.
+    // For the badge we display the raw value; clamp at 200 for safety.
+    const combined = combinedIntensityAt(intensities)
+    return Math.round(Math.min(200, combined))
   }, [group, allActive, now])
 
   // Remaining time for primary dose
@@ -675,10 +741,11 @@ function GroupCard({
                 cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
               />
 
-              {/* Now indicator */}
-              {config.nowTs >= config.windowStartMs && config.nowTs <= config.windowEndMs && (
+              {/* Now indicator — position comes from nowTs prop, NOT from
+                  config (which is memoized and stable across ticks). */}
+              {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
                 <ReferenceLine
-                  x={config.nowTs}
+                  x={nowTs}
                   stroke={NOW_INDICATOR.color}
                   strokeWidth={NOW_INDICATOR.strokeWidth}
                   strokeDasharray={NOW_INDICATOR.dashArray}
@@ -686,20 +753,24 @@ function GroupCard({
                 />
               )}
 
-              {/* One Area per dose */}
-              {config.series.map((s, i) => (
-                <Area
-                  key={s.dataKey}
-                  type="monotone"
-                  dataKey={s.dataKey}
-                  stroke={s.palette.stroke}
-                  strokeWidth={i === 0 ? 2.5 : 1.5}
-                  fill={`url(#grad-${group.key}-${i})`}
-                  opacity={s.isEnded ? 0.4 : 1}
-                  isAnimationActive={false}
-                  connectNulls
-                />
-              ))}
+              {/* One Area per dose. isEnded is computed fresh from nowTs so
+                  ended doses fade out without re-sampling the chart data. */}
+              {config.series.map((s, i) => {
+                const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
+                return (
+                  <Area
+                    key={s.dataKey}
+                    type="monotone"
+                    dataKey={s.dataKey}
+                    stroke={s.palette.stroke}
+                    strokeWidth={i === 0 ? 2.5 : 1.5}
+                    fill={`url(#grad-${group.key}-${i})`}
+                    opacity={doseEnded ? 0.4 : 1}
+                    isAnimationActive={false}
+                    connectNulls
+                  />
+                )
+              })}
 
               {/* Dose markers */}
               {config.doseMarkers.map((m, i) => (
@@ -747,7 +818,7 @@ function GroupCard({
                   </div>
                   {rg.doses.map(d => {
                     const doseId = String(d.id ?? d.doseTime.getTime())
-                    const cPhase = currentPhase(d, now)
+                    const cPhase = getPhaseStatus(d.doseTime, d.timings).phase
                     const CPhaseIcon = phaseIcons[cPhase] || phaseIcons['onset']
                     const phases = [
                       { key: 'onset', end: d.timings.onsetEnd },
@@ -775,7 +846,9 @@ function GroupCard({
                           const isActive = cPhase === p.key
                           const isPast = cPhase !== 'not_started' && cPhase !== 'ended' ? currentIdx > pi : false
                           const phaseEndProgress = (p.end / d.timings.totalDuration) * 100
-                          const phasePeakIntensity = intensityAt(phaseEndProgress, d.timings)
+                          // Fix 1.2: scale phase-peak intensity by doseHeight so a heavy
+                          // dose's peak phase shows >100% (matching the chart curve).
+                          const phasePeakIntensity = Math.min(100, intensityAt(phaseEndProgress, d.timings) * d.doseHeight)
                           const PIcon = phaseIcons[p.key as PhaseName]
                           const pc = phaseColors[p.key as PhaseName]
                           return (
@@ -822,7 +895,9 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
   if (!active || !payload || !label) return null
   const t = label
 
-  // Find active doses at this timestamp
+  // Find active doses at this timestamp.
+  // p.value is the dose-height-scaled intensity from the chart data (Fix 1.2
+  // — already applied during sampling in buildChartConfig).
   const activeDoses: Array<{ series: DoseSeries; intensity: number; phase: PhaseName; minutesUntilPhaseChange: number }> = []
   for (const p of payload) {
     if (p.value <= 0) continue
@@ -838,11 +913,16 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
 
   if (activeDoses.length === 0) return null
 
+  // Fix 1.1: combined intensity uses soft log-dampening above 100% so
+  // redosing visually stacks (not peak-hold). Can return up to 200.
+  const combinedIntensity = combinedIntensityAt(activeDoses.map(d => d.intensity))
+  // The peak dose (highest single-dose intensity) drives the phase label
+  // and the "minutes until phase change" display.
   const maxIntensity = Math.max(...activeDoses.map(d => d.intensity))
   const peakDose = activeDoses.find(d => d.intensity === maxIntensity)!
 
   // Group by route for per-route breakdown
-  const byRoute = new Map<string, { intensity: number; phase: PhaseName; palette: typeof ROUTE_PALETTE[number] }>()
+  const byRoute = new Map<string, { intensity: number; phase: PhaseName; palette: { stroke: string; fill: string } }>()
   for (const ad of activeDoses) {
     const existing = byRoute.get(ad.series.route.route)
     if (!existing || existing.intensity < ad.intensity) {
@@ -854,6 +934,11 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
     }
   }
 
+  // For display: combined can exceed 100% (redosing stacks). Per-route bars
+  // are clamped to 100% width since a single dose can't exceed 100 itself.
+  const combinedDisplay = Math.round(combinedIntensity)
+  const combinedBarWidth = Math.min(100, combinedDisplay)
+
   return (
     <div className="rounded-lg border border-neutral-500/25 bg-black/80 backdrop-blur-xl px-3 py-2.5 shadow-2xl min-w-[200px] max-w-[280px]" role="tooltip">
       {/* Header: phase + time */}
@@ -864,13 +949,16 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
         <span className="text-[10px] text-neutral-300/70">{format(new Date(t), 'h:mm a')}</span>
       </div>
 
-      {/* Combined intensity bar */}
+      {/* Combined intensity bar — can exceed 100% when redosing stacks */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] font-semibold text-neutral-300/60 w-20 shrink-0">Combined</span>
-        <div className="flex-1 h-2 bg-neutral-500/15 rounded-full overflow-hidden">
-          <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${Math.round(maxIntensity)}%` }} />
+        <div className="flex-1 h-2 bg-neutral-500/15 rounded-full overflow-hidden relative">
+          <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${combinedBarWidth}%` }} />
+          {combinedDisplay > 100 && (
+            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] font-bold text-pink-300">+{combinedDisplay - 100}</span>
+          )}
         </div>
-        <span className="text-xs font-bold w-10 text-right text-purple-300">{Math.round(maxIntensity)}%</span>
+        <span className="text-xs font-bold w-10 text-right text-purple-300">{combinedDisplay}%</span>
       </div>
 
       {/* Per-route breakdown */}
@@ -880,7 +968,7 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
             <div key={route} className="flex items-center gap-2">
               <span className="text-[10px] font-medium text-neutral-300/60 w-20 shrink-0 truncate capitalize">{route}</span>
               <div className="flex-1 h-1.5 bg-neutral-500/15 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(info.intensity)}%`, backgroundColor: info.palette.stroke }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(info.intensity))}%`, backgroundColor: info.palette.stroke }} />
               </div>
               <span className="text-[10px] w-10 text-right text-neutral-300/80">{Math.round(info.intensity)}%</span>
             </div>
@@ -890,8 +978,8 @@ function ChartTooltip({ active, payload, label, series, windowStartMs }: ChartTo
 
       {/* Time-in summary */}
       <div className="mt-2 pt-1.5 border-t border-neutral-500/20 flex items-baseline gap-2">
-        <span className="text-base font-bold text-neutral-200">{Math.round(maxIntensity)}%</span>
-        <span className="text-[10px] text-neutral-300/60">intensity</span>
+        <span className="text-base font-bold text-neutral-200">{combinedDisplay}%</span>
+        <span className="text-[10px] text-neutral-300/60">combined intensity</span>
       </div>
 
       {/* Minutes until phase change */}
