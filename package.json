@@ -36,12 +36,12 @@
     "react-day-picker": "^9.8.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.60.0",
+    "react-is": "^19.2.7",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^3.0.3",
     "react-syntax-highlighter": "^15.6.1",
     "react-use": "^17.6.1",
-    "rechart": "^0.0.1",
-    "recharts": "^2.15.4",
+    "recharts": "^3.9.2",
     "sharp": "^0.34.5",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
@@ -67,10 +67,10 @@
     "@prisma/client@6.19.3": true,
     "@prisma/engines@6.19.3": true,
     "es5-ext@0.10.64": true,
-    "@swc/core@1.15.33": true,
     "prisma@6.19.3": true,
-    "protobufjs@7.6.0": true,
     "sharp@0.34.5": true,
-    "unrs-resolver@1.12.0": true
+    "@swc/core@1.15.43": true,
+    "protobufjs@7.6.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }
