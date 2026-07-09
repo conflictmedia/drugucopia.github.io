@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff } from 'lucide-react'
 import { substances, searchSubstancesRanked } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
@@ -200,8 +200,12 @@ const ROUTE_ALIASES: Record<string, string> = {
   'vape': 'vaped',
   'iv': 'intravenous',
   'im': 'intramuscular',
-  'subq': 'sublingual',
-  'subcutaneous': 'sublingual',
+  // B3 fix: SubQ / subcutaneous is an injection, NOT sublingual.
+  // Map to intramuscular so duration/route logic for injected substances
+  // applies; users who want a true Subcutaneous route can type it as a
+  // custom value (the Combobox allows custom entries).
+  'subq': 'intramuscular',
+  'subcutaneous': 'intramuscular',
   'under tongue': 'sublingual',
   'anal': 'rectal',
   'boofed': 'rectal',
@@ -374,8 +378,8 @@ function parseQuickInput(
         categories = Array.isArray(raw.categories) && raw.categories.length > 0
           ? raw.categories
           : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-          ? [raw.category]
-          : []
+            ? [raw.category]
+            : []
       } else {
         const originalInputLower = inputWithoutRoute.toLowerCase()
         let candidates: { s: typeof substanceList[0]; score: number }[] = []
@@ -422,8 +426,8 @@ function parseQuickInput(
           categories = Array.isArray(raw.categories) && raw.categories.length > 0
             ? raw.categories
             : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-            ? [raw.category]
-            : []
+              ? [raw.category]
+              : []
         }
       }
     }
@@ -456,8 +460,8 @@ function parseQuickInput(
     const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
       ? raw.categories
       : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-      ? [raw.category]
-      : []
+        ? [raw.category]
+        : []
     return { substanceName: fullExactMatch.name, substanceId: fullExactMatch.id, amount: '', unit: null, route: extractedRoute, categories: cats, mathResult: null }
   }
 
@@ -493,8 +497,8 @@ function parseQuickInput(
       const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
         ? raw.categories
         : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-        ? [raw.category]
-        : []
+          ? [raw.category]
+          : []
       return { substanceName: found.name, substanceId: found.id, amount: '', unit: null, route: extractedRoute, categories: cats, mathResult: null }
     }
     return { substanceName: inputWithoutRoute, substanceId: '', amount: '', unit: null, route: extractedRoute, categories: [], mathResult: null }
@@ -515,7 +519,7 @@ function parseQuickInput(
         resolvedUnit = lower
       }
     }
-    
+
     if (resolvedUnit && UNIT_TO_ROUTE[resolvedUnit]) {
       unitImpliedRoute = UNIT_TO_ROUTE[resolvedUnit]
     }
@@ -546,8 +550,8 @@ function parseQuickInput(
       categories = Array.isArray(raw.categories) && raw.categories.length > 0
         ? raw.categories
         : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-        ? [raw.category]
-        : []
+          ? [raw.category]
+          : []
     } else {
       const originalInputLower = inputWithoutRoute.toLowerCase()
       let candidates: { s: typeof substanceList[0]; score: number }[] = []
@@ -594,8 +598,8 @@ function parseQuickInput(
         categories = Array.isArray(raw.categories) && raw.categories.length > 0
           ? raw.categories
           : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-          ? [raw.category]
-          : []
+            ? [raw.category]
+            : []
       }
     }
   }
@@ -694,6 +698,13 @@ export function DoseLoggerModal({
   const doses = useDoseStore(s => open ? s.doses : EMPTY_DOSES)
   const addDose = useDoseStore(s => s.addDose)
 
+  // A1 — favorites from UI store. initializeFavorites runs once on mount
+  // to lazy-load from localStorage (avoids SSR hydration mismatch).
+  const favoriteSubstances = useUIStore(s => s.favoriteSubstances)
+  const toggleFavorite = useUIStore(s => s.toggleFavorite)
+  const initializeFavorites = useUIStore(s => s.initializeFavorites)
+  useEffect(() => { initializeFavorites() }, [initializeFavorites])
+
   const [quickInput, setQuickInput] = useState('')
   const [quickInputSubstanceQuery, setQuickInputSubstanceQuery] = useState('')
   const [mathResult, setMathResult] = useState<{ result: number; unit: string; expression: string } | null>(null)
@@ -705,8 +716,8 @@ export function DoseLoggerModal({
   const [substanceName, setSubstanceName] = useState(preselectedSubstanceName || '')
   const [categories, setCategories] = useState<string[]>(
     Array.isArray(preselectedCategory) ? preselectedCategory
-    : preselectedCategory ? [preselectedCategory]
-    : []
+      : preselectedCategory ? [preselectedCategory]
+        : []
   )
   const [amount, setAmount] = useState('')
   const [unit, setUnit] = useState('mg')
@@ -716,7 +727,7 @@ export function DoseLoggerModal({
   const [notes, setNotes] = useState('')
   const [mood, setMood] = useState('')
   const [setting, setSetting] = useState('')
-  const [intensity] = useState([5])
+  const [intensity, setIntensity] = useState(5)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
 
   const [durationOverride, setDurationOverride] = useState<Duration | null>(null)
@@ -731,8 +742,8 @@ export function DoseLoggerModal({
         const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
           ? raw.categories
           : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-          ? [raw.category]
-          : []
+            ? [raw.category]
+            : []
         setCategories(cats)
       }
     } else if (preselectedCategory) {
@@ -761,6 +772,7 @@ export function DoseLoggerModal({
       setNotes('')
       setMood('')
       setSetting('')
+      setIntensity(5)
     }
   }, [open, preselectedSubstanceId, preselectedRoute])
 
@@ -815,11 +827,25 @@ export function DoseLoggerModal({
     return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
   }, [quickInputSubstanceQuery, showQuickSuggestions])
 
-  const selectRecentSubstance = useCallback((sub: { name: string; id: string; category: string }) => {
+  // A2: "log same as last time" — tapping a recent chip pre-fills the
+  // substance, amount, unit, and route from the user's most recent log
+  // of that substance. Falls back to substance-only if no amount/unit
+  // was recorded.
+  const selectRecentSubstance = useCallback((sub: {
+    name: string
+    id: string
+    category: string
+    amount?: string
+    unit?: string
+    route?: string
+  }) => {
     setSubstanceId(sub.id)
     setSubstanceName(sub.name)
     setCategories(sub.category ? [sub.category] : [])
     setQuickInput(sub.name)
+    if (sub.amount) setAmount(sub.amount)
+    if (sub.unit) setUnit(sub.unit)
+    if (sub.route) setRoute(sub.route)
     quickInputRef.current?.focus()
   }, [])
 
@@ -855,8 +881,8 @@ export function DoseLoggerModal({
             const cats = Array.isArray(raw.categories) && raw.categories.length > 0
               ? raw.categories
               : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-              ? [raw.category]
-              : []
+                ? [raw.category]
+                : []
             selectQuickSuggestion(sel.substance.id, sel.substance.name, cats)
             return
           }
@@ -869,14 +895,26 @@ export function DoseLoggerModal({
   const selectedSubstance = useMemo(() => substances.find(s => s.id === substanceId), [substanceId, substances])
 
   const recentSubstances = useMemo(() => {
-    const seen = new Map<string, { name: string; id: string; category: string }>()
+    // A2: include the last-dose amount/unit/route so the chip can
+    // pre-fill all of them with a single tap ("log same as last time").
+    const seen = new Map<string, {
+      name: string
+      id: string
+      category: string
+      amount?: string
+      unit?: string
+      route?: string
+    }>()
     for (let i = doses.length - 1; i >= 0; i--) {
       const d = doses[i]
       if (d.substanceName && !seen.has(d.substanceName)) {
         seen.set(d.substanceName, {
           name: d.substanceName,
           id: d.substanceId || '',
-          category: d.categories?.[0] || ''
+          category: d.categories?.[0] || '',
+          amount: d.amount != null ? String(d.amount) : undefined,
+          unit: d.unit || undefined,
+          route: d.route || undefined,
         })
       }
       if (seen.size >= 8) break
@@ -944,7 +982,7 @@ export function DoseLoggerModal({
       return interactionList.some(i => {
         const lower = i.toLowerCase()
         return compiledRegexes.some(regex => regex.test(lower)) ||
-               shortKeywords.some(k => lower.includes(k))
+          shortKeywords.some(k => lower.includes(k))
       })
     }
 
@@ -962,8 +1000,8 @@ export function DoseLoggerModal({
       const keywords = (sub: any) => [sub.name, sub.class, ...(sub.categories || []), ...(sub.commonNames || []), ...(sub.aliases || [])]
         .filter(Boolean).map((s: string) => s.toLowerCase()).filter((s: string) => s !== 'other' && s.length > 2)
 
-      const activeKw    = keywords(activeSubstance)
-      const selectedKw  = keywords(selectedSubstance)
+      const activeKw = keywords(activeSubstance)
+      const selectedKw = keywords(selectedSubstance)
 
       const fwd = matchAny(flatInteractions(selectedSubstance), activeKw)
       const rev = matchAny(flatInteractions(activeSubstance), selectedKw)
@@ -1021,7 +1059,7 @@ export function DoseLoggerModal({
         notes: finalNotes,
         mood: mood || null,
         setting: setting || null,
-        intensity: intensity[0],
+        intensity,
         createdAt: now,
         updatedAt: now,
       }
@@ -1076,6 +1114,7 @@ export function DoseLoggerModal({
     setNotes('')
     setMood('')
     setSetting('')
+    setIntensity(5)
     setDurationOverride(null)
   }
 
@@ -1088,8 +1127,8 @@ export function DoseLoggerModal({
       const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
         ? raw.categories
         : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-        ? [raw.category]
-        : []
+          ? [raw.category]
+          : []
       setCategories(cats)
     } else {
       setSubstanceId(value)
@@ -1194,23 +1233,111 @@ export function DoseLoggerModal({
               Quick Input
             </Label>
 
+            {/* A1 — Pinned favorites row. Rendered above recents so the
+                user's most-used substances are always one tap away. */}
+            {favoriteSubstances.length > 0 && !quickInput && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Pin className="h-3 w-3 text-amber-500/80 shrink-0" />
+                <span className="text-[11px] text-neutral-content/60">Pinned:</span>
+                {favoriteSubstances.map(sub => {
+                  // Look up the last-dose details so favorites also
+                  // benefit from A2's "log same as last time" behavior.
+                  const lastDose = recentSubstances.find(
+                    (r) => r.id === sub.id || r.name.toLowerCase() === sub.name.toLowerCase(),
+                  )
+                  return (
+                    <div
+                      key={sub.id || sub.name}
+                      className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => selectRecentSubstance({
+                          name: sub.name,
+                          id: sub.id,
+                          category: sub.category || lastDose?.category || '',
+                          amount: lastDose?.amount,
+                          unit: lastDose?.unit,
+                          route: lastDose?.route,
+                        })}
+                        className="tap-sm inline-flex items-center gap-1 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 min-h-0"
+                      >
+                        {sub.category && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_DOTS[sub.category] || 'bg-zinc-500'}`} />
+                        )}
+                        {sub.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(sub)}
+                        className="tap-sm h-5 w-5 inline-flex items-center justify-center text-amber-600/70 hover:text-amber-700 dark:text-amber-400/70 dark:hover:text-amber-300 transition-colors min-h-0"
+                        aria-label={`Unpin ${sub.name}`}
+                        title={`Unpin ${sub.name}`}
+                      >
+                        <PinOff className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
             {recentSubstances.length > 0 && !quickInput && (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Clock className="h-3 w-3 text-neutral-content/60 shrink-0" />
                 <span className="text-[11px] text-neutral-content/60">Recent:</span>
-                {recentSubstances.map(sub => (
-                  <button
-                    key={sub.id || sub.name}
-                    type="button"
-                    onClick={() => selectRecentSubstance(sub)}
-                    className="tap-sm inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors min-h-0"
-                  >
-                    {sub.category && (
-                      <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_DOTS[sub.category] || 'bg-zinc-500'}`} />
-                    )}
-                    {sub.name}
-                  </button>
-                ))}
+                {recentSubstances.map(sub => {
+                  const isFav = favoriteSubstances.some(
+                    (f) => f.id === sub.id || f.name.toLowerCase() === sub.name.toLowerCase(),
+                  )
+                  return (
+                    <div
+                      key={sub.id || sub.name}
+                      className={cn(
+                        'inline-flex items-center gap-0.5 rounded-full border transition-colors',
+                        isFav
+                          ? 'bg-amber-500/5 border-amber-500/20'
+                          : 'bg-base-200 border-transparent hover:bg-base-300',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => selectRecentSubstance(sub)}
+                        className="tap-sm inline-flex items-center gap-1 px-2 py-0.5 text-xs text-base-content/80 hover:text-base-content min-h-0"
+                        title={
+                          sub.amount && sub.unit
+                            ? `Log ${sub.amount} ${sub.unit} ${sub.name} (${sub.route || 'oral'})`
+                            : `Select ${sub.name}`
+                        }
+                      >
+                        {sub.category && (
+                          <span className={`w-1.5 h-1.5 rounded-full ${CATEGORY_DOTS[sub.category] || 'bg-zinc-500'}`} />
+                        )}
+                        {sub.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          toggleFavorite({
+                            id: sub.id || `custom-${sub.name.toLowerCase().replace(/\s+/g, '-')}`,
+                            name: sub.name,
+                            category: sub.category || undefined,
+                          })
+                        }
+                        className={cn(
+                          'tap-sm h-5 w-5 inline-flex items-center justify-center transition-colors min-h-0',
+                          isFav
+                            ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300'
+                            : 'text-neutral-content/40 hover:text-amber-600 dark:hover:text-amber-400',
+                        )}
+                        aria-label={isFav ? `Unpin ${sub.name}` : `Pin ${sub.name}`}
+                        title={isFav ? `Unpin ${sub.name}` : `Pin ${sub.name}`}
+                      >
+                        {isFav ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -1250,8 +1377,8 @@ export function DoseLoggerModal({
                               const cats = Array.isArray(raw.categories) && raw.categories.length > 0
                                 ? raw.categories
                                 : typeof raw.category === 'string' && raw.category && raw.category !== 'unknown'
-                                ? [raw.category]
-                                : []
+                                  ? [raw.category]
+                                  : []
                               selectQuickSuggestion(sub.id, sub.name, cats)
                             }}
                             onMouseEnter={() => setQuickActiveIndex(idx)}
@@ -1446,6 +1573,33 @@ export function DoseLoggerModal({
               placeholder="Select or type custom..."
               allowCustom={true}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="dose-intensity" className="flex items-center justify-between">
+              <span>Intensity (optional)</span>
+              <span className="text-xs text-neutral-content tabular-nums">{intensity}/10</span>
+            </Label>
+            <input
+              id="dose-intensity"
+              type="range"
+              min={0}
+              max={10}
+              step={1}
+              value={intensity}
+              onChange={(e) => setIntensity(Number(e.target.value))}
+              className="range range-xs range-primary"
+              aria-valuemin={0}
+              aria-valuemax={10}
+              aria-valuenow={intensity}
+            />
+            <div className="flex justify-between text-[10px] text-neutral-content/70 px-0.5">
+              <span>None</span>
+              <span>Mild</span>
+              <span>Moderate</span>
+              <span>Strong</span>
+              <span>Peak</span>
+            </div>
           </div>
 
           <div className="grid gap-2">

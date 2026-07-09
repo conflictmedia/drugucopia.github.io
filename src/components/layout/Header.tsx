@@ -1,6 +1,6 @@
 'use client'
 
-import { Menu, Search, Plus } from 'lucide-react'
+import { Menu, Search, Plus, Cloud, CloudOff, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { usePathname, useRouter } from 'next/navigation'
@@ -8,6 +8,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { searchSubstancesRanked } from '@/lib/substances/index'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useSync } from '@/contexts/sync-context'
+import { formatDistanceToNow } from 'date-fns'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -62,9 +64,28 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
   const mobileSearchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // D1 — sync status for the global header indicator.
+  const { syncStatus, lastSyncedAt } = useSync()
+  // Re-render every 30s while synced so the "synced Xm ago" label stays
+  // fresh without forcing the user to interact. Cheap because it only
+  // updates the small indicator's title text.
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (syncStatus !== 'synced') return
+    const id = window.setInterval(() => setTick((t) => t + 1), 30_000)
+    return () => window.clearInterval(id)
+  }, [syncStatus])
+
   const title = pageTitles[pathname] || 'Drugucopia'
 
   const searchResults = searchSubstancesRanked(searchQuery, { limit: 6 })
+
+  // B1 fix: dispatch a global event so the home grid (home-content.tsx) can
+  // filter its visible substance list as the user types in the header search.
+  // The home grid listens on `drugucopia:search` and updates its own state.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('drugucopia:search', { detail: searchQuery }))
+  }, [searchQuery])
 
   useEffect(() => {
     setActiveIndex(-1)
@@ -209,6 +230,54 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
 
         {/* Right: Actions */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* D1 — Global sync status indicator.
+              Always visible so users know their data is backed up no
+              matter which page they're on. Clicking it takes them to
+              the dose-log view where the full sync panel lives. */}
+          <button
+            type="button"
+            onClick={() => router.push('/?view=dose-log')}
+            className={cn(
+              'btn btn-ghost btn-sm btn-square h-9 w-9 min-h-0 relative',
+              syncStatus === 'synced' && 'text-green-600 dark:text-green-400',
+              syncStatus === 'connecting' && 'text-amber-500',
+              syncStatus === 'error' && 'text-error',
+              syncStatus === 'idle' && 'text-neutral-content',
+            )}
+            aria-label={
+              syncStatus === 'synced'
+                ? lastSyncedAt
+                  ? `Synced ${formatDistanceToNow(new Date(lastSyncedAt), { addSuffix: true })}`
+                  : 'Synced'
+                : syncStatus === 'connecting'
+                  ? 'Connecting to sync…'
+                  : syncStatus === 'error'
+                    ? 'Sync error — tap to retry'
+                    : 'Sync off — tap to set up'
+            }
+            title={
+              syncStatus === 'synced'
+                ? lastSyncedAt
+                  ? `Synced ${formatDistanceToNow(new Date(lastSyncedAt), { addSuffix: true })}`
+                  : 'Synced'
+                : syncStatus === 'connecting'
+                  ? 'Connecting…'
+                  : syncStatus === 'error'
+                    ? 'Sync error'
+                    : 'Sync off'
+            }
+          >
+            {syncStatus === 'synced' && <Cloud className="h-4 w-4" />}
+            {syncStatus === 'connecting' && <Loader2 className="h-4 w-4 animate-spin" />}
+            {syncStatus === 'error' && <AlertCircle className="h-4 w-4" />}
+            {syncStatus === 'idle' && <CloudOff className="h-4 w-4" />}
+            {/* Small live dot for synced state so the green is obvious
+                even on monochrome screens. */}
+            {syncStatus === 'synced' && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
+            )}
+          </button>
+
           {/* Dose Log button (home page only) */}
           {isHomePage && showDoseLog && (
             <Button
