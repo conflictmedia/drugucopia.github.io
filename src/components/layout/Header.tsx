@@ -179,8 +179,18 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
             }}
             onFocus={() => { if (searchQuery.trim()) setSearchOpen(true) }}
             onKeyDown={handleKeyDown}
-            className="pl-9 pr-4 h-9 bg-base-200/70 border-base-300/50 focus:border-primary/50 transition-colors"
+            className="pl-9 pr-12 h-9 bg-base-200/70 border-base-300/50 focus:border-primary/50 transition-colors"
           />
+          {/* G1 — ⌘K hint teaches the global palette shortcut. Only show
+              when the input is empty so it doesn't fight with the X button. */}
+          {!searchQuery && (
+            <kbd
+              className="absolute right-3 top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-base-300 bg-base-100/60 text-[10px] font-mono text-neutral-content/70 pointer-events-none"
+              aria-hidden="true"
+            >
+              ⌘K
+            </kbd>
+          )}
           {searchQuery && (
             <button
               onClick={() => { setSearchQuery(''); setSearchOpen(false); setActiveIndex(-1) }}

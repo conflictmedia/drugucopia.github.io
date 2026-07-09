@@ -284,26 +284,81 @@ function KratomCalculatorContent() {
   const addDose = useDoseStore(s => s.addDose)
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
+  // B1 — Persist calculator inputs across sessions.
+  // Priority on first load: URL param (shared links win) → localStorage
+  // (last-used values) → default. After that, every change writes back
+  // to localStorage so a fresh visit / page reload restores the user's
+  // last extract strength, leaf dose, direction, etc. without re-entry.
+  const KRATOM_SETTINGS_KEY = 'drugucopia-kratom-settings'
+
+  type KratomSettings = {
+    inputMode?: InputMode
+    extractValue?: string
+    leafDose?: string
+    extractAmountInput?: string
+    calcDirection?: 'leaf-to-extract' | 'extract-to-leaf'
+    extractUnit?: 'g' | 'mg'
+    isEnhanced?: boolean
+    leafBaseline?: number
+  }
+  function loadKratomSettings(): KratomSettings {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = localStorage.getItem(KRATOM_SETTINGS_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') return parsed as KratomSettings
+    } catch {
+      /* ignore corrupt entry */
+    }
+    return {}
+  }
+  const savedKratom = loadKratomSettings()
+
   const [inputMode, setInputMode] = useState<InputMode>(() => {
     const m = searchParams.get('mode')
-    return m === 'percent' || m === 'ratio' ? m : 'percent'
+    if (m === 'percent' || m === 'ratio') return m
+    return savedKratom.inputMode ?? 'percent'
   })
-  const [extractValue, setExtractValue] = useState<string>(() => searchParams.get('strength') ?? '')
-  const [leafDose, setLeafDose] = useState<string>(() => searchParams.get('leaf') ?? '')
-  const [extractAmountInput, setExtractAmountInput] = useState<string>(() => searchParams.get('extract') ?? '')
+  const [extractValue, setExtractValue] = useState<string>(() => {
+    const v = searchParams.get('strength')
+    if (v !== null) return v
+    return savedKratom.extractValue ?? ''
+  })
+  const [leafDose, setLeafDose] = useState<string>(() => {
+    const v = searchParams.get('leaf')
+    if (v !== null) return v
+    return savedKratom.leafDose ?? ''
+  })
+  const [extractAmountInput, setExtractAmountInput] = useState<string>(() => {
+    const v = searchParams.get('extract')
+    if (v !== null) return v
+    return savedKratom.extractAmountInput ?? ''
+  })
   const [calcDirection, setCalcDirection] = useState<'leaf-to-extract' | 'extract-to-leaf'>(() => {
     const d = searchParams.get('direction')
-    return d === 'leaf-to-extract' || d === 'extract-to-leaf' ? d : 'leaf-to-extract'
+    if (d === 'leaf-to-extract' || d === 'extract-to-leaf') return d
+    return savedKratom.calcDirection ?? 'leaf-to-extract'
   })
   const [extractUnit, setExtractUnit] = useState<'g' | 'mg'>(() => {
     const u = searchParams.get('unit')
-    return u === 'g' || u === 'mg' ? u : 'g'
+    if (u === 'g' || u === 'mg') return u
+    return savedKratom.extractUnit ?? 'g'
   })
-  const [isEnhanced, setIsEnhanced] = useState<boolean>(() => searchParams.get('enhanced') === 'true')
+  const [isEnhanced, setIsEnhanced] = useState<boolean>(() => {
+    const e = searchParams.get('enhanced')
+    if (e === 'true') return true
+    if (e === 'false') return false
+    return savedKratom.isEnhanced ?? false
+  })
   const [leafBaseline, setLeafBaseline] = useState<number>(() => {
     const b = searchParams.get('baseline')
     const v = b ? parseFloat(b) : NaN
-    return !isNaN(v) && v > 0 ? v : DEFAULT_MITRAGYNINE_PCT
+    if (!isNaN(v) && v > 0) return v
+    if (typeof savedKratom.leafBaseline === 'number' && savedKratom.leafBaseline > 0) {
+      return savedKratom.leafBaseline
+    }
+    return DEFAULT_MITRAGYNINE_PCT
   })
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -314,6 +369,28 @@ function KratomCalculatorContent() {
   })
   const [copied, setCopied] = useState(false)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
+
+  // B1 — Save inputs to localStorage whenever they change so the next
+  // visit restores them.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        KRATOM_SETTINGS_KEY,
+        JSON.stringify({
+          inputMode,
+          extractValue,
+          leafDose,
+          extractAmountInput,
+          calcDirection,
+          extractUnit,
+          isEnhanced,
+          leafBaseline,
+        }),
+      )
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [inputMode, extractValue, leafDose, extractAmountInput, calcDirection, extractUnit, isEnhanced, leafBaseline])
 
   // Sync URL when inputs change (replace, no scroll)
   useEffect(() => {
@@ -527,21 +604,19 @@ function KratomCalculatorContent() {
           <div className="mb-4 flex rounded-lg border border-base-300 overflow-hidden">
             <button
               onClick={() => setInputMode('percent')}
-              className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                inputMode === 'percent'
+              className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${inputMode === 'percent'
                   ? 'bg-primary text-primary-content'
                   : 'bg-base-200 text-neutral-content hover:bg-base-300'
-              }`}
+                }`}
             >
               Extract % (Mitragynine)
             </button>
             <button
               onClick={() => setInputMode('ratio')}
-              className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                inputMode === 'ratio'
+              className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${inputMode === 'ratio'
                   ? 'bg-primary text-primary-content'
                   : 'bg-base-200 text-neutral-content hover:bg-base-300'
-              }`}
+                }`}
             >
               Extract Ratio (e.g. 10×)
             </button>
@@ -577,11 +652,10 @@ function KratomCalculatorContent() {
                   setInputMode(p.mode)
                   setExtractValue(String(p.value))
                 }}
-                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${
-                  extractNumber === p.value && inputMode === p.mode
+                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${extractNumber === p.value && inputMode === p.mode
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
                     : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 {p.label}
               </button>
@@ -697,11 +771,10 @@ function KratomCalculatorContent() {
             <div className="flex items-center justify-center gap-3 mb-4">
               <button
                 onClick={() => setCalcDirection('leaf-to-extract')}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                  calcDirection === 'leaf-to-extract'
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${calcDirection === 'leaf-to-extract'
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
                     : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 <Leaf className="h-4 w-4" />
                 Leaf → Extract
@@ -709,11 +782,10 @@ function KratomCalculatorContent() {
               <ArrowLeftRight className="h-4 w-4 text-neutral-content" />
               <button
                 onClick={() => setCalcDirection('extract-to-leaf')}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
-                  calcDirection === 'extract-to-leaf'
+                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${calcDirection === 'extract-to-leaf'
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
                     : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 <FlaskConical className="h-4 w-4" />
                 Extract → Leaf
@@ -748,11 +820,10 @@ function KratomCalculatorContent() {
                         <button
                           key={g}
                           onClick={() => setLeafDose(String(g))}
-                          className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${
-                            leafGrams === g
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${leafGrams === g
                               ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
                               : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                          }`}
+                            }`}
                         >
                           {g}g
                         </button>
@@ -794,9 +865,8 @@ function KratomCalculatorContent() {
                             }
                             setExtractUnit('g')
                           }}
-                          className={`px-3 text-sm font-medium transition-colors ${
-                            extractUnit === 'g' ? 'bg-primary text-primary-content' : 'bg-base-200 text-neutral-content hover:bg-base-300'
-                          }`}
+                          className={`px-3 text-sm font-medium transition-colors ${extractUnit === 'g' ? 'bg-primary text-primary-content' : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                            }`}
                         >
                           g
                         </button>
@@ -810,9 +880,8 @@ function KratomCalculatorContent() {
                             }
                             setExtractUnit('mg')
                           }}
-                          className={`px-3 text-sm font-medium transition-colors ${
-                            extractUnit === 'mg' ? 'bg-primary text-primary-content' : 'bg-base-200 text-neutral-content hover:bg-base-300'
-                          }`}
+                          className={`px-3 text-sm font-medium transition-colors ${extractUnit === 'mg' ? 'bg-primary text-primary-content' : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                            }`}
                         >
                           mg
                         </button>
@@ -826,11 +895,10 @@ function KratomCalculatorContent() {
                             setExtractUnit('g')
                             setExtractAmountInput(String(g))
                           }}
-                          className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${
-                            extractAmountGrams === g
+                          className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${extractAmountGrams === g
                               ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
                               : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                          }`}
+                            }`}
                         >
                           {g}g
                         </button>
@@ -1095,9 +1163,8 @@ function KratomCalculatorContent() {
                 return (
                   <div
                     key={idx}
-                    className={`card card-transparent p-3 border transition-all ${
-                      isActive ? `${tier.borderColor} ${tier.glowClass}` : 'border-base-300/50 opacity-70 hover:opacity-100'
-                    }`}
+                    className={`card card-transparent p-3 border transition-all ${isActive ? `${tier.borderColor} ${tier.glowClass}` : 'border-base-300/50 opacity-70 hover:opacity-100'
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`font-semibold text-sm ${tier.color}`}>

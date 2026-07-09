@@ -2,14 +2,15 @@
 
 import { formatDoseAmount } from '@/lib/utils'
 import { useState, useRef, useMemo } from 'react'
-import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns'
+import { format, isToday, isYesterday, isThisWeek, isThisMonth, subDays } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus, Search, X } from 'lucide-react'
-import { categoryColors } from '@/lib/categories'
+import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus, Search, X, CalendarDays } from 'lucide-react'
+import { categoryColors, categories } from '@/lib/categories'
 import { substances } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { EditDoseModal } from './edit-dose-modal'
@@ -534,13 +535,14 @@ function parsePWJournalJSON(text: string): ImportResult {
 export function DoseHistory() {
   const doses = useDoseStore(s => s.doses)
   const isLoaded = useDoseStore(s => s.isLoaded)
-  const { deleteDose, addDose, addDoses, replaceDoses, clearAllDoses } = useDoseStore(
+  const { deleteDose, addDose, addDoses, replaceDoses, clearAllDoses, updateDose } = useDoseStore(
     useShallow(s => ({
       deleteDose: s.deleteDose,
       addDose: s.addDose,
       addDoses: s.addDoses,
       replaceDoses: s.replaceDoses,
       clearAllDoses: s.clearAllDoses,
+      updateDose: s.updateDose,
     }))
   )
   const { syncStatus, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync } = useSync()
@@ -558,10 +560,32 @@ export function DoseHistory() {
   // and setting so the list is searchable past ~50 entries.
   const [historySearch, setHistorySearch] = useState('')
 
+  // A4 — date-range preset filter + category filter chips.
+  // 'all' = no date filtering; the others use subDays() to compute a
+  // cutoff that we filter dose.timestamp against.
+  type DateRange = 'all' | 'today' | '7d' | '30d' | '90d'
+  const [dateRange, setDateRange] = useState<DateRange>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+
+  const dateRangeOptions: { id: DateRange; label: string }[] = [
+    { id: 'all', label: 'All time' },
+    { id: 'today', label: 'Today' },
+    { id: '7d', label: 'Last 7d' },
+    { id: '30d', label: 'Last 30d' },
+    { id: '90d', label: 'Last 90d' },
+  ]
+
   // Delete all state
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeletingAll, setIsDeletingAll] = useState(false)
+
+  // A6 — inline notes editing state. When inlineEditingId is set, the
+  // matching row swaps its read-only notes display for a textarea +
+  // Save/Cancel buttons. Saving calls updateDose() with the new notes
+  // and bumps updatedAt so sync conflict resolution works correctly.
+  const [inlineEditingId, setInlineEditingId] = useState<string | null>(null)
+  const [inlineNotesDraft, setInlineNotesDraft] = useState('')
 
   const csvInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
@@ -583,13 +607,35 @@ export function DoseHistory() {
     return groups
   }
 
-  // A3 — apply the search filter BEFORE grouping so empty date groups
-  // naturally fall out of the render. Search is case-insensitive and
-  // matches against the most user-meaningful fields.
+  // A3 + A4 — apply search + date-range + category filter BEFORE grouping
+  // so empty date groups naturally fall out of the render. Search is
+  // case-insensitive and matches against the most user-meaningful fields.
   const filteredDoses = useMemo(() => {
     const q = historySearch.trim().toLowerCase()
-    if (!q) return doses
+
+    // Compute the date cutoff once per filter change
+    let dateCutoff: Date | null = null
+    if (dateRange === 'today') {
+      // Start of today local time
+      dateCutoff = new Date()
+      dateCutoff.setHours(0, 0, 0, 0)
+    } else if (dateRange !== 'all') {
+      const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+      dateCutoff = subDays(new Date(), days)
+    }
+
     return doses.filter((d) => {
+      // Date-range filter
+      if (dateCutoff) {
+        const ts = new Date(d.timestamp).getTime()
+        if (ts < dateCutoff.getTime()) return false
+      }
+      // Category filter
+      if (categoryFilter && !(d.categories || []).includes(categoryFilter)) {
+        return false
+      }
+      // Text search
+      if (!q) return true
       if (d.substanceName?.toLowerCase().includes(q)) return true
       if (d.route?.toLowerCase().includes(q)) return true
       if (d.notes?.toLowerCase().includes(q)) return true
@@ -600,7 +646,34 @@ export function DoseHistory() {
       if (`${d.amount} ${d.unit}`.toLowerCase().includes(q)) return true
       return false
     })
-  }, [doses, historySearch])
+  }, [doses, historySearch, dateRange, categoryFilter])
+
+  // A4 — list of categories that actually appear in the user's history,
+  // with counts, so the chip row only shows meaningful options.
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const d of doses) {
+      for (const c of d.categories || []) {
+        counts.set(c, (counts.get(c) || 0) + 1)
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([id, count]) => ({
+        id,
+        label: categories.find((c) => c.id === id)?.name || id,
+        count,
+      }))
+  }, [doses])
+
+  // True when any filter is active (used to show a "Clear filters" chip)
+  const hasActiveFilters = historySearch.trim() !== '' || dateRange !== 'all' || categoryFilter !== null
+
+  const clearAllFilters = () => {
+    setHistorySearch('')
+    setDateRange('all')
+    setCategoryFilter(null)
+  }
 
   const groupedDoses = useMemo(() => groupDosesByDate(filteredDoses), [filteredDoses])
 
@@ -838,6 +911,40 @@ export function DoseHistory() {
     categoryColors[category as keyof typeof categoryColors] ||
     'text-gray-500 bg-gray-500/10 border-gray-500/20'
 
+  // A6 — inline notes editing handlers. The inline editor saves on
+  // blur, on Cmd/Ctrl+Enter, or on explicit Save click. Escape cancels.
+  // Empty notes are stored as null so the row collapses back to the
+  // "Add note" affordance.
+  const startInlineEdit = (dose: DoseLog) => {
+    setInlineEditingId(dose.id)
+    setInlineNotesDraft(dose.notes || '')
+  }
+
+  const cancelInlineEdit = () => {
+    setInlineEditingId(null)
+    setInlineNotesDraft('')
+  }
+
+  const saveInlineEdit = (dose: DoseLog) => {
+    const trimmed = inlineNotesDraft.trim()
+    const nextNotes = trimmed === '' ? null : trimmed
+    // Only write if it actually changed — avoids bumping updatedAt for no-op.
+    if ((dose.notes || null) === nextNotes) {
+      cancelInlineEdit()
+      return
+    }
+    updateDose({
+      ...dose,
+      notes: nextNotes,
+      updatedAt: new Date().toISOString(),
+    })
+    cancelInlineEdit()
+    toast({
+      title: 'Note saved',
+      description: trimmed === '' ? 'Note cleared.' : undefined,
+    })
+  }
+
   return (
     <>
       <Card className="flex flex-col">
@@ -1027,7 +1134,7 @@ export function DoseHistory() {
                   history to be worth filtering. Below 6 entries the user
                   can scan the whole list visually. */}
               {doses.length >= 6 && (
-                <div className="relative mb-4">
+                <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-content/60 pointer-events-none" />
                   <Input
                     type="search"
@@ -1050,21 +1157,89 @@ export function DoseHistory() {
                 </div>
               )}
 
+              {/* A4 — Date-range + category filter chips.
+                  Same pattern as the interactions page: small chips in
+                  a horizontally-scrollable row. Always render when there
+                  are ≥6 entries so the user knows the filters exist. */}
+              {doses.length >= 6 && (
+                <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                  <CalendarDays className="h-3.5 w-3.5 text-neutral-content/60 shrink-0" />
+                  {dateRangeOptions.map((opt) => {
+                    const active = dateRange === opt.id
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setDateRange(opt.id)}
+                        className={
+                          'tap-sm inline-flex items-center px-2.5 py-0.5 text-xs rounded-full border transition-colors min-h-0 ' +
+                          (active
+                            ? 'bg-primary text-primary-content border-primary'
+                            : 'bg-base-200 text-neutral-content border-base-300 hover:bg-base-300')
+                        }
+                        aria-pressed={active}
+                      >
+                        {opt.label}
+                      </button>
+                    )
+                  })}
+
+                  {categoryCounts.length > 0 && (
+                    <span className="w-px h-4 bg-base-300 mx-1" aria-hidden="true" />
+                  )}
+                  {categoryCounts.map((cat) => {
+                    const active = categoryFilter === cat.id
+                    const colorCls = categoryColors[cat.id as keyof typeof categoryColors] || ''
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setCategoryFilter((prev) => (prev === cat.id ? null : cat.id))}
+                        className={
+                          'tap-sm inline-flex items-center gap-1 px-2.5 py-0.5 text-xs rounded-full border transition-colors min-h-0 ' +
+                          (active
+                            ? colorCls + ' font-medium'
+                            : 'bg-base-200 text-neutral-content border-base-300 hover:bg-base-300')
+                        }
+                        aria-pressed={active}
+                        title={`Filter to ${cat.label} only`}
+                      >
+                        <span>{cat.label}</span>
+                        <span className="text-[10px] opacity-70 tabular-nums">{cat.count}</span>
+                      </button>
+                    )
+                  })}
+
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="tap-sm inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full text-neutral-content hover:text-error transition-colors min-h-0"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
+
               {filteredDoses.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center opacity-60">
                   <Search className="h-10 w-10 text-neutral-content mb-3" />
                   <h3 className="text-base font-medium mb-1">No matches</h3>
                   <p className="text-sm text-neutral-content">
-                    No doses match &ldquo;{historySearch}&rdquo;. Try a different search.
+                    No doses match your filters. Try a different search or time range.
                   </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => setHistorySearch('')}
-                  >
-                    Clear search
-                  </Button>
+                  {hasActiveFilters && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={clearAllFilters}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
@@ -1109,17 +1284,99 @@ export function DoseHistory() {
                                   </div>
                                 </div>
                                 <div className="flex gap-1 shrink-0">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingDose(dose)}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingDose(dose)} aria-label={`Edit full dose for ${dose.substanceName}`}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRedose(dose)} disabled={redosing === dose.id}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRedose(dose)} disabled={redosing === dose.id} aria-label={`Redose ${dose.substanceName}`}>
                                     {redosing === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-error" onClick={() => handleDelete(dose.id)} disabled={deleting === dose.id}>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-error" onClick={() => handleDelete(dose.id)} disabled={deleting === dose.id} aria-label={`Delete ${dose.substanceName} dose`}>
                                     {deleting === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
                                   </Button>
                                 </div>
                               </div>
+
+                              {/* A6 — Inline notes editor.
+                                Read mode: shows the note text + a small "edit" pencil.
+                                Edit mode: shows a textarea + Save/Cancel buttons.
+                                If the dose has no notes, show a subtle "Add note" link
+                                instead so the user knows the field exists. */}
+                              {inlineEditingId === dose.id ? (
+                                <div className="mt-3 grid gap-1.5">
+                                  <Textarea
+                                    autoFocus
+                                    value={inlineNotesDraft}
+                                    onChange={(e) => setInlineNotesDraft(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                        e.preventDefault()
+                                        saveInlineEdit(dose)
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault()
+                                        cancelInlineEdit()
+                                      }
+                                    }}
+                                    onBlur={() => saveInlineEdit(dose)}
+                                    placeholder="Add a note about this dose…"
+                                    rows={2}
+                                    className="text-sm"
+                                  />
+                                  <div className="flex items-center justify-between text-[10px] text-neutral-content">
+                                    <span>
+                                      <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 font-mono">⌘</kbd>
+                                      {'+'}
+                                      <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 font-mono">↵</kbd>
+                                      {' '}save{' · '}
+                                      <kbd className="px-1 py-0.5 rounded bg-base-200 border border-base-300 font-mono">esc</kbd>
+                                      {' '}cancel
+                                    </span>
+                                    <span className="flex gap-1">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={cancelInlineEdit}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => saveInlineEdit(dose)}
+                                      >
+                                        Save
+                                      </Button>
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : dose.notes ? (
+                                <div className="mt-2 group/note">
+                                  <p className="text-xs text-base-content/80 leading-relaxed whitespace-pre-wrap break-words">
+                                    {dose.notes}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => startInlineEdit(dose)}
+                                    className="mt-1 inline-flex items-center gap-1 text-[11px] text-neutral-content/60 hover:text-primary transition-colors"
+                                    aria-label={`Edit note for ${dose.substanceName}`}
+                                  >
+                                    <Pencil className="h-2.5 w-2.5" />
+                                    Edit note
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => startInlineEdit(dose)}
+                                  className="mt-2 inline-flex items-center gap-1 text-[11px] text-neutral-content/50 hover:text-primary transition-colors"
+                                  aria-label={`Add note for ${dose.substanceName}`}
+                                >
+                                  <Plus className="h-2.5 w-2.5" />
+                                  Add note
+                                </button>
+                              )}
                             </div>
                           )
                         })}

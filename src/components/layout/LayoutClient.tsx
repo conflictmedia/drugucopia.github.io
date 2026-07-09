@@ -11,6 +11,7 @@ import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
 import { SyncProvider } from '@/contexts/sync-context'
 import { ReminderProvider } from '@/components/reminder-provider'
+import { CommandPalette } from '@/components/command-palette'
 
 interface LayoutClientProps {
   children: React.ReactNode
@@ -89,6 +90,10 @@ export function LayoutClient({ children }: LayoutClientProps) {
           </div>
 
           <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          {/* G1 — Global cmd-K search palette. Mounted at the root so the
+              Cmd/Ctrl+K shortcut works on every page. Returns null when
+              closed, so it adds zero render cost when not in use. */}
+          <CommandPalette />
           {/* Visualizer controls only on desktop — the WebGL background itself
               is disabled on mobile, so the controls would do nothing but add
               render cost and clutter. */}

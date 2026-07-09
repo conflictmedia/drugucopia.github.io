@@ -36,6 +36,108 @@ function getDb(): Firestore | null {
   }
 }
 const SYNC_AUTH_KEY = 'drugucopia-sync-auth'
+// D3 — Split credential storage:
+//   - Room name lives in localStorage so the UI can pre-fill it on
+//     every page load (room names are not secret).
+//   - Password lives in sessionStorage so it's cleared when the tab
+//     closes, limiting the window during which a reusable secret sits
+//     on disk. The trade-off: auto-reconnect only works within the
+//     same tab session; closing the browser requires re-entering the
+//     password. This is intentional — passwords are often reused, and
+//     a stolen localStorage blob would give an attacker the raw
+//     password, not just sync access.
+const SYNC_ROOM_KEY = 'drugucopia-sync-room'
+const SYNC_PASS_KEY = 'drugucopia-sync-pass'
+
+// D2 — localStorage key for the "last synced" dose baseline.
+// Stored as a JSON object: { [doseId]: updatedAtTimestamp }.
+// Used by mergeDoses to detect true conflicts (both local and remote
+// edited the same dose since the last sync).
+const DOSE_BASELINE_KEY = 'drugucopia-sync-dose-baseline'
+
+function loadDoseBaseline(): Map<string, number> {
+  if (typeof window === 'undefined') return new Map()
+  try {
+    const raw = localStorage.getItem(DOSE_BASELINE_KEY)
+    if (!raw) return new Map()
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return new Map()
+    const map = new Map<string, number>()
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === 'number' && !isNaN(v)) map.set(k, v)
+    }
+    return map
+  } catch {
+    return new Map()
+  }
+}
+
+function saveDoseBaseline(doses: DoseLog[]) {
+  if (typeof window === 'undefined') return
+  try {
+    const obj: Record<string, number> = {}
+    for (const d of doses) {
+      obj[d.id] = new Date(d.updatedAt || d.createdAt).getTime()
+    }
+    localStorage.setItem(DOSE_BASELINE_KEY, JSON.stringify(obj))
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function clearDoseBaseline() {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(DOSE_BASELINE_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
+// D3 — Credential storage helpers. Room name → localStorage (not
+// secret, used for UI pre-fill). Password → sessionStorage (cleared on
+// tab close). Combined read returns null if either piece is missing.
+function saveSyncCredentials(room: string, pass: string) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(SYNC_ROOM_KEY, room)
+    sessionStorage.setItem(SYNC_PASS_KEY, pass)
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function loadSyncCredentials(): { room: string; pass: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const room = localStorage.getItem(SYNC_ROOM_KEY)
+    const pass = sessionStorage.getItem(SYNC_PASS_KEY)
+    if (!room || !pass) return null
+    return { room, pass }
+  } catch {
+    return null
+  }
+}
+
+function hasStoredRoom(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return localStorage.getItem(SYNC_ROOM_KEY)
+  } catch {
+    return null
+  }
+}
+
+function clearSyncCredentials() {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(SYNC_ROOM_KEY)
+    localStorage.removeItem(SYNC_AUTH_KEY) // legacy cleanup
+    sessionStorage.removeItem(SYNC_PASS_KEY)
+  } catch {
+    /* ignore */
+  }
+}
 
 // --- CRYPTO UTILS ---
 // Chunked to avoid "Maximum call stack size exceeded" on large payloads
@@ -90,9 +192,41 @@ const getUpdateTime = (d: DoseLog) => new Date(d.updatedAt || d.createdAt).getTi
 
 const getScheduleUpdateTime = (s: ReminderSchedule) => new Date(s.updatedAt || s.createdAt).getTime()
 
-const mergeDoses = (local: DoseLog[], remote: DoseLog[], localDeleted: Set<string>, remoteDeleted: Set<string>) => {
+/**
+ * D2 — A pending sync conflict for a single dose.
+ * The user must pick "keep local", "keep remote", or "keep both"
+ * (keep both creates a new dose from the local version with a fresh ID).
+ */
+export interface DoseConflict {
+  id: string
+  local: DoseLog
+  remote: DoseLog
+  /** Why we flagged it: both sides changed since the last sync baseline */
+  reason: 'both-edited'
+}
+
+/**
+ * Merge local + remote dose lists. Takes a "baseline" map of
+ * `doseId → updatedAt-as-of-last-sync` so we can detect true conflicts
+ * (both sides changed since the last sync). When a conflict is detected:
+ *   - The newer version wins in the merged output (preserves the old
+ *     behavior so the UI doesn't break), BUT
+ *   - The conflict is also returned in `conflicts` so the UI can prompt
+ *     the user to confirm or override the choice.
+ *
+ * When baseline is empty (first-ever sync, or baseline was lost), this
+ * falls back to pure updatedAt-wins with no conflicts surfaced.
+ */
+const mergeDoses = (
+  local: DoseLog[],
+  remote: DoseLog[],
+  localDeleted: Set<string>,
+  remoteDeleted: Set<string>,
+  baseline: Map<string, number> = new Map(),
+) => {
   const allDeleted = new Set([...localDeleted, ...remoteDeleted])
   const map = new Map<string, DoseLog>()
+  const conflicts: DoseConflict[] = []
 
   for (const d of local) {
     if (!allDeleted.has(d.id)) map.set(d.id, d)
@@ -102,14 +236,49 @@ const mergeDoses = (local: DoseLog[], remote: DoseLog[], localDeleted: Set<strin
     if (allDeleted.has(d.id)) { map.delete(d.id); continue }
     const existing = map.get(d.id)
 
-    // Check if it's new OR if the remote updatedAt is newer than the local updatedAt
-    if (!existing || getUpdateTime(d) > getUpdateTime(existing)) {
+    if (!existing) {
+      // New remote dose — just take it.
+      map.set(d.id, d)
+      continue
+    }
+
+    const localTime = getUpdateTime(existing)
+    const remoteTime = getUpdateTime(d)
+    const baselineTime = baseline.get(d.id)
+
+    // D2 — conflict detection: both sides have an updatedAt newer than
+    // the last sync baseline. That means both clients edited the same
+    // dose independently since they last synced.
+    if (
+      baselineTime !== undefined &&
+      localTime > baselineTime &&
+      remoteTime > baselineTime
+    ) {
+      // Check that the two versions are actually different (not just
+      // identical timestamps). If they're equal content-wise, no
+      // conflict needs surfacing.
+      const sameContent =
+        existing.substanceName === d.substanceName &&
+        existing.amount === d.amount &&
+        existing.unit === d.unit &&
+        existing.route === d.route &&
+        existing.notes === d.notes &&
+        existing.mood === d.mood &&
+        existing.setting === d.setting &&
+        getUpdateTime(existing) === getUpdateTime(d)
+      if (!sameContent) {
+        conflicts.push({ id: d.id, local: existing, remote: d, reason: 'both-edited' })
+      }
+    }
+
+    // Default: remote wins if newer. Same as before D2.
+    if (remoteTime > localTime) {
       map.set(d.id, d)
     }
   }
 
   const doses = Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  return { doses, deleted: allDeleted }
+  return { doses, deleted: allDeleted, conflicts }
 }
 
 /**
@@ -181,6 +350,15 @@ interface SyncContextType {
   setPassword: (pw: string) => void
   connectToSync: (rId?: string, pass?: string) => Promise<void>
   disconnectSync: () => void
+  // D2 — Pending sync conflicts awaiting user resolution.
+  pendingConflicts: DoseConflict[]
+  // Resolve a conflict by ID. Choices:
+  //   'local'  — keep the local version (will overwrite remote on next push)
+  //   'remote' — keep the remote version (local changes discarded)
+  //   'both'   — keep both: the remote stays, and a new dose is created
+  //              from the local version with a fresh ID
+  resolveConflict: (conflictId: string, choice: 'local' | 'remote' | 'both') => void
+  dismissConflict: (conflictId: string) => void
 }
 
 const SyncContext = createContext<SyncContextType | null>(null)
@@ -200,6 +378,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const [syncStatus, setSyncStatusRaw] = useState<'idle' | 'connecting' | 'synced' | 'error'>('idle')
   // D1 — last time we got a successful snapshot from Firestore.
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
+  // D2 — pending conflicts awaiting user resolution. Cleared on disconnect.
+  const [pendingConflicts, setPendingConflicts] = useState<DoseConflict[]>([])
   const [roomId, setRoomId] = useState('')
   const [password, setPassword] = useState('')
 
@@ -421,10 +601,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // (even on an empty room) means Firestore accepted our read.
             initialSyncDoneRef.current = true
             setLastSyncedAt(new Date().toISOString())
-            localStorage.setItem(
-              SYNC_AUTH_KEY,
-              JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
-            )
+            saveSyncCredentials(effectiveRId, effectivePass)
             pushToSync()
             return
           }
@@ -436,12 +613,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // so the auto-push can resume
             initialSyncDoneRef.current = true
             setLastSyncedAt(new Date().toISOString())
-            // Echo of our own push — credentials are already valid
-            if (!localStorage.getItem(SYNC_AUTH_KEY)) {
-              localStorage.setItem(
-                SYNC_AUTH_KEY,
-                JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
-              )
+            // Echo of our own push — credentials are already valid.
+            // D3: use the split storage helpers instead of plaintext blob.
+            if (!loadSyncCredentials()) {
+              saveSyncCredentials(effectiveRId, effectivePass)
             }
             return
           }
@@ -467,16 +642,44 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // B4 fix: now that we've successfully decrypted the remote payload,
             // we know the credentials are valid. Persist them so we can
             // auto-reconnect on next page load.
+            // D3: use the split storage helpers instead of plaintext blob.
             if (isFirstSync) {
-              localStorage.setItem(
-                SYNC_AUTH_KEY,
-                JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
-              )
+              saveSyncCredentials(effectiveRId, effectivePass)
             }
 
             const effectiveLocalDeleted = isFirstSync ? new Set<string>() : localDeleted
 
-            const { doses: merged, deleted: mergedDeleted } = mergeDoses(localDoses, remoteDoses, effectiveLocalDeleted, remoteDeleted)
+            // D2 — Load the "last synced" baseline so we can detect
+            // true conflicts (both sides edited the same dose since the
+            // last sync). The baseline is a map of doseId → updatedAt.
+            // On first sync (no baseline yet), this is empty and we
+            // fall back to pure updatedAt-wins with no conflicts.
+            const baseline = loadDoseBaseline()
+            const { doses: merged, deleted: mergedDeleted, conflicts: newConflicts } = mergeDoses(
+              localDoses, remoteDoses, effectiveLocalDeleted, remoteDeleted, baseline,
+            )
+
+            // D2 — Queue any new conflicts for user resolution. We
+            // don't overwrite already-pending conflicts (the user may
+            // still be reviewing an earlier batch).
+            if (newConflicts.length > 0) {
+              setPendingConflicts((prev) => {
+                const seen = new Set(prev.map((c) => c.id))
+                const merged = [...prev]
+                for (const c of newConflicts) {
+                  if (!seen.has(c.id)) {
+                    merged.push(c)
+                    seen.add(c.id)
+                  }
+                }
+                return merged
+              })
+            }
+
+            // D2 — Update the baseline to the merged state. Next sync
+            // will compare against this. We snapshot updatedAt for
+            // every dose in the merged result.
+            saveDoseBaseline(merged)
 
             // ─── Reminder merge ───
             const remoteSchedules: ReminderSchedule[] = payload.schedules ?? []
@@ -567,6 +770,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       pushDebounceRef.current = null
     }
     localStorage.removeItem(SYNC_AUTH_KEY)
+    // D3 — clear both room and password from their split storage.
+    clearSyncCredentials()
+    // D2 — clear the baseline and pending conflicts so a reconnect
+    // starts fresh (no stale "last synced" state).
+    clearDoseBaseline()
+    setPendingConflicts([])
     setSyncStatus('idle')
     setLastSyncedAt(null)
     setRoomId('')
@@ -575,18 +784,73 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSyncStatus])
 
-  // Auto-connect on load
+  // D2 — Resolve a pending conflict.
+  //   'local'  — overwrite the remote by writing local back with a fresh
+  //              updatedAt (next push propagates it).
+  //   'remote' — discard the local version; the merged state already
+  //              kept the remote (since remote-wins is the default), so
+  //              we just need to remove the conflict from the queue.
+  //   'both'   — keep the remote (already in the store) AND create a
+  //              new dose from the local version with a fresh ID.
+  const resolveConflict = useCallback((conflictId: string, choice: 'local' | 'remote' | 'both') => {
+    const conflict = pendingConflicts.find((c) => c.id === conflictId)
+    if (!conflict) return
+
+    if (choice === 'local') {
+      // Re-apply local version with bumped updatedAt so it wins next push
+      const now = new Date().toISOString()
+      useDoseStore.getState().updateDose({ ...conflict.local, updatedAt: now })
+      toast({
+        title: 'Conflict resolved',
+        description: `Kept your version of ${conflict.local.substanceName}.`,
+      })
+    } else if (choice === 'both') {
+      // Create a new dose from the local version with a fresh ID
+      const now = new Date().toISOString()
+      const newId = `dose_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      useDoseStore.getState().addDose({
+        ...conflict.local,
+        id: newId,
+        notes: conflict.local.notes ? `${conflict.local.notes}\n[duplicate from sync conflict]` : '[duplicate from sync conflict]',
+        createdAt: now,
+        updatedAt: now,
+      })
+      toast({
+        title: 'Conflict resolved',
+        description: `Kept both versions of ${conflict.local.substanceName}.`,
+      })
+    } else {
+      // 'remote' — nothing to do, the merge already kept the remote.
+      toast({
+        title: 'Conflict resolved',
+        description: `Kept the synced version of ${conflict.local.substanceName}.`,
+      })
+    }
+
+    setPendingConflicts((prev) => prev.filter((c) => c.id !== conflictId))
+  }, [pendingConflicts])
+
+  const dismissConflict = useCallback((conflictId: string) => {
+    setPendingConflicts((prev) => prev.filter((c) => c.id !== conflictId))
+  }, [])
+
+  // Auto-connect on load.
+  // D3 — Only the room name is in localStorage (not sensitive). The
+  // password is in sessionStorage, so auto-reconnect only works within
+  // the same tab session. If the user closed the tab, the room name
+  // is pre-filled but they'll need to re-enter the password.
   useEffect(() => {
-    const savedAuth = localStorage.getItem(SYNC_AUTH_KEY)
-    if (savedAuth) {
-      try {
-        const { savedRoom, savedPass } = JSON.parse(savedAuth)
-        setRoomId(savedRoom)
-        setPassword(savedPass)
-        connectToSync(savedRoom, savedPass)
-      } catch {
-        localStorage.removeItem(SYNC_AUTH_KEY)
-      }
+    const creds = loadSyncCredentials()
+    if (creds) {
+      setRoomId(creds.room)
+      setPassword(creds.pass)
+      connectToSync(creds.room, creds.pass)
+    } else {
+      // No password in sessionStorage — but maybe the room name is in
+      // localStorage from a previous session. Pre-fill it so the user
+      // only has to type the password.
+      const storedRoom = hasStoredRoom()
+      if (storedRoom) setRoomId(storedRoom)
     }
     return () => { if (unsubscribeRef.current) unsubscribeRef.current() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -594,7 +858,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo(() => ({
     syncStatus, lastSyncedAt, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync,
-  }), [syncStatus, lastSyncedAt, roomId, password, connectToSync, disconnectSync])
+    pendingConflicts, resolveConflict, dismissConflict,
+  }), [syncStatus, lastSyncedAt, roomId, password, connectToSync, disconnectSync, pendingConflicts, resolveConflict, dismissConflict])
 
   return (
     <SyncContext.Provider value={contextValue}>
@@ -607,3 +872,4 @@ export const useSync = () => {
   const context = useContext(SyncContext)
   if (!context) throw new Error("useSync must be used within a SyncProvider")
   return context
+}

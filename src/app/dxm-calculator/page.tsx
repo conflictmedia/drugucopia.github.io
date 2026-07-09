@@ -251,15 +251,46 @@ function DXMCalculatorContent() {
   const addDose = useDoseStore(s => s.addDose)
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
-  const [weight, setWeight] = useState<string>(() => searchParams.get('weight') ?? '')
+  // B1 — Persist calculator inputs across sessions.
+  // Priority on first load: URL param (shared links win) → localStorage
+  // (last-used values) → default. After that, every change writes back
+  // to localStorage so a fresh visit / page reload restores the user's
+  // last weight + unit + plateau without them having to re-type it.
+  const DXM_SETTINGS_KEY = 'drugucopia-dxm-settings'
+
+  type DxmSettings = { weight?: string; unit?: 'kg' | 'lbs'; plateau?: number }
+  function loadDxmSettings(): DxmSettings {
+    if (typeof window === 'undefined') return {}
+    try {
+      const raw = localStorage.getItem(DXM_SETTINGS_KEY)
+      if (!raw) return {}
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') return parsed as DxmSettings
+    } catch {
+      /* ignore corrupt entry */
+    }
+    return {}
+  }
+  const savedDxm = loadDxmSettings()
+
+  const [weight, setWeight] = useState<string>(() => {
+    const url = searchParams.get('weight')
+    if (url !== null) return url
+    return savedDxm.weight ?? ''
+  })
   const [unit, setUnit] = useState<'kg' | 'lbs'>(() => {
     const u = searchParams.get('unit')
-    return u === 'kg' || u === 'lbs' ? u : 'lbs'
+    if (u === 'kg' || u === 'lbs') return u
+    return savedDxm.unit ?? 'lbs'
   })
   const [selectedPlateauIdx, setSelectedPlateauIdx] = useState<number>(() => {
     const v = searchParams.get('plateau')
     const n = v ? parseInt(v, 10) : NaN
-    return !isNaN(n) && n >= 0 && n < plateaus.length ? n : 0
+    if (!isNaN(n) && n >= 0 && n < plateaus.length) return n
+    if (typeof savedDxm.plateau === 'number' && savedDxm.plateau >= 0 && savedDxm.plateau < plateaus.length) {
+      return savedDxm.plateau
+    }
+    return 0
   })
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     pharmacology: false,
@@ -269,6 +300,20 @@ function DXMCalculatorContent() {
   })
   const [copied, setCopied] = useState(false)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
+
+  // B1 — Save inputs to localStorage whenever they change so the next
+  // visit restores them. Skip the very first render (initial values
+  // already came from localStorage) to avoid a redundant write.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        DXM_SETTINGS_KEY,
+        JSON.stringify({ weight, unit, plateau: selectedPlateauIdx }),
+      )
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [weight, unit, selectedPlateauIdx])
 
   // Sync URL when inputs change (replace, no scroll)
   useEffect(() => {
@@ -469,21 +514,19 @@ function DXMCalculatorContent() {
             <div className="flex rounded-lg border border-base-300 overflow-hidden h-12">
               <button
                 onClick={() => setUnit('lbs')}
-                className={`px-4 text-sm font-medium transition-colors ${
-                  unit === 'lbs'
+                className={`px-4 text-sm font-medium transition-colors ${unit === 'lbs'
                     ? 'bg-primary text-primary-content'
                     : 'bg-base-200 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 lbs
               </button>
               <button
                 onClick={() => setUnit('kg')}
-                className={`px-4 text-sm font-medium transition-colors ${
-                  unit === 'kg'
+                className={`px-4 text-sm font-medium transition-colors ${unit === 'kg'
                     ? 'bg-primary text-primary-content'
                     : 'bg-base-200 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 kg
               </button>
@@ -496,11 +539,10 @@ function DXMCalculatorContent() {
               <button
                 key={w}
                 onClick={() => setWeight(String(w))}
-                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${
-                  parseFloat(weight) === w
+                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${parseFloat(weight) === w
                     ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
                     : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                }`}
+                  }`}
               >
                 {w} {unit}
               </button>
@@ -690,11 +732,10 @@ function DXMCalculatorContent() {
                 <button
                   key={i}
                   onClick={() => setSelectedPlateauIdx(i)}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${
-                    selectedPlateauIdx === i
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${selectedPlateauIdx === i
                       ? `${p.borderColor} ${p.bgColor} ${p.color}`
                       : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
-                  }`}
+                    }`}
                 >
                   <p.icon className="h-3.5 w-3.5" />
                   {p.name.replace(' Plateau', '')}
@@ -822,9 +863,8 @@ function DXMCalculatorContent() {
                   <button
                     key={idx}
                     onClick={() => setSelectedPlateauIdx(idx)}
-                    className={`text-left card card-transparent p-3 border transition-all ${
-                      isActive ? `${p.borderColor} ${p.glowClass}` : 'border-base-300/50 opacity-70 hover:opacity-100'
-                    }`}
+                    className={`text-left card card-transparent p-3 border transition-all ${isActive ? `${p.borderColor} ${p.glowClass}` : 'border-base-300/50 opacity-70 hover:opacity-100'
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className={`font-semibold text-sm ${p.color} flex items-center gap-1.5`}>
