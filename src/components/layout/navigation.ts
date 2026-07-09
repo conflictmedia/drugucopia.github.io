@@ -106,10 +106,6 @@ export const NAV_SECTIONS: Array<{
   { title: "Tools", section: "tools" },
 ];
 
-export const MOBILE_DOCK_ITEMS = NAV_ITEMS.filter((item) =>
-  ["library", "interactions", "track", "analytics", "safety"].includes(item.id),
-);
-
 export function isNavItemActive(item: NavItem, pathname: string) {
   // Normalize trailing slash: with `trailingSlash: true` in next.config.ts,
   // `/dose-log` becomes `/dose-log/`. Strip it so comparisons work either way.
