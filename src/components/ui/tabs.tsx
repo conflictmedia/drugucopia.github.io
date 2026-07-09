@@ -3,10 +3,37 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-/* ─── Tabs ─── */
+/**
+ * Tabs — thin adapter over daisyUI `.tabs.tabs-box`.
+ *
+ * Phase 2 design-system primitive. Replaces the previous custom Radix-style
+ * tab chrome with native daisyUI tabs. The React Context API (Tabs /
+ * TabsList / TabsTrigger / TabsContent) is preserved so existing call sites
+ * keep working — only the underlying DOM/CSS changes.
+ *
+ * Style: `tabs tabs-box` (single, system-wide).
+ * Sizes: default | sm | lg
+ * Variant: default | border | lift  (defaults to box; `border` and `lift`
+ *          are available for special layouts but discouraged for new code.)
+ */
+
+type TabsVariant = "box" | "border" | "lift"
+type TabsSize = "default" | "sm" | "lg"
+
+const variantClass: Record<TabsVariant, string> = {
+  box: "tabs-box",
+  border: "tabs-border",
+  lift: "tabs-lift",
+}
+
+const sizeClass: Record<TabsSize, string> = {
+  default: "tabs-md",
+  sm: "tabs-sm",
+  lg: "tabs-lg",
+}
+
 const TabsContext = React.createContext<{
   value?: string
-  defaultValue?: string
   onValueChange?: (value: string) => void
 }>({})
 
@@ -14,6 +41,8 @@ function Tabs({
   value: controlledValue,
   defaultValue,
   onValueChange,
+  variant = "box",
+  size = "default",
   className,
   children,
   ...props
@@ -21,6 +50,8 @@ function Tabs({
   value?: string
   defaultValue?: string
   onValueChange?: (value: string) => void
+  variant?: TabsVariant
+  size?: TabsSize
 } & React.HTMLAttributes<HTMLDivElement>) {
   const [internalValue, setInternalValue] = React.useState(defaultValue || "")
   const value = controlledValue ?? internalValue
@@ -36,20 +67,34 @@ function Tabs({
   )
 
   return (
-    <TabsContext.Provider value={{ value, defaultValue, onValueChange: handleChange }}>
-      <div className={cn("flex flex-col gap-2", className)} {...props}>
+    <TabsContext.Provider value={{ value, onValueChange: handleChange }}>
+      <div className={cn("flex flex-col gap-3", className)} {...props}>
         {children}
       </div>
     </TabsContext.Provider>
   )
 }
 
-function TabsList({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function TabsList({
+  variant = "box",
+  size = "default",
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & {
+  variant?: TabsVariant
+  size?: TabsSize
+}) {
+  // The Tabs container needs variant/size on the parent as well, so we read
+  // them from props here. If the consumer set them on <Tabs>, those win.
   return (
     <div
       role="tablist"
       className={cn(
-        "bg-base-200 text-neutral-content inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
+        "tabs",
+        variantClass[variant],
+        sizeClass[size],
+        "w-fit",
         className
       )}
       {...props}
@@ -75,13 +120,7 @@ function TabsTrigger({
       aria-selected={isActive}
       data-state={isActive ? "active" : "inactive"}
       onClick={() => ctx.onValueChange?.(value)}
-      className={cn(
-        "inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
-        isActive
-          ? "bg-base-100 text-base-content shadow-sm border-base-300 data-[state=active]:border-base-300 data-[state=active]:bg-base-200/30"
-          : "text-neutral-content",
-        className
-      )}
+      className={cn("tab", isActive && "tab-active", className)}
       {...props}
     >
       {children}

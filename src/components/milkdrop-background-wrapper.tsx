@@ -2,6 +2,7 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState, lazy, Suspense } from 'react'
+import { DARK_THEME_IDS } from '@/components/theme-provider'
 
 // Lazy load to avoid SSR
 const MilkdropBackground = lazy(() =>
@@ -22,7 +23,9 @@ export function MilkdropBackgroundWrapper() {
     return <div className="mesh-gradient" style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }} />
   }
 
-  const isDark = resolvedTheme === 'dark'
+  // Use the DARK_THEME_IDS set so that all dark DaisyUI themes (dracula,
+  // synthwave, nord, etc.) are correctly identified — not just "dark".
+  const isDark = !!resolvedTheme && DARK_THEME_IDS.has(resolvedTheme)
 
   return (
     <Suspense

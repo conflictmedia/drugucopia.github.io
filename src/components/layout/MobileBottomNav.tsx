@@ -1,56 +1,50 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import {
-  FlaskConical,
-  Shuffle,
-  Shield,
-  Leaf,
-  Calculator,
-  Activity,
-  BarChart3,
-} from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { MOBILE_DOCK_ITEMS, isNavItemActive } from './navigation'
 import { cn } from '@/lib/utils'
-
-const navItems = [
-  { href: '/', label: 'Substances', icon: FlaskConical },
-  { href: '/interactions', label: 'Interactions', icon: Shuffle },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dxm-calculator', label: 'DXM', icon: Calculator },
-  { href: '/kratom-calculator', label: 'Kratom', icon: Leaf },
-]
 
 export function MobileBottomNav() {
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const view = searchParams.get('view')
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/'
-    return pathname.startsWith(href)
+  const navigate = (href: string) => {
+    if (pathname === '/') {
+      router.replace(href)
+      return
+    }
+
+    router.push(href)
   }
 
   return (
-    <nav className="mobile-nav md:hidden z-50">
-      {navItems.map((item) => {
-        const active = isActive(item.href)
+    <nav
+      className="dock dock-sm border-t border-base-300 bg-base-100/95 px-1 backdrop-blur md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      aria-label="Primary navigation"
+    >
+      {MOBILE_DOCK_ITEMS.map((item) => {
+        const Icon = item.icon
+        const isActive = isNavItemActive(item, pathname, view)
+
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={(e) => {
-              if (item.href === '/') {
-                e.preventDefault()
-                router.push('/')
-              }
-            }}
-            className={cn('mobile-nav-item', active && 'active')}
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => navigate(item.href)}
+            className={cn(isActive && 'dock-active text-primary')}
+            aria-current={isActive ? 'page' : undefined}
+            aria-label={item.label}
           >
-            <item.icon className="shrink-0" />
-            <span>{item.label}</span>
-          </Link>
+            <Icon className="h-5 w-5" />
+            <span className="dock-label text-[11px]">{item.label}</span>
+          </button>
         )
       })}
     </nav>
   )
 }
+
+
