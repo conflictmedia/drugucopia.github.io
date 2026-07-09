@@ -78,8 +78,6 @@ export function LayoutClient({ children }: LayoutClientProps) {
               <div className="drawer-content flex min-h-[100dvh] flex-col">
                 <TopBar
                   onMenuClick={() => setDrawerOpen(true)}
-                  sidebarExpanded={sidebarExpanded}
-                  onSidebarToggle={toggleSidebar}
                 />
 
                 <main className="relative flex-1 pb-20">
@@ -112,8 +110,6 @@ export function LayoutClient({ children }: LayoutClientProps) {
               <div className="flex min-w-0 flex-1 flex-col">
                 <TopBar
                   onMenuClick={() => setDrawerOpen(true)}
-                  sidebarExpanded={sidebarExpanded}
-                  onSidebarToggle={toggleSidebar}
                 />
                 <main className="relative flex-1">
                   {children}

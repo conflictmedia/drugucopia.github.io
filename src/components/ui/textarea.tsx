@@ -1,6 +1,11 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
+/**
+ * Textarea — thin adapter over daisyUI `.textarea`.
+ *
+ * Phase 2 design-system primitive. Default to `textarea-bordered w-full`.
+ */
 const Textarea = React.forwardRef<
   HTMLTextAreaElement,
   React.TextareaHTMLAttributes<HTMLTextAreaElement>

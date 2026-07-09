@@ -1,6 +1,6 @@
 'use client'
 
-import { Cloud, CloudOff, Loader2, Menu, PanelLeftClose, PanelLeftOpen, Plus, AlertCircle } from 'lucide-react'
+import { Cloud, CloudOff, Loader2, Menu, Plus, AlertCircle } from 'lucide-react'
 import { useUIStore } from '@/store/ui-store'
 import { formatDistanceToNow } from 'date-fns'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -15,8 +15,6 @@ import { getPageTitle } from './navigation'
 
 interface TopBarProps {
   onMenuClick: () => void
-  sidebarExpanded: boolean
-  onSidebarToggle: () => void
 }
 
 function SyncStatusButton() {
@@ -73,7 +71,7 @@ function SyncStatusButton() {
   )
 }
 
-export function TopBar({ onMenuClick, sidebarExpanded, onSidebarToggle }: TopBarProps) {
+export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const view = searchParams.get('view')
@@ -99,19 +97,6 @@ export function TopBar({ onMenuClick, sidebarExpanded, onSidebarToggle }: TopBar
             aria-label="Open navigation"
           >
             <Menu className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-square hidden lg:inline-flex"
-            onClick={onSidebarToggle}
-            aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-            title={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
-          >
-            {sidebarExpanded ? (
-              <PanelLeftClose className="h-5 w-5" />
-            ) : (
-              <PanelLeftOpen className="h-5 w-5" />
-            )}
           </button>
           <div className="min-w-0">
             <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-content">

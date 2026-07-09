@@ -79,7 +79,7 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-2 lg:p-1.5">
+      <div className="flex-1 min-h-0 space-y-3 overflow-y-auto overflow-x-hidden p-2 lg:p-1.5">
         {NAV_SECTIONS.map((section) => {
           const items = NAV_ITEMS.filter((item) => item.section === section.section)
 
@@ -110,7 +110,7 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
                         className={cn(
                           'w-full min-w-0',
                           isActive && 'menu-active lg:ring-1 lg:ring-primary/20',
-                          !expanded && 'lg:justify-center lg:px-1.5 lg:min-h-11',
+                          !expanded && 'lg:!flex lg:!justify-center lg:!items-center lg:!gap-0 lg:!px-1.5 lg:min-h-11',
                         )}
                         title={item.label}
                         aria-current={isActive ? 'page' : undefined}
@@ -139,7 +139,7 @@ export function AppSidebar({ expanded, onNavigate, onToggle }: AppSidebarProps) 
             rel="noopener noreferrer"
             className={cn(
               'btn btn-ghost btn-block',
-              expanded ? 'justify-start' : 'lg:justify-center lg:px-1.5 lg:min-h-11',
+              expanded ? 'justify-start' : 'lg:!flex lg:!justify-center lg:!items-center lg:!gap-0 lg:px-1.5 lg:min-h-11',
             )}
             title="GitHub"
             aria-label="GitHub"
