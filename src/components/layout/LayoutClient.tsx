@@ -4,7 +4,6 @@ import { AlertTriangle } from 'lucide-react'
 import { useState, useSyncExternalStore, type ReactNode } from 'react'
 import { AppSidebar } from './AppSidebar'
 import { TopBar } from './TopBar'
-import { MobileBottomNav } from './MobileBottomNav'
 import { Toaster } from '@/components/ui/toaster'
 import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
@@ -80,11 +79,9 @@ export function LayoutClient({ children }: LayoutClientProps) {
                   onMenuClick={() => setDrawerOpen(true)}
                 />
 
-                <main className="relative flex-1 pb-20">
+                <main className="relative flex-1 pb-[env(safe-area-inset-bottom)]">
                   {children}
                 </main>
-
-                <MobileBottomNav />
               </div>
 
               <div className="drawer-side z-40">
