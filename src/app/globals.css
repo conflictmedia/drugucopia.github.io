@@ -171,6 +171,45 @@
       inset 0 0 0 1px rgba(255, 255, 255, 0.3);
   }
 
+  /* ─── Mobile performance: kill backdrop-filter (huge GPU cost per card) ─── */
+  /* On mobile, every .card-transparent / .glass element was creating its own
+     compositing layer that had to be re-rasterized on every scroll frame.
+     With 24+ cards on the home grid that meant 24+ blur layers = scroll jank.
+     Replace with flat semi-transparent backgrounds — visually similar, ~10x faster. */
+  @media (max-width: 767px) {
+    .card-transparent {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: rgba(8, 22, 58, 0.55) !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      box-shadow: none !important;
+    }
+
+    [data-theme="light"] .card-transparent {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: rgba(255, 255, 255, 0.75) !important;
+      border-color: rgba(0, 0, 0, 0.08) !important;
+      box-shadow: none !important;
+    }
+
+    .glass {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background: var(--color-base-100) !important;
+    }
+
+    /* Override Tailwind backdrop-blur utilities on mobile — replace with solid bg */
+    .backdrop-blur-xl,
+    .backdrop-blur-lg,
+    .backdrop-blur-md,
+    .backdrop-blur-sm {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-color: var(--color-base-100) !important;
+    }
+  }
+
   .gradient-text {
     background: linear-gradient(
       135deg,
@@ -234,6 +273,22 @@
 
   [data-theme="light"] .card-lift:hover {
     box-shadow: 0 8px 30px oklch(0 0 0 / 8%);
+  }
+
+  /* Disable hover lift on mobile — touch devices don't have hover, and the
+     transform forces a compositing-layer promotion on every card. */
+  @media (max-width: 767px) {
+    .card-lift {
+      transition: none;
+    }
+    .card-lift:hover {
+      transform: none;
+      box-shadow: none;
+    }
+    [data-theme="light"] .card-lift:hover {
+      box-shadow: none;
+    }
+    /* Keep the tap feedback from .card-lift:active defined inline in components */
   }
 
   .pulse-danger {

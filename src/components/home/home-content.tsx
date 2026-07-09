@@ -1101,10 +1101,15 @@ export function HomeContent() {
     router.push(pathname)
   }, [router, pathname])
 
-  const [visibleCount, setVisibleCount] = useState(24)
+  const [visibleCount, setVisibleCount] = useState(() => {
+    // Start with fewer cards on mobile — fewer DOM nodes + fewer card backgrounds
+    // to paint on first scroll. "Show More" still loads the rest on demand.
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return 12
+    return 24
+  })
 
   useEffect(() => {
-    setVisibleCount(24)
+    setVisibleCount(typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24)
   }, [selectedCategory, deferredQuery])
 
   const filteredSubstances = useMemo(() => {
@@ -1280,7 +1285,7 @@ export function HomeContent() {
           {filteredSubstances.length > visibleCount && (
             <div className="flex justify-center mt-8">
               <button
-                onClick={() => setVisibleCount((prev) => prev + 24)}
+                onClick={() => setVisibleCount((prev) => prev + (typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24))}
                 className="btn btn-outline gap-2"
               >
                 Show More Substances ({filteredSubstances.length - visibleCount} remaining)

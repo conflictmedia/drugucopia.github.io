@@ -20,6 +20,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const pathname = usePathname()
 
   useEffect(() => {
@@ -30,6 +31,13 @@ export function LayoutClient({ children }: LayoutClientProps) {
         setSidebarCollapsed(JSON.parse(saved))
       }
     } catch { }
+
+    // Detect mobile once on mount — used to skip rendering VisualizerControls
+    // (which controls the WebGL background that is disabled on mobile anyway).
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   useEffect(() => {
@@ -81,7 +89,10 @@ export function LayoutClient({ children }: LayoutClientProps) {
           </div>
 
           <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-          <VisualizerControls />
+          {/* Visualizer controls only on desktop — the WebGL background itself
+              is disabled on mobile, so the controls would do nothing but add
+              render cost and clutter. */}
+          {!isMobile && <VisualizerControls />}
           <Toaster />
         </div>
       </ReminderProvider>

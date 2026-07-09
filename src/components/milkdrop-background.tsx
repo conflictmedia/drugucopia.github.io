@@ -317,9 +317,7 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
           inset: 0,
           zIndex: -1,
           pointerEvents: 'none',
-          background: isDark
-            ? 'linear-gradient(135deg, #0f0f15, #1a1135, #0a1424)'
-            : 'linear-gradient(135deg, #fafafa, #eff0fd, #f2f7fc)',
+          background: 'linear-gradient(135deg, #0a1f44, #0d2a5c, #08163a)',
         }}
       />
     )
