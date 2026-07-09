@@ -21,6 +21,7 @@ const pageTitles: Record<string, string> = {
   '/dxm-calculator': 'DXM Calculator',
   '/kratom-calculator': 'Kratom Calculator',
   '/harm-reduction': 'Harm Reduction',
+  '/analytics': 'Analytics',
 }
 
 const CATEGORY_DOTS: Record<string, string> = {

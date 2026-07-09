@@ -16,6 +16,7 @@ import {
   X,
   Home,
   Activity,
+  BarChart3,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState, useEffect } from 'react'
@@ -24,6 +25,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { href: '/', label: 'Substances', icon: FlaskConical },
   { href: '/interactions', label: 'Interactions', icon: Shuffle },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dxm-calculator', label: 'DXM Calc', icon: Calculator },
   { href: '/kratom-calculator', label: 'Kratom Calc', icon: Leaf },
   { href: '/harm-reduction', label: 'Harm Reduction', icon: Shield },
