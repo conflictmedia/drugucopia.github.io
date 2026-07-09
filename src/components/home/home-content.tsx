@@ -428,7 +428,7 @@ function SubstanceDetail({
   return (
     <div className="min-h-screen flex flex-col">
       {/* Desktop header */}
-      <header className="hidden md:flex sticky top-16 z-30 border-b border-white/8 bg-base-100/80 backdrop-blur-xl h-14 items-center gap-4 px-4 lg:px-6">
+      <header className="hidden md:flex sticky top-16 z-20 border-b border-white/8 bg-base-100/80 backdrop-blur-xl h-14 items-center gap-4 px-4 lg:px-6">
         <button className="btn btn-ghost btn-sm gap-2" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -457,7 +457,7 @@ function SubstanceDetail({
       </header>
 
       {/* Mobile header */}
-      <header className="md:hidden sticky top-28 z-30 bg-base-100/80 backdrop-blur-xl border-b border-white/8">
+      <header className="md:hidden sticky top-28 z-20 bg-base-100/80 backdrop-blur-xl border-b border-white/8">
         <div className="flex items-center gap-3 h-13 px-4">
           <button onClick={onBack} className="btn btn-ghost btn-sm btn-square">
             <ArrowLeft className="h-5 w-5" />
@@ -1086,8 +1086,6 @@ export function HomeContent() {
   }, [searchParams, selectedSubstance])
 
   const handleBackFromDetail = useCallback(() => {
-    setSelectedSubstance(null)
-    lastProcessedSubstanceRef.current = null
     const viewParam = searchParams.get('view')
     if (viewParam) {
       router.push(`${pathname}?view=${viewParam}`)
@@ -1102,6 +1100,12 @@ export function HomeContent() {
     setSelectedCategory(category)
     router.push(pathname)
   }, [router, pathname])
+
+  const [visibleCount, setVisibleCount] = useState(24)
+
+  useEffect(() => {
+    setVisibleCount(24)
+  }, [selectedCategory, deferredQuery])
 
   const filteredSubstances = useMemo(() => {
     let result = substances
@@ -1118,6 +1122,10 @@ export function HomeContent() {
     }
     return result
   }, [selectedCategory, deferredQuery])
+
+  const visibleSubstances = useMemo(() => {
+    return filteredSubstances.slice(0, visibleCount)
+  }, [filteredSubstances, visibleCount])
 
   const handleDoseLogged = useCallback(() => { }, [])
 
@@ -1260,7 +1268,7 @@ export function HomeContent() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredSubstances.map((substance) => (
+            {visibleSubstances.map((substance) => (
               <SubstanceCard
                 key={substance.id}
                 substance={substance}
@@ -1268,6 +1276,17 @@ export function HomeContent() {
               />
             ))}
           </div>
+
+          {filteredSubstances.length > visibleCount && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + 24)}
+                className="btn btn-outline gap-2"
+              >
+                Show More Substances ({filteredSubstances.length - visibleCount} remaining)
+              </button>
+            </div>
+          )}
 
           {filteredSubstances.length === 0 && (
             <div className="text-center py-12">

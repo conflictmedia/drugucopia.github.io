@@ -132,6 +132,7 @@ interface MilkdropBackgroundProps {
 
 export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
   const [useFallback, setUseFallback] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const animFrameRef = useRef<number>(0)
   const startTimeRef = useRef<number>(0)
   const mouseRef = useRef<[number, number]>([0.5, 0.5])
@@ -144,6 +145,10 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
   const { enabled, intensity, preset } = useVisualizerStore()
 
   useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
+  useEffect(() => {
     enabledRef.current = enabled
     intensityRef.current = intensity
     presetRef.current = preset
@@ -154,7 +159,7 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
   }, [isDark])
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || isMobile) return
 
     // Create canvas directly on body
     const canvas = document.createElement('canvas')
@@ -302,7 +307,23 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
       gl.deleteShader(vert)
       gl.deleteShader(frag)
     }
-  }, [enabled])
+  }, [enabled, isMobile])
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          pointerEvents: 'none',
+          background: isDark
+            ? 'linear-gradient(135deg, #0f0f15, #1a1135, #0a1424)'
+            : 'linear-gradient(135deg, #fafafa, #eff0fd, #f2f7fc)',
+        }}
+      />
+    )
+  }
 
   if (!enabled) {
     return (

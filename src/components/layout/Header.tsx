@@ -130,7 +130,7 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
   const isHomePage = pathname === '/'
 
   return (
-    <header className="sticky top-0 z-30 h-auto md:h-16 border-b border-base-300/50 bg-base-100/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 h-auto md:h-16 border-b border-base-300/50 bg-base-100/80 backdrop-blur-xl">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         {/* Left: Menu button (mobile) + Title */}
         <div className="flex items-center gap-3 shrink-0">
