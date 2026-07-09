@@ -144,30 +144,17 @@
      the incremental migration. ─── */
   .glass,
   .card-transparent {
-    background-color: color-mix(
-      in oklab,
-      var(--color-base-100) 90%,
-      transparent
-    ) !important;
+    background-color: color-mix(in oklab, var(--color-base-100) 80%, transparent) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    border: 1px solid
-      color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
+    border: 1px solid color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
     box-shadow: 0 1px 2px 0 oklch(0 0 0 / 0.05) !important;
   }
 
   [data-theme="dark"] .glass,
   [data-theme="dark"] .card-transparent {
-    background-color: color-mix(
-      in oklab,
-      var(--color-base-100) 80%,
-      transparent
-    ) !important;
-    border-color: color-mix(
-      in oklab,
-      var(--color-base-300) 70%,
-      transparent
-    ) !important;
+    background-color: color-mix(in oklab, var(--color-base-100) 80%, transparent) !important;
+    border-color: color-mix(in oklab, var(--color-base-300) 70%, transparent) !important;
   }
 
   @media (max-width: 767px) {
