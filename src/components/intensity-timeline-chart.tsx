@@ -479,8 +479,12 @@ function GroupCard({
   onRouteClick, onDoseClick, isExpanded, onToggleExpand, nowTs,
 }: GroupCardProps) {
   const [isMobile, setIsMobile] = useState(false)
+  // mounted gate — prevents ResponsiveContainer from rendering before the
+  // browser has computed the parent's layout (which triggers a 0×0 warning).
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
@@ -676,95 +680,98 @@ function GroupCard({
           })}
         </div>
 
-        {/* Recharts chart */}
+        {/* Recharts chart — deferred until mounted to avoid the 0×0
+            ResponsiveContainer warning on first paint. */}
         <div style={{ width: '100%', height: isMobile ? 200 : 280 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={config.data} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
-              <defs>
-                {config.series.map((s, i) => (
-                  <linearGradient key={`grad-${i}`} id={`grad-${group.key}-${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={s.palette.fill} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={s.palette.fill} stopOpacity={0.02} />
-                  </linearGradient>
-                ))}
-              </defs>
+          {mounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={config.data} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+                <defs>
+                  {config.series.map((s, i) => (
+                    <linearGradient key={`grad-${i}`} id={`grad-${group.key}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={s.palette.fill} stopOpacity={0.3} />
+                      <stop offset="100%" stopColor={s.palette.fill} stopOpacity={0.02} />
+                    </linearGradient>
+                  ))}
+                </defs>
 
-              {/* Phase band backgrounds */}
-              {config.phaseBands.map(band => {
-                const pb = PHASE_BANDS.find(b => b.phase === band.phase)
-                if (!pb) return null
-                return (
-                  <ReferenceArea
-                    key={`band-${band.phase}`}
-                    x1={band.startMs}
-                    x2={band.endMs}
-                    strokeOpacity={0}
-                    fill={pb.fill}
-                    fillOpacity={0.06}
-                  />
-                )
-              })}
+                {/* Phase band backgrounds */}
+                {config.phaseBands.map(band => {
+                  const pb = PHASE_BANDS.find(b => b.phase === band.phase)
+                  if (!pb) return null
+                  return (
+                    <ReferenceArea
+                      key={`band-${band.phase}`}
+                      x1={band.startMs}
+                      x2={band.endMs}
+                      strokeOpacity={0}
+                      fill={pb.fill}
+                      fillOpacity={0.06}
+                    />
+                  )
+                })}
 
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-              <XAxis
-                dataKey="t"
-                type="number"
-                domain={[config.windowStartMs, config.windowEndMs]}
-                scale="time"
-                tick={{ fontSize: 10, fill: 'currentColor' }}
-                stroke="currentColor"
-                tickFormatter={(ts) => format(new Date(ts), 'h:mm a')}
-                minTickGap={40}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fontSize: 10, fill: 'currentColor' }}
-                stroke="currentColor"
-                width={32}
-                tickFormatter={(v) => `${v}%`}
-              />
-              <Tooltip
-                content={<ChartTooltip series={config.series} windowStartMs={config.windowStartMs} />}
-                cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
-              />
-
-              {/* Now indicator — position comes from nowTs prop, NOT from
-                  config (which is memoized and stable across ticks). */}
-              {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
-                <ReferenceLine
-                  x={nowTs}
-                  stroke={NOW_INDICATOR.color}
-                  strokeWidth={NOW_INDICATOR.strokeWidth}
-                  strokeDasharray={NOW_INDICATOR.dashArray}
-                  label={{ value: 'NOW', fontSize: 8, fill: NOW_INDICATOR.color, position: 'top' }}
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis
+                  dataKey="t"
+                  type="number"
+                  domain={[config.windowStartMs, config.windowEndMs]}
+                  scale="time"
+                  tick={{ fontSize: 10, fill: 'currentColor' }}
+                  stroke="currentColor"
+                  tickFormatter={(ts) => format(new Date(ts), 'h:mm a')}
+                  minTickGap={40}
                 />
-              )}
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 10, fill: 'currentColor' }}
+                  stroke="currentColor"
+                  width={32}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <Tooltip
+                  content={<ChartTooltip series={config.series} windowStartMs={config.windowStartMs} />}
+                  cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                />
 
-              {/* One Area per dose. isEnded is computed fresh from nowTs so
+                {/* Now indicator — position comes from nowTs prop, NOT from
+                  config (which is memoized and stable across ticks). */}
+                {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
+                  <ReferenceLine
+                    x={nowTs}
+                    stroke={NOW_INDICATOR.color}
+                    strokeWidth={NOW_INDICATOR.strokeWidth}
+                    strokeDasharray={NOW_INDICATOR.dashArray}
+                    label={{ value: 'NOW', fontSize: 8, fill: NOW_INDICATOR.color, position: 'top' }}
+                  />
+                )}
+
+                {/* One Area per dose. isEnded is computed fresh from nowTs so
                   ended doses fade out without re-sampling the chart data.
                   dot=false + activeDot=false ensures Recharts doesn't render
                   default dots at data points (which would look like stray
                   markers at curve peaks and start/end points). */}
-              {config.series.map((s, i) => {
-                const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
-                return (
-                  <Area
-                    key={s.dataKey}
-                    type="monotone"
-                    dataKey={s.dataKey}
-                    stroke={s.palette.stroke}
-                    strokeWidth={i === 0 ? 2.5 : 1.5}
-                    fill={`url(#grad-${group.key}-${i})`}
-                    opacity={doseEnded ? 0.4 : 1}
-                    isAnimationActive={false}
-                    connectNulls
-                    dot={false}
-                    activeDot={false}
-                  />
-                )
-              })}
-            </AreaChart>
-          </ResponsiveContainer>
+                {config.series.map((s, i) => {
+                  const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
+                  return (
+                    <Area
+                      key={s.dataKey}
+                      type="monotone"
+                      dataKey={s.dataKey}
+                      stroke={s.palette.stroke}
+                      strokeWidth={i === 0 ? 2.5 : 1.5}
+                      fill={`url(#grad-${group.key}-${i})`}
+                      opacity={doseEnded ? 0.4 : 1}
+                      isAnimationActive={false}
+                      connectNulls
+                      dot={false}
+                      activeDot={false}
+                    />
+                  )
+                })}
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : null}
         </div>
 
         {/* Footer */}
