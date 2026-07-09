@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 const DropdownContext = React.createContext<{
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
-}>({ open: false, setOpen: () => {} })
+}>({ open: false, setOpen: () => { } })
 
 function DropdownMenu({
   children,
@@ -100,7 +100,7 @@ function DropdownMenuItem({
   onClick,
   children,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLAnchorElement>) {
   const { setOpen } = React.useContext(DropdownContext)
 
   return (

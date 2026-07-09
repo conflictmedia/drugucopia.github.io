@@ -6,9 +6,9 @@ import { format, isToday, isYesterday, isThisWeek, isThisMonth } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
-import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle } from 'lucide-react'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
 import { substances } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
@@ -16,6 +16,7 @@ import { EditDoseModal } from './edit-dose-modal'
 import { useDoseStore } from '@/store/dose-store'
 import { useShallow } from 'zustand/react/shallow'
 import { useSync } from '@/contexts/sync-context'
+import { useUIStore } from '@/store/ui-store'
 import { DoseLog } from '@/types'
 import {
   DropdownMenu,
@@ -34,8 +35,6 @@ import {
 } from '@/components/ui/dialog'
 import Link from 'next/link'
 
-
-
 type ImportResult =
   | { ok: true; doses: DoseLog[] }
   | { ok: false; error: string }
@@ -48,7 +47,6 @@ interface ImportPreview {
   duplicateCount: number
   newCount: number
 }
-
 
 function findSubstanceMatch(name: string): { name: string; categories: string[] } | null {
   const searchName = name.toLowerCase().trim()
@@ -124,15 +122,14 @@ function validateDose(raw: Record<string, unknown>, index: number): DoseLog {
         : [],
     duration: raw.duration != null && typeof raw.duration === 'object'
       ? (raw.duration as DoseLog['duration'])
-      : undefined,
-    mood: typeof raw.mood === 'string' && raw.mood.trim() ? raw.mood.trim() : undefined,
-    setting: typeof raw.setting === 'string' && raw.setting.trim() ? raw.setting.trim() : undefined,
-    notes: typeof raw.notes === 'string' && raw.notes.trim() ? raw.notes.trim() : undefined,
+      : null,
+    mood: typeof raw.mood === 'string' && raw.mood.trim() ? raw.mood.trim() : null,
+    setting: typeof raw.setting === 'string' && raw.setting.trim() ? raw.setting.trim() : null,
+    notes: typeof raw.notes === 'string' && raw.notes.trim() ? raw.notes.trim() : null,
     createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
   }
 }
-
 
 function parseJSON(text: string): ImportResult {
   let parsed: unknown
@@ -163,7 +160,6 @@ function parseJSON(text: string): ImportResult {
 
   return { ok: true, doses }
 }
-
 
 function parseCSVLine(line: string): string[] {
   const fields: string[] = []
@@ -253,7 +249,6 @@ function parseCSV(text: string): ImportResult {
   return { ok: true, doses }
 }
 
-
 function parsePsyloJSON(text: string): ImportResult {
   let parsed: unknown
   try {
@@ -305,12 +300,9 @@ function parsePsyloJSON(text: string): ImportResult {
       return { ok: false, error: `${rowLabel}: "timestamp" is not a valid date.` }
     }
 
-
-
     const id = raw.id != null
       ? `psylo-${raw.id}`
       : crypto.randomUUID()
-
 
     const notesArr = Array.isArray(raw.notes) ? raw.notes as Array<{ text?: string }> : []
     const notesStr = notesArr
@@ -318,8 +310,7 @@ function parsePsyloJSON(text: string): ImportResult {
       .filter(Boolean)
       .join(' | ') || undefined
 
-
-    let duration: DoseLog['duration'] = undefined
+    let duration: DoseLog['duration'] = null
     if (raw.onsetAt || raw.peakAt || raw.offsetAt) {
       const onset = raw.onsetAt ? new Date(raw.onsetAt as string) : null
       const peak = raw.peakAt ? new Date(raw.peakAt as string) : null
@@ -352,9 +343,9 @@ function parsePsyloJSON(text: string): ImportResult {
       route,
       timestamp,
       duration: duration ?? null,
-      notes: notesStr,
-      mood: undefined,
-      setting: undefined,
+      notes: notesStr || null,
+      mood: null,
+      setting: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -362,7 +353,6 @@ function parsePsyloJSON(text: string): ImportResult {
 
   return { ok: true, doses }
 }
-
 
 /** Parse a PWJournal export file (from PsychonautWiki Journal app). */
 function parsePWJournalJSON(text: string): ImportResult {
@@ -489,7 +479,7 @@ function parsePWJournalJSON(text: string): ImportResult {
       } else if (isEstimate) {
         combinedNotes.push('Estimated dose')
       }
-      const finalNotes = combinedNotes.join(' | ') || undefined
+      const finalNotes = combinedNotes.join(' | ') || null
 
       // Handle duration from endTime
       let duration: DoseLog['duration'] = null
@@ -526,8 +516,8 @@ function parsePWJournalJSON(text: string): ImportResult {
         timestamp,
         duration,
         notes: finalNotes,
-        mood: undefined,
-        setting: undefined,
+        mood: null,
+        setting: null,
         createdAt,
         updatedAt: new Date().toISOString(),
       })
@@ -540,8 +530,6 @@ function parsePWJournalJSON(text: string): ImportResult {
 
   return { ok: true, doses }
 }
-
-
 
 export function DoseHistory() {
   const doses = useDoseStore(s => s.doses)
@@ -556,6 +544,7 @@ export function DoseHistory() {
     }))
   )
   const { syncStatus, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync } = useSync()
+  const openDoseLogger = useUIStore((s) => s.openDoseLogger)
 
   const [deleting, setDeleting] = useState<string | null>(null)
   const [redosing, setRedosing] = useState<string | null>(null)
@@ -601,8 +590,6 @@ export function DoseHistory() {
     )
   }
 
-
-
   const triggerDownload = (content: string, filename: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType })
     const url = URL.createObjectURL(blob)
@@ -612,7 +599,6 @@ export function DoseHistory() {
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-
 
   const buildPreview = (parsed: DoseLog[], fileName: string): ImportPreview => {
     const existingIds = new Set(doses.map((d) => d.id))
@@ -624,8 +610,6 @@ export function DoseHistory() {
       newCount: parsed.length - duplicateCount,
     }
   }
-
-
 
   const exportToCSV = () => {
     if (doses.length === 0) return toast({ title: 'Nothing to export', variant: 'destructive' })
@@ -679,9 +663,6 @@ export function DoseHistory() {
     toast({ title: 'JSON exported', description: `${doses.length} dose(s) exported.` })
   }
 
-
-
-
   const handleFileSelected = async (
     e: React.ChangeEvent<HTMLInputElement>,
     type: 'csv' | 'json' | 'psylo' | 'pwjournal',
@@ -695,8 +676,8 @@ export function DoseHistory() {
     const text = await file.text()
     const result = type === 'json' ? parseJSON(text)
       : type === 'psylo' ? parsePsyloJSON(text)
-      : type === 'pwjournal' ? parsePWJournalJSON(text)
-      : parseCSV(text)
+        : type === 'pwjournal' ? parsePWJournalJSON(text)
+          : parseCSV(text)
 
     if (!result.ok) {
       toast({
@@ -709,9 +690,6 @@ export function DoseHistory() {
 
     setImportPreview(buildPreview(result.doses, file.name))
   }
-
-
-
 
   const confirmImport = async (strategy: ConflictStrategy) => {
     if (!importPreview) return
@@ -757,8 +735,6 @@ export function DoseHistory() {
     })
   }
 
-
-
   const handleDeleteAll = async () => {
     if (deleteConfirmText !== 'DELETE') return
 
@@ -784,8 +760,6 @@ export function DoseHistory() {
     setDeleteConfirmText('')
     setShowDeleteAllDialog(true)
   }
-
-
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
@@ -840,8 +814,6 @@ export function DoseHistory() {
     categoryColors[category as keyof typeof categoryColors] ||
     'text-gray-500 bg-gray-500/10 border-gray-500/20'
 
-
-
   return (
     <>
       <Card className="flex flex-col">
@@ -853,7 +825,18 @@ export function DoseHistory() {
             <CardDescription>Your logged substance doses</CardDescription>
           </div>
 
-          <div className="flex gap-2 shrink-0 flex-wrap">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {/* Log Dose button */}
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => openDoseLogger()}
+            >
+              <Plus className="h-4 w-4" />
+              Log Dose
+            </Button>
+
             {/* Sync button */}
             <Button
               variant={syncStatus === 'synced' ? 'default' : 'outline'}
@@ -1005,6 +988,14 @@ export function DoseHistory() {
             <div className="flex flex-col items-center justify-center py-8 text-center opacity-50">
               <Calendar className="h-12 w-12 text-neutral-content mb-4" />
               <h3 className="text-lg font-medium mb-2">No doses logged yet</h3>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => openDoseLogger()}
+              >
+                <Plus className="h-4 w-4" />
+                Log your first dose
+              </Button>
             </div>
           ) : (
             <div className="pr-4">
@@ -1082,7 +1073,6 @@ export function DoseHistory() {
         />
       )}
 
-
       <Dialog open={!!importPreview} onOpenChange={(open) => !open && setImportPreview(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1116,7 +1106,6 @@ export function DoseHistory() {
                   <p className="text-xs text-neutral-content mt-1">Duplicates</p>
                 </div>
               </div>
-
 
               {importPreview.duplicateCount > 0 && (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2">
@@ -1164,7 +1153,6 @@ export function DoseHistory() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       <Dialog open={showDeleteAllDialog} onOpenChange={(open) => !open && setShowDeleteAllDialog(false)}>
         <DialogContent className="max-w-md">

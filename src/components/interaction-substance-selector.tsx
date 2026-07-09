@@ -56,7 +56,7 @@ export function InteractionSubstanceSelector({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<SubstanceCategory | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
@@ -71,7 +71,7 @@ export function InteractionSubstanceSelector({
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
     return searchSubstancesRanked(query, {
-      categoryFilter,
+      categoryFilter: categoryFilter || undefined,
       limit: 40,
     }).filter((r) => !selectedIds.includes(r.substance.id))
   }, [query, selectedIds, categoryFilter])
@@ -207,8 +207,8 @@ export function InteractionSubstanceSelector({
 
   const totalFiltered = categoryFilter
     ? getSubstancesByCategory(categoryFilter).filter(
-        (s) => !selectedIds.includes(s.id)
-      ).length
+      (s) => !selectedIds.includes(s.id)
+    ).length
     : substances.filter((s) => !selectedIds.includes(s.id)).length
 
   return (

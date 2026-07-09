@@ -1,15 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { AlertTriangle } from "lucide-react";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "next-themes";
-import { SyncProvider } from "@/contexts/sync-context";
-import { SharedNav } from "@/components/shared-nav";
-import { MilkdropBackgroundWrapper } from "@/components/milkdrop-background-wrapper";
-import { VisualizerControls } from "@/components/visualizer-controls";
-import { ReminderProvider } from "@/components/reminder-provider";
+import { LayoutClient } from "@/components/layout/LayoutClient";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
@@ -22,6 +16,12 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: '400',
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Drugucopia - Dose Logger and Substance Resources",
@@ -43,39 +43,17 @@ export default function RootLayout({
       <body
         className={`${ibmPlexSans.className} ${ibmPlexMono.className} antialiased text-base-content`}
       >
-        <ThemeProvider
-          attribute="data-theme"
-          defaultTheme="dark"
-          themes={["light", "dark"]}
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SyncProvider>
-            <ReminderProvider>
-            <MilkdropBackgroundWrapper />
-            <Suspense>
-              <SharedNav />
-            </Suspense>
-            <main className="min-h-[calc(100vh-3.5rem)]">
-              {children}
-            </main>
+        <LayoutClient>
+          {children}
+        </LayoutClient>
 
-            {/* Always-visible disclaimer
-                On mobile, the disclaimer is rendered inside the MobileBottomNav
-                component (in page.tsx) to avoid z-index/overlap conflicts.
-                This div is only visible on desktop (md:block hidden on mobile). */}
-            <div className="hidden md:block fixed bottom-0 inset-x-0 z-30 bg-base-100/95 backdrop-blur-sm border-t border-warning/20">
-              <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
-              </div>
-            </div>
-
-            <VisualizerControls />
-            <Toaster />
-            </ReminderProvider>
-          </SyncProvider>
-        </ThemeProvider>
+        {/* Global disclaimer - rendered in layout client */}
+        <div className="hidden md:block fixed bottom-0 inset-x-0 z-30 bg-base-100/95 backdrop-blur-sm border-t border-warning/20">
+          <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
+          </div>
+        </div>
       </body>
     </html>
   );

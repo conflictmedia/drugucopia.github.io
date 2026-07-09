@@ -1,32 +1,34 @@
-import { DoseLog } from '@/types'
+import { DoseLog } from "@/types";
 
 /* ------------------------------------------------------------------ */
 /*  Core Phase Types                                                   */
 /* ------------------------------------------------------------------ */
 
 export interface PhaseTimings {
-  onsetEnd: number
-  comeupEnd: number
-  peakEnd: number
-  offsetEnd: number
-  afterglowDuration: number
-  afterglowEnd: number
-  totalDuration: number
+  onsetEnd: number;
+  comeupEnd: number;
+  peakEnd: number;
+  offsetEnd: number;
+  afterglowDuration: number;
+  afterglowEnd: number;
+  totalDuration: number;
 }
 
-export type PhaseName = 'onset' | 'comeup' | 'peak' | 'offset' | 'afterglow'
+export type PhaseName = "onset" | "comeup" | "peak" | "offset" | "afterglow";
+
+export type LifecyclePhase = "not_started" | PhaseName | "ended";
 
 export interface PhaseStatus {
-  phase: 'not_started' | PhaseName | 'ended'
+  phase: "not_started" | PhaseName | "ended";
   /** Whether this dose has an afterglow phase (used for UI hints) */
-  hasAfterglow?: boolean
+  hasAfterglow?: boolean;
   /** During afterglow: the peak-end intensity to fade from (for smooth rendering) */
-  offsetPeakIntensity?: number
-  progress: number
-  overallProgress: number
-  timeInPhase: number
-  timeRemaining: number
-  totalRemaining: number
+  offsetPeakIntensity?: number;
+  progress: number;
+  overallProgress: number;
+  timeInPhase: number;
+  timeRemaining: number;
+  totalRemaining: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -34,15 +36,15 @@ export interface PhaseStatus {
 /* ------------------------------------------------------------------ */
 
 export interface EnrichedDose extends DoseLog {
-  timings: PhaseTimings
-  status: PhaseStatus
-  doseTime: Date
+  timings: PhaseTimings;
+  status: PhaseStatus;
+  doseTime: Date;
   /** Dose-relative height: userDose / avgCommonDose (linear, ~1.0 at common dose) */
-  doseHeight: number
+  doseHeight: number;
   /** 0–1 interpolation weight for duration ranges (from dose class) */
-  horizontalWeight: number
+  horizontalWeight: number;
   /** Classified dose class: threshold / light / common / strong / heavy */
-  doseClass?: string
+  doseClass?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -50,33 +52,33 @@ export interface EnrichedDose extends DoseLog {
 /* ------------------------------------------------------------------ */
 
 export interface RouteGroup {
-  route: string
-  doses: EnrichedDose[]
-  primary: EnrichedDose
-  totalAmount: number
-  unit: string
-  uniformUnit: boolean
-  paletteIndex: number
+  route: string;
+  doses: EnrichedDose[];
+  primary: EnrichedDose;
+  totalAmount: number;
+  unit: string;
+  uniformUnit: boolean;
+  paletteIndex: number;
 }
 
 /** Per-route intensity snapshot used in multi-route tooltip display */
 export interface RouteIntensitySnapshot {
-  route: string
-  intensity: number
-  phase: PhaseName
-  paletteIndex: number
+  route: string;
+  intensity: number;
+  phase: PhaseName;
+  paletteIndex: number;
 }
 
 export interface SubstanceGroup {
-  key: string
-  substanceName: string
-  categories: string[]
-  routes: RouteGroup[]
-  primary: EnrichedDose
-  windowDuration: number
-  windowStart: Date
+  key: string;
+  substanceName: string;
+  categories: string[];
+  routes: RouteGroup[];
+  primary: EnrichedDose;
+  windowDuration: number;
+  windowStart: Date;
   /** Precomputed combined intensity across all routes for this substance */
-  combinedIntensityCurve?: CombinedIntensityPoint[]
+  combinedIntensityCurve?: CombinedIntensityPoint[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -85,11 +87,11 @@ export interface SubstanceGroup {
 
 export interface TimeMarker {
   /** 0-100 position on the graph's time axis */
-  progress: number
+  progress: number;
   /** Formatted display label, e.g. "3:45 PM" */
-  label: string
+  label: string;
   /** Absolute Date for this tick */
-  date: Date
+  date: Date;
 }
 
 /* ------------------------------------------------------------------ */
@@ -98,11 +100,11 @@ export interface TimeMarker {
 
 export interface PhaseBandRange {
   /** Start fraction 0-1 across the dose timeline */
-  startFrac: number
+  startFrac: number;
   /** End fraction 0-1 across the dose timeline */
-  endFrac: number
+  endFrac: number;
   /** Phase this band represents */
-  phase: PhaseName
+  phase: PhaseName;
 }
 
 /* ------------------------------------------------------------------ */
@@ -110,17 +112,17 @@ export interface PhaseBandRange {
 /* ------------------------------------------------------------------ */
 
 export interface PhaseBand {
-  name: string
+  name: string;
   /** CSS hex fill color */
-  fill: string
+  fill: string;
   /** CSS hex color for labels */
-  labelColor: string
+  labelColor: string;
   /** Gradient top color (lighter) — used for SVG linearGradient stops */
-  gradientTop: string
+  gradientTop: string;
   /** Gradient bottom color (darker / more transparent) */
-  gradientBottom: string
+  gradientBottom: string;
   /** Phase key this band maps to */
-  phase: PhaseName
+  phase: PhaseName;
 }
 
 /* ------------------------------------------------------------------ */
@@ -130,11 +132,11 @@ export interface PhaseBand {
 /** A single sample point on a combined intensity curve */
 export interface CombinedIntensityPoint {
   /** Minutes from the window start */
-  minutes: number
+  minutes: number;
   /** Combined intensity 0-100 */
-  intensity: number
+  intensity: number;
   /** 0-100 progress on the graph's time axis */
-  progress: number
+  progress: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -142,16 +144,16 @@ export interface CombinedIntensityPoint {
 /* ------------------------------------------------------------------ */
 
 export interface TooltipData {
-  phase: PhaseName
-  phaseTime: string
-  absoluteTime: Date
+  phase: PhaseName;
+  phaseTime: string;
+  absoluteTime: Date;
   /** Combined intensity (dose-height scaled, used for tooltip text) */
-  intensity: number
+  intensity: number;
   /** Visual intensity matching the rendered curve (no dose-height scaling, with edge fade, clamped 0-100) */
-  visualIntensity: number
-  progress: number
+  visualIntensity: number;
+  progress: number;
   /** Per-route intensity breakdown (multi-route hover) */
-  routeIntensities?: RouteIntensitySnapshot[]
+  routeIntensities?: RouteIntensitySnapshot[];
   /** Minutes remaining until the current phase changes to the next phase (for primary dose) */
-  minutesUntilPhaseChange: number
+  minutesUntilPhaseChange: number;
 }
