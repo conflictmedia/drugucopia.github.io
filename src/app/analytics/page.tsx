@@ -30,7 +30,6 @@ import {
 } from '@/lib/analytics'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { IntensityTimelineChart } from '@/components/intensity-timeline-chart'
 import {
   Activity,
   Calendar,
@@ -45,7 +44,6 @@ import {
   Trophy,
   CalendarDays,
 } from 'lucide-react'
-import { format } from 'date-fns'
 
 // ─── Range selector ────────────────────────────────────────────────────────
 
@@ -97,7 +95,6 @@ export default function AnalyticsPage() {
         <AnalyticsHeader range={range} onRangeChange={setRange} />
         <div className="space-y-6">
           <StreakInsightsRow insights={streaks} />
-          <IntensityTimelineChart />
           <UsageChartsRow daily={daily} weekly={weekly} monthly={monthly} range={range} />
           <BreakdownsRow substances={subs} categories={cats} />
           <ToleranceSection tolerance={tolerance} />
@@ -108,7 +105,6 @@ export default function AnalyticsPage() {
       <div className="md:hidden px-4 pt-4 pb-8 space-y-4">
         <AnalyticsHeader range={range} onRangeChange={setRange} compact />
         <StreakInsightsRow insights={streaks} compact />
-        <IntensityTimelineChart />
         <UsageChartsRow daily={daily} weekly={weekly} monthly={monthly} range={range} compact />
         <BreakdownsRow substances={subs} categories={cats} compact />
         <ToleranceSection tolerance={tolerance} compact />

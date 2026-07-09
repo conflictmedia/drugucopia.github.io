@@ -34,7 +34,7 @@ import {
 import { DoseLoggerModal } from '@/components/dose-logger-modal'
 import { DoseHistory } from '@/components/dose-history'
 import { DoseStats } from '@/components/dose-stats'
-import { ActiveDosesTimeline } from '@/components/active-doses-timeline'
+import { IntensityTimelineChart } from '@/components/intensity-timeline-chart'
 import { ActiveReminders } from '@/components/active-reminders'
 import { ReminderSettings } from '@/components/reminder-settings'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -1187,7 +1187,7 @@ export function HomeContent() {
       {showDoseLog ? (
         <div className="space-y-6 max-w-5xl mx-auto">
           <ActiveReminders />
-          <ActiveDosesTimeline />
+          <IntensityTimelineChart />
           <ReminderSettings />
           <DoseStats />
           <DoseHistory />
