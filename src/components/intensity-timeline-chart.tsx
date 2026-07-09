@@ -85,17 +85,17 @@ import type {
 // wherever we need a real color value (header dots, substance toggle chips).
 
 const CATEGORY_HEX_COLORS: Record<string, string> = {
-  stimulants: '#f59e0b', // amber-500
-  depressants: '#6366f1', // indigo-500
-  hallucinogens: '#a855f7', // purple-500
-  dissociatives: '#06b6d4', // cyan-500
-  empathogens: '#ec4899', // pink-500
-  cannabinoids: '#22c55e', // green-500
-  opioids: '#ef4444', // red-500
-  deliriants: '#64748b', // slate-500
-  nootropics: '#14b8a6', // teal-500
-  other: '#71717a', // zinc-500
-  medications: '#10b981', // emerald-500
+  stimulants:     '#f59e0b', // amber-500
+  depressants:    '#6366f1', // indigo-500
+  hallucinogens:  '#a855f7', // purple-500
+  dissociatives:  '#06b6d4', // cyan-500
+  empathogens:    '#ec4899', // pink-500
+  cannabinoids:   '#22c55e', // green-500
+  opioids:        '#ef4444', // red-500
+  deliriants:     '#64748b', // slate-500
+  nootropics:     '#14b8a6', // teal-500
+  other:          '#71717a', // zinc-500
+  medications:    '#10b981', // emerald-500
 }
 
 /** Resolve a substance's primary category to a hex color for inline styles. */
@@ -191,10 +191,10 @@ function hasIncompletePhases(
   duration: { onset?: string; comeup?: string; peak?: string; offset?: string; total?: string } | null | undefined,
 ): boolean {
   if (!duration) return false
-  const hasOnset = duration.onset && duration.onset.trim() !== '' && duration.onset !== '—'
-  const hasTotal = duration.total && duration.total.trim() !== '' && duration.total !== '—'
+  const hasOnset  = duration.onset  && duration.onset.trim()  !== '' && duration.onset  !== '—'
+  const hasTotal  = duration.total  && duration.total.trim()  !== '' && duration.total  !== '—'
   const hasComeup = duration.comeup && duration.comeup.trim() !== '' && duration.comeup !== '—'
-  const hasPeak = duration.peak && duration.peak.trim() !== '' && duration.peak !== '—'
+  const hasPeak   = duration.peak   && duration.peak.trim()   !== '' && duration.peak   !== '—'
   const hasOffset = duration.offset && duration.offset.trim() !== '' && duration.offset !== '—'
   if (hasOnset && hasTotal && (!hasComeup || !hasPeak || !hasOffset)) return true
   return false
@@ -570,8 +570,9 @@ export function IntensityTimelineChart() {
                     else next.add(g.key)
                     return next
                   })}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'
-                    }`}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${
+                    hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'
+                  }`}
                   style={{ borderColor: hidden ? undefined : color, color }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, opacity: hidden ? 0.3 : 1 }} />
@@ -597,10 +598,11 @@ export function IntensityTimelineChart() {
               <button
                 key={opt.label}
                 onClick={() => setWindowHours(opt.hours)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${isActive
+                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${
+                  isActive
                     ? 'bg-primary text-primary-content'
                     : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'
-                  }`}
+                }`}
               >
                 {opt.label}
               </button>
@@ -803,7 +805,7 @@ function GroupCard({
     // Project the next dose at: last dose time + interval
     const lastDose = group.routes.flatMap(rg => rg.doses).reduce((latest, d) =>
       d.doseTime.getTime() > latest.doseTime.getTime() ? d : latest,
-      group.routes[0].doses[0])
+    group.routes[0].doses[0])
     const nextDoseTs = lastDose.doseTime.getTime() + schedule.intervalMinutes * 60_000
     if (nextDoseTs <= now || nextDoseTs > config.windowEndMs) return null
     // Use the last dose's timings as a template for the projected curve
@@ -911,12 +913,13 @@ function GroupCard({
                 <button
                   key={`${rg.route}-${doseId}`}
                   onClick={() => onDoseClick(doseId)}
-                  className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all overflow-hidden ${isIsolated
+                  className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all overflow-hidden ${
+                    isIsolated
                       ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
                       : isDoseEnded
                         ? 'border-base-300/50 opacity-50'
                         : 'border-base-300 hover:border-base-300/80'
-                    }`}
+                  }`}
                   style={{ color: palette.stroke }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: palette.fill, opacity: isDoseActive ? 1 : 0.4 }} />
@@ -1010,19 +1013,25 @@ function GroupCard({
             (4.1) and the pulsing now-dot (4.2) positioned by percentage. */}
         <div className="relative">
           {/* 4.1: Dose start markers — small downward triangles below the
-              chart at each dose's start time. Positioned by percentage
-              matching the x-axis. Only shown for doses whose start time
-              falls within the current window. */}
+              chart at each dose's start time. Positioned to match the chart's
+              plot area (accounting for Y-axis width + left margin offset).
+              Only shown for doses whose start time falls within the window. */}
           {mounted && config.series.map(s => {
             const doseStartMs = s.dose.doseTime.getTime()
             if (doseStartMs < config.windowStartMs || doseStartMs > config.windowEndMs) return null
+            // The chart's plot area is offset from the container by:
+            //   left = YAxisWidth(32) + leftMargin(-12) = 20px
+            //   right = containerWidth - rightMargin(8)
+            // So plotAreaWidth = 100% - 20px - 8px = 100% - 28px
+            // Position = plotAreaLeft + pct * plotAreaWidth
+            //          = 20px + (pct/100) * (100% - 28px)
             const pct = ((doseStartMs - config.windowStartMs) / (config.windowEndMs - config.windowStartMs)) * 100
             return (
               <div
                 key={`dose-marker-${s.dataKey}`}
                 className="absolute pointer-events-none z-10"
                 style={{
-                  left: `${pct}%`,
+                  left: `calc(20px + ${pct / 100} * (100% - 28px))`,
                   bottom: 0,
                   transform: 'translateX(-50%)',
                 }}
@@ -1042,232 +1051,247 @@ function GroupCard({
             )
           })}
 
-          {/* 4.2: Pulsing now-dot — a small CSS-animated dot at the top of
-              the now-line. Recharts' ReferenceLine label is static; this
-              adds the pulse animation the old SVG had. */}
-          {mounted && nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
-            <div
-              className="absolute pointer-events-none z-10"
-              style={{
-                left: `${((nowTs - config.windowStartMs) / (config.windowEndMs - config.windowStartMs)) * 100}%`,
-                top: 0,
-                transform: 'translateX(-50%)',
-              }}
-            >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{
-                  backgroundColor: NOW_INDICATOR.color,
-                  boxShadow: `0 0 6px ${NOW_INDICATOR.color}`,
-                  animation: 'now-pulse 2s ease-in-out infinite',
-                }}
-              />
-            </div>
-          )}
-
-          {/* Chart container — tabIndex + onKeyDown enable keyboard navigation (1.7).
+        {/* Chart container — tabIndex + onKeyDown enable keyboard navigation (1.7).
             Arrow Left/Right move the tooltip, Escape clears it. */}
-          <div
-            style={{ width: '100%', height: isMobile ? 200 : 280 }}
-            tabIndex={0}
-            role="application"
-            aria-label={`Intensity timeline chart for ${group.substanceName}. Use arrow keys to navigate, Escape to clear.`}
-            onKeyDown={(e) => {
-              // 1.7: Keyboard navigation — dispatch synthetic mousemove events
-              // to move Recharts' tooltip. Finds the chart's <svg> and computes
-              // a new X based on the current cursor position (or center on first press).
-              const svg = e.currentTarget.querySelector('svg.recharts-surface')
-              if (!svg) return
-              const rect = svg.getBoundingClientRect()
-              // Track current cursor X on the element (fallback to center)
-              const currentX = (svg as any).__cursorX ?? rect.width / 2
-              if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                e.preventDefault()
-                const step = rect.width * 0.03 // 3% per press
-                const nextX = Math.max(0, Math.min(rect.width, currentX + (e.key === 'ArrowRight' ? step : -step)))
-                  ; (svg as any).__cursorX = nextX
-                // Dispatch synthetic mousemove
-                const mouseEvent = new MouseEvent('mousemove', {
-                  bubbles: true,
-                  clientX: rect.left + nextX,
-                  clientY: rect.top + rect.height / 2,
-                })
-                svg.dispatchEvent(mouseEvent)
-              } else if (e.key === 'Escape') {
-                e.preventDefault()
-                // Dispatch mouseout to clear the tooltip
-                svg.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
-                  ; (svg as any).__cursorX = undefined
-              }
-            }}
-            onMouseMove={(e) => {
-              // Track cursor X for keyboard nav + 2.6 hover-snap
-              const svg = e.currentTarget.querySelector('svg.recharts-surface')
-              if (!svg) return
-              const rect = svg.getBoundingClientRect()
-              const x = e.clientX - rect.left
-                ; (svg as any).__cursorX = x
+        <div
+          style={{ width: '100%', height: isMobile ? 200 : 280 }}
+          tabIndex={0}
+          role="application"
+          aria-label={`Intensity timeline chart for ${group.substanceName}. Use arrow keys to navigate, Escape to clear.`}
+          onKeyDown={(e) => {
+            // 1.7: Keyboard navigation — dispatch synthetic mousemove events
+            // to move Recharts' tooltip. Finds the chart's <svg> and computes
+            // a new X based on the current cursor position (or center on first press).
+            const svg = e.currentTarget.querySelector('svg.recharts-surface')
+            if (!svg) return
+            const rect = svg.getBoundingClientRect()
+            // Track current cursor X on the element (fallback to center)
+            const currentX = (svg as any).__cursorX ?? rect.width / 2
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              e.preventDefault()
+              const step = rect.width * 0.03 // 3% per press
+              const nextX = Math.max(0, Math.min(rect.width, currentX + (e.key === 'ArrowRight' ? step : -step)))
+              ;(svg as any).__cursorX = nextX
+              // Dispatch synthetic mousemove
+              const mouseEvent = new MouseEvent('mousemove', {
+                bubbles: true,
+                clientX: rect.left + nextX,
+                clientY: rect.top + rect.height / 2,
+              })
+              svg.dispatchEvent(mouseEvent)
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              // Dispatch mouseout to clear the tooltip
+              svg.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }))
+              ;(svg as any).__cursorX = undefined
+            }
+          }}
+          onMouseMove={(e) => {
+            // Track cursor X for keyboard nav + 2.6 hover-snap
+            const svg = e.currentTarget.querySelector('svg.recharts-surface')
+            if (!svg) return
+            const rect = svg.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            ;(svg as any).__cursorX = x
 
-              // 2.6: Hover-snap to dose events — if the cursor is within ~5% of
-              // a dose start time, snap the tooltip to that dose's exact start.
-              // Implemented by finding the nearest dose start and, if close
-              // enough, dispatching a synthetic mousemove at that X.
-              const snapThresholdPx = rect.width * 0.03 // 3% of chart width
-              let nearestDoseX: number | null = null
-              let nearestDist = Infinity
-              for (const s of config.series) {
-                const doseStartMs = s.dose.doseTime.getTime()
-                if (doseStartMs < config.windowStartMs || doseStartMs > config.windowEndMs) continue
-                const dosePct = (doseStartMs - config.windowStartMs) / (config.windowEndMs - config.windowStartMs)
-                const doseX = dosePct * rect.width
-                const dist = Math.abs(doseX - x)
-                if (dist < nearestDist) {
-                  nearestDist = dist
-                  nearestDoseX = doseX
-                }
+            // 2.6: Hover-snap to dose events — if the cursor is within ~5% of
+            // a dose start time, snap the tooltip to that dose's exact start.
+            // Implemented by finding the nearest dose start and, if close
+            // enough, dispatching a synthetic mousemove at that X.
+            const snapThresholdPx = rect.width * 0.03 // 3% of chart width
+            let nearestDoseX: number | null = null
+            let nearestDist = Infinity
+            for (const s of config.series) {
+              const doseStartMs = s.dose.doseTime.getTime()
+              if (doseStartMs < config.windowStartMs || doseStartMs > config.windowEndMs) continue
+              const dosePct = (doseStartMs - config.windowStartMs) / (config.windowEndMs - config.windowStartMs)
+              const doseX = dosePct * rect.width
+              const dist = Math.abs(doseX - x)
+              if (dist < nearestDist) {
+                nearestDist = dist
+                nearestDoseX = doseX
               }
-              if (nearestDoseX !== null && nearestDist < snapThresholdPx && Math.abs(nearestDoseX - x) > 1) {
-                // Snap — dispatch a synthetic mousemove at the dose start X.
-                // Only do this if we're not already very close (avoids infinite loops).
-                svg.dispatchEvent(new MouseEvent('mousemove', {
-                  bubbles: true,
-                  clientX: rect.left + nearestDoseX,
-                  clientY: e.clientY,
-                }))
-              }
-            }}
-          >
-            {mounted ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={config.data} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
-                  <defs>
-                    {config.series.map((s, i) => (
-                      <linearGradient key={`grad-${i}`} id={`grad-${group.key}-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={s.palette.fill} stopOpacity={0.3} />
-                        <stop offset="100%" stopColor={s.palette.fill} stopOpacity={0.02} />
-                      </linearGradient>
-                    ))}
-                    {/* 4.5: Chart background gradient */}
-                    <linearGradient id={`bg-grad-${group.key}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.02)" />
-                      <stop offset="100%" stopColor="rgba(0,0,0,0.15)" />
-                    </linearGradient>
-                  </defs>
+            }
+            if (nearestDoseX !== null && nearestDist < snapThresholdPx && Math.abs(nearestDoseX - x) > 1) {
+              // Snap — dispatch a synthetic mousemove at the dose start X.
+              // Only do this if we're not already very close (avoids infinite loops).
+              svg.dispatchEvent(new MouseEvent('mousemove', {
+                bubbles: true,
+                clientX: rect.left + nearestDoseX,
+                clientY: e.clientY,
+              }))
+            }
+          }}
+        >
+          {mounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={config.data} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+              <defs>
+                {config.series.map((s, i) => (
+                  <linearGradient key={`grad-${i}`} id={`grad-${group.key}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={s.palette.fill} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={s.palette.fill} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+                {/* 4.5: Chart background gradient */}
+                <linearGradient id={`bg-grad-${group.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.02)" />
+                  <stop offset="100%" stopColor="rgba(0,0,0,0.15)" />
+                </linearGradient>
+              </defs>
 
-                  {/* 4.5: background fill */}
-                  <rect x={0} y={0} width="100%" height="100%" fill={`url(#bg-grad-${group.key})`} fillOpacity={0.5} />
+              {/* 4.5: background fill */}
+              <rect x={0} y={0} width="100%" height="100%" fill={`url(#bg-grad-${group.key})`} fillOpacity={0.5} />
 
-                  {/* Phase band backgrounds */}
-                  {config.phaseBands.map(band => {
-                    const pb = PHASE_BANDS.find(b => b.phase === band.phase)
-                    if (!pb) return null
+              {/* Phase band backgrounds */}
+              {config.phaseBands.map(band => {
+                const pb = PHASE_BANDS.find(b => b.phase === band.phase)
+                if (!pb) return null
+                return (
+                  <ReferenceArea
+                    key={`band-${band.phase}`}
+                    x1={band.startMs}
+                    x2={band.endMs}
+                    strokeOpacity={0}
+                    fill={pb.fill}
+                    fillOpacity={0.06}
+                  />
+                )
+              })}
+
+              {/* 2.5: Night-hour background bands (10pm–6am) */}
+              {nightBands.map((nb, i) => (
+                <ReferenceArea
+                  key={`night-${i}`}
+                  x1={nb.startMs}
+                  x2={nb.endMs}
+                  strokeOpacity={0}
+                  fill="#1e293b"
+                  fillOpacity={0.15}
+                />
+              ))}
+
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis
+                dataKey="t"
+                type="number"
+                domain={[config.windowStartMs, config.windowEndMs]}
+                scale="time"
+                tick={{ fontSize: 10, fill: 'currentColor' }}
+                stroke="currentColor"
+                tickFormatter={(ts) => format(new Date(ts), 'h:mm a')}
+                minTickGap={40}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 10, fill: 'currentColor' }}
+                stroke="currentColor"
+                width={32}
+                tickFormatter={(v) => `${v}%`}
+                label={{ value: 'Intensity', angle: -90, position: 'insideLeft', fontSize: 9, fill: 'currentColor', opacity: 0.6, dy: 20 }}
+              />
+              <Tooltip
+                content={<ChartTooltip series={config.series} windowStartMs={config.windowStartMs} nowTs={nowTs} />}
+                cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
+              />
+
+              {/* Now indicator — position comes from nowTs prop, NOT from
+                  config (which is memoized and stable across ticks).
+                  The pulsing dot is rendered as a custom SVG label inside
+                  the ReferenceLine so it's in the same coordinate space as
+                  the dashed line (guarantees perfect horizontal alignment).
+                  Uses SVG <animate> instead of CSS (4.2). */}
+              {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
+                <ReferenceLine
+                  x={nowTs}
+                  stroke={NOW_INDICATOR.color}
+                  strokeWidth={NOW_INDICATOR.strokeWidth}
+                  strokeDasharray={NOW_INDICATOR.dashArray}
+                  label={(props: { viewBox?: { x?: number; y?: number } }) => {
+                    // Render the "NOW" text + a pulsing SVG circle at the top
+                    // of the line. props.viewBox.x is the exact SVG x-coordinate
+                    // of the line, so the dot is always centered on it.
+                    const cx = props.viewBox?.x ?? 0
+                    const cy = 4 // near the top of the chart
                     return (
-                      <ReferenceArea
-                        key={`band-${band.phase}`}
-                        x1={band.startMs}
-                        x2={band.endMs}
-                        strokeOpacity={0}
-                        fill={pb.fill}
-                        fillOpacity={0.06}
-                      />
+                      <g>
+                        <text
+                          x={cx}
+                          y={cy - 6}
+                          textAnchor="middle"
+                          fontSize={8}
+                          fill={NOW_INDICATOR.color}
+                          opacity={0.8}
+                        >
+                          NOW
+                        </text>
+                        <circle cx={cx} cy={cy} r={NOW_INDICATOR.dotRadius} fill={NOW_INDICATOR.color}>
+                          <animate
+                            attributeName="opacity"
+                            values="1;0.3;1"
+                            dur={`${NOW_INDICATOR.pulseDurationMs}ms`}
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="r"
+                            values={`${NOW_INDICATOR.dotRadius};${NOW_INDICATOR.dotRadius * 0.7};${NOW_INDICATOR.dotRadius}`}
+                            dur={`${NOW_INDICATOR.pulseDurationMs}ms`}
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      </g>
                     )
-                  })}
+                  }}
+                />
+              )}
 
-                  {/* 2.5: Night-hour background bands (10pm–6am) */}
-                  {nightBands.map((nb, i) => (
-                    <ReferenceArea
-                      key={`night-${i}`}
-                      x1={nb.startMs}
-                      x2={nb.endMs}
-                      strokeOpacity={0}
-                      fill="#1e293b"
-                      fillOpacity={0.15}
-                    />
-                  ))}
-
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis
-                    dataKey="t"
-                    type="number"
-                    domain={[config.windowStartMs, config.windowEndMs]}
-                    scale="time"
-                    tick={{ fontSize: 10, fill: 'currentColor' }}
-                    stroke="currentColor"
-                    tickFormatter={(ts) => format(new Date(ts), 'h:mm a')}
-                    minTickGap={40}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tick={{ fontSize: 10, fill: 'currentColor' }}
-                    stroke="currentColor"
-                    width={32}
-                    tickFormatter={(v) => `${v}%`}
-                    label={{ value: 'Intensity', angle: -90, position: 'insideLeft', fontSize: 9, fill: 'currentColor', opacity: 0.6, dy: 20 }}
-                  />
-                  <Tooltip
-                    content={<ChartTooltip series={config.series} windowStartMs={config.windowStartMs} nowTs={nowTs} />}
-                    cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
-                  />
-
-                  {/* Now indicator — position comes from nowTs prop, NOT from
-                  config (which is memoized and stable across ticks). */}
-                  {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
-                    <ReferenceLine
-                      x={nowTs}
-                      stroke={NOW_INDICATOR.color}
-                      strokeWidth={NOW_INDICATOR.strokeWidth}
-                      strokeDasharray={NOW_INDICATOR.dashArray}
-                      label={{ value: 'NOW', fontSize: 8, fill: NOW_INDICATOR.color, position: 'top' }}
-                    />
-                  )}
-
-                  {/* One Area per dose. isEnded is computed fresh from nowTs so
+              {/* One Area per dose. isEnded is computed fresh from nowTs so
                   ended doses fade out without re-sampling the chart data.
                   4.4: ended doses get a dashed stroke + reduced opacity to
                   make "this is over" more obvious.
                   dot=false + activeDot=false ensures Recharts doesn't render
                   default dots at data points (which would look like stray
                   markers at curve peaks and start/end points). */}
-                  {config.series.map((s, i) => {
-                    const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
-                    return (
-                      <Area
-                        key={s.dataKey}
-                        type="monotone"
-                        dataKey={s.dataKey}
-                        stroke={s.palette.stroke}
-                        strokeWidth={i === 0 ? 2.5 : 1.5}
-                        strokeDasharray={doseEnded ? '4 4' : undefined}
-                        fill={`url(#grad-${group.key}-${i})`}
-                        opacity={doseEnded ? 0.4 : 1}
-                        isAnimationActive={false}
-                        connectNulls
-                        dot={false}
-                        activeDot={false}
-                      />
-                    )
-                  })}
+              {config.series.map((s, i) => {
+                const doseEnded = (nowTs - s.dose.doseTime.getTime()) / 60_000 >= s.dose.timings.offsetEnd
+                return (
+                  <Area
+                    key={s.dataKey}
+                    type="monotone"
+                    dataKey={s.dataKey}
+                    stroke={s.palette.stroke}
+                    strokeWidth={i === 0 ? 2.5 : 1.5}
+                    strokeDasharray={doseEnded ? '4 4' : undefined}
+                    fill={`url(#grad-${group.key}-${i})`}
+                    opacity={doseEnded ? 0.4 : 1}
+                    isAnimationActive={false}
+                    connectNulls
+                    dot={false}
+                    activeDot={false}
+                  />
+                )
+              })}
 
-                  {/* 2.8: Predictive projection — a faded dashed line showing where
+              {/* 2.8: Predictive projection — a faded dashed line showing where
                   the next scheduled dose's curve would fall, based on the
                   reminder schedule. Only renders if a schedule exists and the
                   projected dose time is within the chart window. Rendered as
                   a ReferenceLine at the projected dose time (simpler than
                   sampling a full curve). */}
-                  {projectionSeries && (
-                    <ReferenceLine
-                      x={projectionSeries.ts}
-                      stroke={ROUTE_PALETTE[0].stroke}
-                      strokeWidth={1}
-                      strokeDasharray="2 4"
-                      opacity={0.4}
-                      label={{ value: 'Next?', fontSize: 8, fill: ROUTE_PALETTE[0].stroke, position: 'top', opacity: 0.6 }}
-                    />
-                  )}
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : null}
-          </div>
+              {projectionSeries && (
+                <ReferenceLine
+                  x={projectionSeries.ts}
+                  stroke={ROUTE_PALETTE[0].stroke}
+                  strokeWidth={1}
+                  strokeDasharray="2 4"
+                  opacity={0.4}
+                  label={{ value: 'Next?', fontSize: 8, fill: ROUTE_PALETTE[0].stroke, position: 'top', opacity: 0.6 }}
+                />
+              )}
+            </AreaChart>
+            </ResponsiveContainer>
+          ) : null}
+        </div>
         </div>
 
         {/* Footer */}
@@ -1372,8 +1396,9 @@ function GroupCard({
                           return (
                             <div
                               key={p.key}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive ? 'ring-1 ring-purple-500/30 bg-purple-500/5' : isPast ? 'opacity-50' : 'opacity-30'
-                                }`}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${
+                                isActive ? 'ring-1 ring-purple-500/30 bg-purple-500/5' : isPast ? 'opacity-50' : 'opacity-30'
+                              }`}
                             >
                               <PIcon className={`h-3.5 w-3.5 shrink-0 ${pc.text}`} />
                               <span className={`font-medium w-16 ${pc.text}`}>{formatPhaseName(p.key as PhaseName)}</span>
@@ -1394,7 +1419,7 @@ function GroupCard({
                 </div>
               )
             })}
-          </div>
+            </div>
         )}
       </CardContent>
     </Card>
@@ -1471,8 +1496,9 @@ function MobilePhaseStrip({ group, nowTs, windowStartMs, windowEndMs }: MobilePh
           return (
             <div
               key={p.key}
-              className={`${p.color} transition-all duration-500 ${isPast || isCurrent ? 'opacity-100' : 'opacity-30'
-                }`}
+              className={`${p.color} transition-all duration-500 ${
+                isPast || isCurrent ? 'opacity-100' : 'opacity-30'
+              }`}
               style={{ width: `${widthPct}%` }}
             />
           )
@@ -1622,4 +1648,3 @@ function ChartTooltip({ active, payload, label, series, windowStartMs, nowTs }: 
     </div>
   )
 }
-
