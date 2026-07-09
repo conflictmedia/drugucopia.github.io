@@ -729,6 +729,11 @@ export function DoseLoggerModal({
   const [setting, setSetting] = useState('')
   const [intensity, setIntensity] = useState(5)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
+  // A5 — collapsible "Optional details" section. Default collapsed for
+  // new logs so the mobile form is short. Auto-expands when the modal
+  // opens with pre-existing optional data (e.g. editing a dose with a
+  // mood set), and when the user manually toggles it.
+  const [optionalOpen, setOptionalOpen] = useState(false)
 
   const [durationOverride, setDurationOverride] = useState<Duration | null>(null)
 
@@ -773,6 +778,7 @@ export function DoseLoggerModal({
       setMood('')
       setSetting('')
       setIntensity(5)
+      setOptionalOpen(false)
     }
   }, [open, preselectedSubstanceId, preselectedRoute])
 
@@ -1546,71 +1552,113 @@ export function DoseLoggerModal({
             />
           </div>
 
-          <div className="grid gap-2 rounded-lg border border-base-300/60 bg-base-200/20 p-3">
-            <DurationOverrideFields
-              baseDuration={estimatedDuration}
-              onChange={setDurationOverride}
-            />
-          </div>
+          {/* A5 — Optional details collapsed by default.
+              The mobile form was getting long (5+ Comboboxes + a textarea
+              + a range slider). Hiding the optional stuff behind a single
+              disclosure keeps the "log a dose" flow short for the common
+              case where the user just wants to record substance+amount+route+time.
+              Count of filled optional fields is shown in the trigger so the
+              user can see at a glance whether they've already filled anything in. */}
+          <div className="rounded-lg border border-base-300/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setOptionalOpen((v) => !v)}
+              aria-expanded={optionalOpen}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium hover:bg-base-200/50 transition-colors text-left"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-neutral-content">Optional details</span>
+                {(() => {
+                  const filledCount = [
+                    !!mood,
+                    !!setting,
+                    intensity !== 5,
+                    !!notes.trim(),
+                    !!durationOverride,
+                  ].filter(Boolean).length
+                  if (filledCount === 0) return null
+                  return (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium tabular-nums">
+                      {filledCount} filled
+                    </span>
+                  )
+                })()}
+              </span>
+              {optionalOpen
+                ? <ChevronUp className="h-4 w-4 text-neutral-content shrink-0" />
+                : <ChevronDown className="h-4 w-4 text-neutral-content shrink-0" />}
+            </button>
 
-          <div className="grid gap-2">
-            <Label>Mood (optional)</Label>
-            <Combobox
-              options={moodOptions}
-              value={mood}
-              onChange={setMood}
-              placeholder="Select or type custom..."
-              allowCustom={true}
-            />
-          </div>
+            {optionalOpen && (
+              <div className="px-3 pb-3 pt-1 grid gap-4">
+                <div className="grid gap-2 rounded-lg border border-base-300/60 bg-base-200/20 p-3">
+                  <DurationOverrideFields
+                    baseDuration={estimatedDuration}
+                    onChange={setDurationOverride}
+                  />
+                </div>
 
-          <div className="grid gap-2">
-            <Label>Setting (optional)</Label>
-            <Combobox
-              options={settingOptions}
-              value={setting}
-              onChange={setSetting}
-              placeholder="Select or type custom..."
-              allowCustom={true}
-            />
-          </div>
+                <div className="grid gap-2">
+                  <Label>Mood (optional)</Label>
+                  <Combobox
+                    options={moodOptions}
+                    value={mood}
+                    onChange={setMood}
+                    placeholder="Select or type custom..."
+                    allowCustom={true}
+                  />
+                </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="dose-intensity" className="flex items-center justify-between">
-              <span>Intensity (optional)</span>
-              <span className="text-xs text-neutral-content tabular-nums">{intensity}/10</span>
-            </Label>
-            <input
-              id="dose-intensity"
-              type="range"
-              min={0}
-              max={10}
-              step={1}
-              value={intensity}
-              onChange={(e) => setIntensity(Number(e.target.value))}
-              className="range range-xs range-primary"
-              aria-valuemin={0}
-              aria-valuemax={10}
-              aria-valuenow={intensity}
-            />
-            <div className="flex justify-between text-[10px] text-neutral-content/70 px-0.5">
-              <span>None</span>
-              <span>Mild</span>
-              <span>Moderate</span>
-              <span>Strong</span>
-              <span>Peak</span>
-            </div>
-          </div>
+                <div className="grid gap-2">
+                  <Label>Setting (optional)</Label>
+                  <Combobox
+                    options={settingOptions}
+                    value={setting}
+                    onChange={setSetting}
+                    placeholder="Select or type custom..."
+                    allowCustom={true}
+                  />
+                </div>
 
-          <div className="grid gap-2">
-            <Label>Notes (optional)</Label>
-            <Textarea
-              placeholder="Any additional notes about this experience..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={isMobile ? 2 : 3}
-              className="text-base"
-            />
+                <div className="grid gap-2">
+                  <Label htmlFor="dose-intensity" className="flex items-center justify-between">
+                    <span>Intensity (optional)</span>
+                    <span className="text-xs text-neutral-content tabular-nums">{intensity}/10</span>
+                  </Label>
+                  <input
+                    id="dose-intensity"
+                    type="range"
+                    min={0}
+                    max={10}
+                    step={1}
+                    value={intensity}
+                    onChange={(e) => setIntensity(Number(e.target.value))}
+                    className="range range-xs range-primary"
+                    aria-valuemin={0}
+                    aria-valuemax={10}
+                    aria-valuenow={intensity}
+                  />
+                  <div className="flex justify-between text-[10px] text-neutral-content/70 px-0.5">
+                    <span>None</span>
+                    <span>Mild</span>
+                    <span>Moderate</span>
+                    <span>Strong</span>
+                    <span>Peak</span>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Notes (optional)</Label>
+                  <Textarea
+                    placeholder="Any additional notes about this experience..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={isMobile ? 2 : 3}
+                    className="text-base"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

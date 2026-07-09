@@ -105,7 +105,7 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
                 <span className="text-xs text-neutral-content">Matched:</span>
                 {result.matchedTerms.map((term, i) => (
-                  <span key={i} className="badge badge-secondary text-xs">
+                  <span key={i} className="badge badge-outline text-xs">
                     {term}
                   </span>
                 ))}

@@ -149,7 +149,7 @@ export function DoseStats() {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {stats.topSubstances.map(([name, count], i) => (
-                <Badge key={name} variant={i === 0 ? 'default' : 'secondary'}>
+                <Badge key={name} variant={i === 0 ? 'default' : 'outline'}>
                   {name} ({count})
                 </Badge>
               ))}

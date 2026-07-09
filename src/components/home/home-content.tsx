@@ -63,6 +63,10 @@ const ReminderSettings = dynamic(
   () => import('@/components/reminder-settings').then((m) => m.ReminderSettings),
   { ssr: false, loading: () => null },
 )
+const SyncConflicts = dynamic(
+  () => import('@/components/sync-conflicts').then((m) => m.SyncConflicts),
+  { ssr: false, loading: () => null },
+)
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DoseLoggerModal } from '@/components/dose-logger-modal'
 import {
@@ -653,6 +657,19 @@ function SubstanceDetail({
                 </li>
               ))}
             </ul>
+            {/* G3 — Deep link to the harm-reduction page with this substance
+                pre-selected, so the user sees related general guides +
+                dangerous combos involving this substance. */}
+            <div className="mt-4">
+              <a
+                href={`/harm-reduction/?substance=${substance.id}`}
+                className="btn btn-outline btn-sm gap-1.5"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                View full harm reduction for {substance.name}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </TabsContent>
 
           <TabsContent value="info" className="mt-4 space-y-4">
@@ -894,6 +911,17 @@ function SubstanceDetail({
                         </li>
                       ))}
                     </ul>
+                    {/* G3 — mobile deep link to harm-reduction page */}
+                    <div className="mt-3">
+                      <a
+                        href={`/harm-reduction/?substance=${substance.id}`}
+                        className="btn btn-outline btn-sm gap-1.5 w-full"
+                      >
+                        <Shield className="h-3.5 w-3.5" />
+                        Full harm reduction for {substance.name}
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </a>
+                    </div>
                   </TabsContent>
                 </div>
               </Tabs>
@@ -1217,6 +1245,10 @@ export function HomeContent() {
           <IntensityTimelineChart />
           <ReminderSettings />
           <DoseStats />
+          {/* D2 — sync conflict resolution banner. Renders as nothing
+              when there are no pending conflicts, so it's safe to keep
+              mounted at the top of the dose-log view. */}
+          <SyncConflicts />
           <DoseHistory />
         </div>
       ) : (

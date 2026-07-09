@@ -285,11 +285,12 @@ export function InteractionSubstanceSelector({
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             <div
               ref={listRef}
-              className="absolute z-50 top-full mt-1 w-full rounded-md dropdown-transparent text-base-content shadow-lg max-h-[380px] overflow-hidden"
+              className="absolute z-50 top-full mt-1 w-full rounded-md bg-base-100 border border-base-300 text-base-content shadow-lg max-h-[380px] overflow-hidden"
+              style={{ backgroundColor: 'var(--color-base-100)' }}
               onKeyDown={handleKeyDown}
             >
               {/* Search input */}
-              <div className="p-2 border-b">
+              <div className="p-2 border-b border-base-300">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-content" />
                   <input
@@ -305,7 +306,7 @@ export function InteractionSubstanceSelector({
               </div>
 
               {/* Category filter chips */}
-              <div className="px-2 py-1.5 border-b border-white/8 flex gap-1 overflow-x-auto scrollbar-none">
+              <div className="px-2 py-1.5 border-b border-base-300 flex gap-1 overflow-x-auto scrollbar-none">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
