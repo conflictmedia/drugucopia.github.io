@@ -22,7 +22,7 @@
 
 // Bump this when changing the precache list or fetch strategy.
 // The activate handler drops any cache with a different version.
-const CACHE_VERSION = 'drugucopia-v1'
+const CACHE_VERSION = 'drugucopia-v5'
 const PRECACHE_NAME = `${CACHE_VERSION}-precache`
 const RUNTIME_NAME = `${CACHE_VERSION}-runtime`
 
@@ -38,23 +38,25 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
+      // NUKE: drop ALL caches on install, regardless of version. The
+      // previous versioning scheme wasn't aggressive enough — users were
+      // still seeing stale JS chunks from old SW versions. Wiping
+      // everything on every install guarantees a clean slate.
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+
+      // Re-precache the critical app shell from the network (bypass HTTP cache).
       const cache = await caches.open(PRECACHE_NAME)
-      // Use { cache: 'reload' } to bypass the HTTP cache for the precache
-      // so we get fresh responses on install. Best-effort: ignore failures
-      // for individual assets (e.g. notification.wav if it ever moves).
       await Promise.all(
         PRECACHE_URLS.map(async (url) => {
           try {
             await cache.add(new Request(url, { cache: 'reload' }))
           } catch {
-            /* skip missing asset — don't fail the whole install */
+            /* skip missing asset */
           }
         }),
       )
-      // Take over from the previous SW as soon as possible so the new
-      // fetch handler is active on the next navigation. (C5 — versioned
-      // SW — is the long-term plan; for now skipWaiting keeps the
-      // update flow simple for users who have never seen a SW update.)
+      // Take over from the previous SW immediately.
       self.skipWaiting()
     })(),
   )
@@ -63,13 +65,22 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      // Drop caches from previous versions.
+      // Drop ALL caches that don't match the current version.
       const keys = await caches.keys()
       await Promise.all(
         keys
           .filter((k) => !k.startsWith(CACHE_VERSION))
           .map((k) => caches.delete(k)),
       )
+      // Force EVERY existing client (open tab) to reload immediately so
+      // they pick up the new application JS. Without this, an open tab
+      // keeps running the old JS even after the new SW takes over —
+      // which is the root cause of "I deployed a fix but it's still
+      // broken" reports.
+      const clients = await self.clients.matchAll({ type: 'window' })
+      clients.forEach((client) => {
+        client.navigate(client.url).catch(() => { })
+      })
       await self.clients.claim()
     })(),
   )
@@ -118,7 +129,44 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Same-origin static assets: stale-while-revalidate.
+  // Same-origin static assets.
+  //
+  // For Next.js JS chunks (/_next/static/chunks/**) we use NETWORK-FIRST:
+  // application code changes frequently and a stale cached chunk can leave
+  // the user running old logic even after a deploy — which presents as
+  // "the fix didn't work" even though the new code is on the server. We
+  // always prefer the network response and only fall back to cache when
+  // the network fails (offline).
+  //
+  // For everything else (images, fonts, JSON data) we keep
+  // stale-while-revalidate — those assets change rarely and SWR gives
+  // instant offline loads.
+  const isJsChunk = url.pathname.startsWith('/_next/static/chunks/')
+
+  if (isJsChunk) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(RUNTIME_NAME)
+        try {
+          const fresh = await fetch(req)
+          if (fresh && fresh.status === 200 && fresh.type === 'basic') {
+            cache.put(req, fresh.clone()).catch(() => { })
+          }
+          return fresh
+        } catch {
+          const cached = await cache.match(req)
+          if (cached) return cached
+          return new Response('Offline and not cached', {
+            status: 504,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        }
+      })(),
+    )
+    return
+  }
+
+  // Non-chunk assets: stale-while-revalidate.
   // Serves from cache immediately (instant offline), refreshes in background.
   event.respondWith(
     (async () => {
@@ -185,4 +233,3 @@ self.addEventListener('notificationclick', (event) => {
       }),
   )
 })
-

@@ -177,3 +177,4 @@ export const NOW_INDICATOR = {
 export const CURVE_SAMPLES = 80
 
 export const ENDED_DOSE_RETENTION_MINS = 720
+

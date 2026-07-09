@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { SubstanceSearch } from './SubstanceSearch'
-import { RootModeSwitch } from './RootModeSwitch'
 import { getPageTitle } from './navigation'
 
 interface TopBarProps {
@@ -32,8 +31,8 @@ function SyncStatusButton() {
     syncStatus === 'synced'
       ? lastSyncedAt
         ? `Synced ${formatDistanceToNow(new Date(lastSyncedAt), {
-            addSuffix: true,
-          })}`
+          addSuffix: true,
+        })}`
         : 'Synced'
       : syncStatus === 'connecting'
         ? 'Connecting to sync…'
@@ -53,7 +52,7 @@ function SyncStatusButton() {
         syncStatus === 'error' && 'text-error',
         syncStatus === 'idle' && 'text-neutral-content',
       )}
-      onClick={() => router.push('/?view=dose-log')}
+      onClick={() => router.push('/dose-log')}
       aria-label={label}
       title={label}
     >
@@ -74,16 +73,24 @@ function SyncStatusButton() {
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const view = searchParams.get('view')
+  const router = useRouter()
   const queryParam = searchParams.get('q') ?? ''
-  const title = getPageTitle(pathname, view)
-  const showRootSwitch = pathname === '/'
+  const title = getPageTitle(pathname)
   const openDoseLogger = useUIStore((state) => state.openDoseLogger)
 
   const handleDoseLogClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
     openDoseLogger()
+  }
+
+  // Clicking the brand title navigates to the Library view (bare `/`).
+  // Track is now its own page (/dose-log), so Library↔Track are always
+  // cross-page navigations — `router.push` works reliably and the
+  // same-pathname `window.location` workaround is no longer needed.
+  const handleTitleClick = () => {
+    if (pathname === '/') return
+    router.push('/')
   }
 
   return (
@@ -98,12 +105,20 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
-            <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-content">
-              Drugucopia
+          <button
+            type="button"
+            onClick={handleTitleClick}
+            className="btn btn-ghost btn-sm gap-0 px-2 -ml-1 h-auto py-1 normal-case font-normal min-w-0"
+            aria-label="Go to Library"
+            title="Go to Library"
+          >
+            <div className="min-w-0 text-left">
+              <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-content">
+                Drugucopia
+              </div>
+              <h1 className="truncate text-lg font-semibold leading-tight">{title}</h1>
             </div>
-            <h1 className="truncate text-lg font-semibold">{title}</h1>
-          </div>
+          </button>
         </div>
 
         <div className="navbar-center hidden w-full max-w-xl lg:flex">
@@ -130,21 +145,13 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </div>
       </div>
 
-      <div
-        className={cn(
-          'border-t border-base-300/70 px-3 py-3 sm:px-4',
-          !showRootSwitch && 'lg:hidden',
-        )}
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {showRootSwitch && <RootModeSwitch />}
-          <div className="lg:hidden">
-            <SubstanceSearch key={`mobile-search-${pathname}-${queryParam}`} mobile />
-          </div>
-        </div>
+      {/* Mobile-only search row. The Library/Track toggle that used to
+          live here has been removed — Library↔Track navigation is now
+          handled by the sidebar / bottom nav, and Track is its own page
+          at /dose-log. */}
+      <div className="border-t border-base-300/70 px-3 py-3 sm:px-4 lg:hidden">
+        <SubstanceSearch key={`mobile-search-${pathname}-${queryParam}`} mobile />
       </div>
     </header>
   )
 }
-
-

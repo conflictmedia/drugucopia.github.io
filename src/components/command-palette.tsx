@@ -437,3 +437,4 @@ function groupResults(results: PaletteResult[]): { label: string; items: Palette
     }))
     .filter((g) => g.items.length > 0)
 }
+
