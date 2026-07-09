@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -60,6 +60,21 @@ export default function AnalyticsPage() {
   const doses = useDoseStore(s => s.doses)
   const isLoaded = useDoseStore(s => s.isLoaded)
   const [range, setRange] = useState<RangeKey>('30d')
+  // mounted + isMobile — prevents ResponsiveContainer from rendering inside
+  // hidden (display:none) containers which trigger 0×0 warnings. We detect
+  // mobile once on mount and render only the appropriate layout.
+  const [mounted, setMounted] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    check()
+    setMounted(true)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const rangeDays = RANGE_OPTIONS.find(r => r.key === range)!.days
 
@@ -72,7 +87,7 @@ export default function AnalyticsPage() {
   const tolerance = useMemo(() => estimateTolerance(doses), [doses])
   const streaks = useMemo(() => computeStreakInsights(doses), [doses])
 
-  if (!isLoaded) {
+  if (!isLoaded || !mounted) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -88,26 +103,17 @@ export default function AnalyticsPage() {
     )
   }
 
+  // Single responsive layout — using isMobile for the compact prop instead
+  // of rendering two separate hidden/visible containers (which caused 0×0
+  // ResponsiveContainer warnings from the display:none side).
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Desktop container */}
-      <div className="hidden md:block container mx-auto py-6 lg:py-10 px-4 lg:px-6 max-w-7xl">
-        <AnalyticsHeader range={range} onRangeChange={setRange} />
-        <div className="space-y-6">
-          <StreakInsightsRow insights={streaks} />
-          <UsageChartsRow daily={daily} weekly={weekly} monthly={monthly} range={range} />
-          <BreakdownsRow substances={subs} categories={cats} />
-          <ToleranceSection tolerance={tolerance} />
-        </div>
-      </div>
-
-      {/* Mobile container */}
-      <div className="md:hidden px-4 pt-4 pb-8 space-y-4">
-        <AnalyticsHeader range={range} onRangeChange={setRange} compact />
-        <StreakInsightsRow insights={streaks} compact />
-        <UsageChartsRow daily={daily} weekly={weekly} monthly={monthly} range={range} compact />
-        <BreakdownsRow substances={subs} categories={cats} compact />
-        <ToleranceSection tolerance={tolerance} compact />
+    <div className={isMobile ? 'px-4 pt-4 pb-8 space-y-4' : 'container mx-auto py-6 lg:py-10 px-4 lg:px-6 max-w-7xl'}>
+      <AnalyticsHeader range={range} onRangeChange={setRange} compact={isMobile} />
+      <div className={isMobile ? 'space-y-4' : 'space-y-6'}>
+        <StreakInsightsRow insights={streaks} compact={isMobile} />
+        <UsageChartsRow daily={daily} weekly={weekly} monthly={monthly} range={range} compact={isMobile} />
+        <BreakdownsRow substances={subs} categories={cats} compact={isMobile} />
+        <ToleranceSection tolerance={tolerance} compact={isMobile} />
       </div>
     </div>
   )
