@@ -172,6 +172,9 @@ const mergeActiveReminders = (local: ActiveReminder[], remote: ActiveReminder[])
 // --- CONTEXT ---
 interface SyncContextType {
   syncStatus: 'idle' | 'connecting' | 'synced' | 'error'
+  // D1 — ISO timestamp of the last successful snapshot received from
+  // Firestore. Used by the Header's sync indicator to show "synced 2m ago".
+  lastSyncedAt: string | null
   roomId: string
   password: string
   setRoomId: (id: string) => void
@@ -195,6 +198,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const setRemindersFromSync = useReminderStore(s => s.setRemindersFromSync)
 
   const [syncStatus, setSyncStatusRaw] = useState<'idle' | 'connecting' | 'synced' | 'error'>('idle')
+  // D1 — last time we got a successful snapshot from Firestore.
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null)
   const [roomId, setRoomId] = useState('')
   const [password, setPassword] = useState('')
 
@@ -313,7 +318,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
       // Skip auto-push if this state change came from a sync merge.
       if (skipAutoPushCountRef.current > 0) {
-        skipAutoPushCountRef.current--
+        skipAutoPushCountRef.current = Math.max(0, skipAutoPushCountRef.current - 1)
         return
       }
 
@@ -340,7 +345,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
       // Skip auto-push if this state change came from a sync merge.
       if (skipAutoPushCountRef.current > 0) {
-        skipAutoPushCountRef.current--
+        skipAutoPushCountRef.current = Math.max(0, skipAutoPushCountRef.current - 1)
         return
       }
 
@@ -384,7 +389,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     try {
       cryptoKeyRef.current = await deriveKey(effectivePass, effectiveRId)
       hashedRoomRef.current = await hashRoomName(effectiveRId, effectivePass)
-      localStorage.setItem(SYNC_AUTH_KEY, JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }))
+      // B4 fix: do NOT persist credentials yet. The snapshot listener may
+      // fail (permissions, wrong password-derived hash, network). We only
+      // persist once the first snapshot arrives successfully — see the
+      // `if (!initialSyncDoneRef.current)` block inside processSnapshot.
       initialSyncDoneRef.current = false
 
       const db = getDb()
@@ -408,8 +416,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
         isProcessingSnap = true
         try {
           if (!docSnap.exists()) {
-            // New room — nothing to pull, push local state immediately
+            // New room — nothing to pull, push local state immediately.
+            // B4 fix: persist creds here because a successful snapshot
+            // (even on an empty room) means Firestore accepted our read.
             initialSyncDoneRef.current = true
+            setLastSyncedAt(new Date().toISOString())
+            localStorage.setItem(
+              SYNC_AUTH_KEY,
+              JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
+            )
             pushToSync()
             return
           }
@@ -420,6 +435,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // Even for echo-suppressed snapshots, mark initial sync done
             // so the auto-push can resume
             initialSyncDoneRef.current = true
+            setLastSyncedAt(new Date().toISOString())
+            // Echo of our own push — credentials are already valid
+            if (!localStorage.getItem(SYNC_AUTH_KEY)) {
+              localStorage.setItem(
+                SYNC_AUTH_KEY,
+                JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
+              )
+            }
             return
           }
 
@@ -439,6 +462,17 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // propagated back and wiping the remote data.
             const isFirstSync = !initialSyncDoneRef.current
             initialSyncDoneRef.current = true
+            setLastSyncedAt(new Date().toISOString())
+
+            // B4 fix: now that we've successfully decrypted the remote payload,
+            // we know the credentials are valid. Persist them so we can
+            // auto-reconnect on next page load.
+            if (isFirstSync) {
+              localStorage.setItem(
+                SYNC_AUTH_KEY,
+                JSON.stringify({ savedRoom: effectiveRId, savedPass: effectivePass }),
+              )
+            }
 
             const effectiveLocalDeleted = isFirstSync ? new Set<string>() : localDeleted
 
@@ -516,8 +550,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       console.error('Sync connection error:', error)
       setSyncStatus('error')
     }
-  // roomId and password are read via refs to avoid recreating on every keystroke
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // roomId and password are read via refs to avoid recreating on every keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, reminderIsLoaded, setDosesFromSync, setRemindersFromSync, pushToSync, setSyncStatus])
 
   const disconnectSync = useCallback(() => {
@@ -534,10 +568,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem(SYNC_AUTH_KEY)
     setSyncStatus('idle')
+    setLastSyncedAt(null)
     setRoomId('')
     setPassword('')
     toast({ title: 'Sync Disconnected', description: 'Data will only save locally.' })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setSyncStatus])
 
   // Auto-connect on load
@@ -554,12 +589,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return () => { if (unsubscribeRef.current) unsubscribeRef.current() }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const contextValue = useMemo(() => ({
-    syncStatus, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync,
-  }), [syncStatus, roomId, password, connectToSync, disconnectSync])
+    syncStatus, lastSyncedAt, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync,
+  }), [syncStatus, lastSyncedAt, roomId, password, connectToSync, disconnectSync])
 
   return (
     <SyncContext.Provider value={contextValue}>
@@ -572,4 +607,3 @@ export const useSync = () => {
   const context = useContext(SyncContext)
   if (!context) throw new Error("useSync must be used within a SyncProvider")
   return context
-}

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus } from 'lucide-react'
+import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus, Search, X } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
 import { substances } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
@@ -553,6 +553,11 @@ export function DoseHistory() {
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
   const [isImporting, setIsImporting] = useState(false)
 
+  // A3 — search/filter input for the history list.
+  // Matches against substance name, categories, route, notes, mood,
+  // and setting so the list is searchable past ~50 entries.
+  const [historySearch, setHistorySearch] = useState('')
+
   // Delete all state
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -578,7 +583,26 @@ export function DoseHistory() {
     return groups
   }
 
-  const groupedDoses = useMemo(() => groupDosesByDate(doses), [doses])
+  // A3 — apply the search filter BEFORE grouping so empty date groups
+  // naturally fall out of the render. Search is case-insensitive and
+  // matches against the most user-meaningful fields.
+  const filteredDoses = useMemo(() => {
+    const q = historySearch.trim().toLowerCase()
+    if (!q) return doses
+    return doses.filter((d) => {
+      if (d.substanceName?.toLowerCase().includes(q)) return true
+      if (d.route?.toLowerCase().includes(q)) return true
+      if (d.notes?.toLowerCase().includes(q)) return true
+      if (d.mood?.toLowerCase().includes(q)) return true
+      if (d.setting?.toLowerCase().includes(q)) return true
+      if (d.categories?.some((c) => c.toLowerCase().includes(q))) return true
+      // Also match on the formatted amount/unit (e.g. "100mg" or "mg")
+      if (`${d.amount} ${d.unit}`.toLowerCase().includes(q)) return true
+      return false
+    })
+  }, [doses, historySearch])
+
+  const groupedDoses = useMemo(() => groupDosesByDate(filteredDoses), [filteredDoses])
 
   if (!isLoaded) {
     return (
@@ -999,66 +1023,111 @@ export function DoseHistory() {
             </div>
           ) : (
             <div className="pr-4">
-              {Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
-                return (
-                  <div key={dateGroup} className="mb-6">
-                    <h4 className="text-sm font-medium text-neutral-content mb-3 sticky top-0 bg-base-100 py-1 z-10 text-center">
-                      {dateGroup}
-                    </h4>
-                    <div className="space-y-3">
-                      {groupDoses.map((dose) => {
-                        // Find if it's a known substance to link to its page
-                        const knownSubstance = substances.find(s => s.id === dose.substanceId || s.name.toLowerCase() === dose.substanceName.toLowerCase())
+              {/* A3 — Search/filter box. Only render once there's enough
+                  history to be worth filtering. Below 6 entries the user
+                  can scan the whole list visually. */}
+              {doses.length >= 6 && (
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-content/60 pointer-events-none" />
+                  <Input
+                    type="search"
+                    placeholder="Search history — substance, notes, mood, setting…"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    className="pl-9 pr-9 h-9"
+                    aria-label="Search dose history"
+                  />
+                  {historySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setHistorySearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-content/60 hover:text-base-content transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )}
 
-                        return (
-                          <div key={dose.id} className="rounded-lg border p-3 hover:bg-base-200/50 transition-colors">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {knownSubstance ? (
-                                    <Link href={`/?substance=${knownSubstance.id}`} className="font-medium hover:underline hover:text-primary transition-colors">
-                                      {dose.substanceName}
-                                    </Link>
-                                  ) : (
-                                    <span className="font-medium">{dose.substanceName}</span>
-                                  )}
-                                  {(dose.categories || []).map((cat) => (
-                                    <Badge key={cat} variant="outline" className={getCategoryColor(cat)}>{cat}</Badge>
-                                  ))}
+              {filteredDoses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center opacity-60">
+                  <Search className="h-10 w-10 text-neutral-content mb-3" />
+                  <h3 className="text-base font-medium mb-1">No matches</h3>
+                  <p className="text-sm text-neutral-content">
+                    No doses match &ldquo;{historySearch}&rdquo;. Try a different search.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => setHistorySearch('')}
+                  >
+                    Clear search
+                  </Button>
+                </div>
+              ) : (
+                Object.entries(groupedDoses).map(([dateGroup, groupDoses]) => {
+                  return (
+                    <div key={dateGroup} className="mb-6">
+                      <h4 className="text-sm font-medium text-neutral-content mb-3 sticky top-0 bg-base-100 py-1 z-10 text-center">
+                        {dateGroup}
+                      </h4>
+                      <div className="space-y-3">
+                        {groupDoses.map((dose) => {
+                          // Find if it's a known substance to link to its page
+                          const knownSubstance = substances.find(s => s.id === dose.substanceId || s.name.toLowerCase() === dose.substanceName.toLowerCase())
+
+                          return (
+                            <div key={dose.id} className="rounded-lg border p-3 hover:bg-base-200/50 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {knownSubstance ? (
+                                      <Link href={`/?substance=${knownSubstance.id}`} className="font-medium hover:underline hover:text-primary transition-colors">
+                                        {dose.substanceName}
+                                      </Link>
+                                    ) : (
+                                      <span className="font-medium">{dose.substanceName}</span>
+                                    )}
+                                    {(dose.categories || []).map((cat) => (
+                                      <Badge key={cat} variant="outline" className={getCategoryColor(cat)}>{cat}</Badge>
+                                    ))}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5 text-sm text-neutral-content">
+                                    <span className="flex items-center gap-1">
+                                      <Droplets className="h-3 w-3 shrink-0" />
+                                      {(() => {
+                                        const formatted = formatDoseAmount(dose.amount, dose.unit)
+                                        return `${formatted.amount} ${formatted.unit}`
+                                      })()}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3 shrink-0" />{format(new Date(dose.timestamp), 'h:mm a')}
+                                    </span>
+                                    <span>{dose.route}</span>
+                                  </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1.5 text-sm text-neutral-content">
-                                  <span className="flex items-center gap-1">
-                                    <Droplets className="h-3 w-3 shrink-0" />
-                                    {(() => {
-                                      const formatted = formatDoseAmount(dose.amount, dose.unit)
-                                      return `${formatted.amount} ${formatted.unit}`
-                                    })()}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3 shrink-0" />{format(new Date(dose.timestamp), 'h:mm a')}
-                                  </span>
-                                  <span>{dose.route}</span>
+                                <div className="flex gap-1 shrink-0">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingDose(dose)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRedose(dose)} disabled={redosing === dose.id}>
+                                    {redosing === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-error" onClick={() => handleDelete(dose.id)} disabled={deleting === dose.id}>
+                                    {deleting === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                                  </Button>
                                 </div>
-                              </div>
-                              <div className="flex gap-1 shrink-0">
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingDose(dose)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRedose(dose)} disabled={redosing === dose.id}>
-                                  {redosing === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-error" onClick={() => handleDelete(dose.id)} disabled={deleting === dose.id}>
-                                  {deleting === dose.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                                </Button>
                               </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
           )}
         </CardContent>

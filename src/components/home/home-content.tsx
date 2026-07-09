@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback, memo, useDeferredValue } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import {
   Search,
   X,
@@ -31,13 +32,39 @@ import {
   ExternalLink,
   BookOpen,
 } from 'lucide-react'
-import { DoseLoggerModal } from '@/components/dose-logger-modal'
-import { DoseHistory } from '@/components/dose-history'
-import { DoseStats } from '@/components/dose-stats'
-import { IntensityTimelineChart } from '@/components/intensity-timeline-chart'
-import { ActiveReminders } from '@/components/active-reminders'
-import { ReminderSettings } from '@/components/reminder-settings'
+
+// F1 — Lazy-load the heavy client-only components so the home grid's
+// initial bundle stays small. These all pull in zustand stores, the
+// substances DB, and (for the chart) a chunk of SVG/d3-style code that
+// is wasted bytes on first paint of the substance list.
+//
+// Note: DoseLoggerModal is intentionally NOT lazy here — it's used in
+// the substance detail header as a trigger button, and lazy-loading it
+// would make the "Log Dose" button flash in on every substance page
+// load. The dose-log view components below are only rendered when the
+// user navigates to the dose-log view, so deferring them is a clean win.
+const DoseHistory = dynamic(
+  () => import('@/components/dose-history').then((m) => m.DoseHistory),
+  { ssr: false, loading: () => null },
+)
+const DoseStats = dynamic(
+  () => import('@/components/dose-stats').then((m) => m.DoseStats),
+  { ssr: false, loading: () => null },
+)
+const IntensityTimelineChart = dynamic(
+  () => import('@/components/intensity-timeline-chart').then((m) => m.IntensityTimelineChart),
+  { ssr: false, loading: () => null },
+)
+const ActiveReminders = dynamic(
+  () => import('@/components/active-reminders').then((m) => m.ActiveReminders),
+  { ssr: false, loading: () => null },
+)
+const ReminderSettings = dynamic(
+  () => import('@/components/reminder-settings').then((m) => m.ReminderSettings),
+  { ssr: false, loading: () => null },
+)
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DoseLoggerModal } from '@/components/dose-logger-modal'
 import {
   DropdownMenu,
   DropdownMenuContent,

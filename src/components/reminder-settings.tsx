@@ -32,7 +32,7 @@ import { toast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-// ─── Category dots (same as shared-nav & dose-logger-modal) ─────────────────
+// ─── Category dots (matches Header & dose-logger-modal) ─────────────────────
 const CATEGORY_DOTS: Record<string, string> = {
   stimulants: 'bg-amber-500',
   depressants: 'bg-indigo-500',
@@ -659,11 +659,10 @@ export function ReminderSettings() {
               {schedules.map((s) => (
                 <div
                   key={s.id}
-                  className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${
-                    s.enabled
+                  className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${s.enabled
                       ? 'border-base-300'
                       : 'border-base-300/50 opacity-60'
-                  }`}
+                    }`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
