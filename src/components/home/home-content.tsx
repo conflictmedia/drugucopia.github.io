@@ -103,7 +103,8 @@ import {
   getSubstanceCategories,
   substanceBelongsToCategory,
 } from './home-utils'
-import { useUIStore } from '@/store/ui-store'
+import { useDoseStore } from '@/store/dose-store'
+import { useReminderStore } from '@/store/reminder-store'
 
 // ─── MEMOIZED SUBSTANCE CARD ────────────────────────────────────────────────
 interface SubstanceCardProps {
@@ -1090,21 +1091,106 @@ function SubstanceDetail({
   )
 }
 
+function TrackWorkspace() {
+  const doses = useDoseStore((state) => state.doses)
+  const schedules = useReminderStore((state) => state.schedules)
+  const activeReminders = useReminderStore((state) => state.activeReminders)
+
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayCount = useMemo(
+    () => doses.filter((dose) => dose.timestamp.slice(0, 10) === todayKey).length,
+    [doses, todayKey],
+  )
+
+  const activeCount = useMemo(
+    () => activeReminders.filter((reminder) => reminder.status !== 'dismissed').length,
+    [activeReminders],
+  )
+
+  const trackSections = [
+    { id: 'track-reminders', label: 'Reminders', icon: Clock },
+    { id: 'track-timeline', label: 'Timeline', icon: Activity },
+    { id: 'track-insights', label: 'Insights', icon: CalendarDays },
+    { id: 'track-history', label: 'History', icon: History },
+  ]
+
+  const jumpToSection = (id: string) => {
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  return (
+    <section className="card border border-base-300 bg-base-100/90 shadow-sm scroll-mt-28">
+      <div className="card-body gap-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <div className="badge badge-outline badge-sm">Track workspace</div>
+            <h2 className="text-2xl font-semibold tracking-tight">Dose log, reminders, and session view</h2>
+            <p className="max-w-2xl text-sm text-neutral-content">
+              Review active reminders, follow your current session timeline, and keep your dose history organized in one place.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {trackSections.map((section) => {
+              const Icon = section.icon
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => jumpToSection(section.id)}
+                  className="btn btn-sm btn-ghost gap-2"
+                >
+                  <Icon className="h-4 w-4" />
+                  {section.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="stats stats-vertical border border-base-300 bg-base-100 shadow-sm lg:stats-horizontal">
+          <div className="stat">
+            <div className="stat-title">Total logs</div>
+            <div className="stat-value text-2xl">{doses.length}</div>
+            <div className="stat-desc">All recorded doses</div>
+          </div>
+          <div className="stat">
+            <div className="stat-title">Today</div>
+            <div className="stat-value text-2xl">{todayCount}</div>
+            <div className="stat-desc">Doses logged today</div>
+          </div>
+          <div className="stat">
+            <div className="stat-title">Active reminders</div>
+            <div className="stat-value text-2xl">{activeCount}</div>
+            <div className="stat-desc">Running or fired timers</div>
+          </div>
+          <div className="stat">
+            <div className="stat-title">Schedules</div>
+            <div className="stat-value text-2xl">{schedules.length}</div>
+            <div className="stat-desc">Saved reminder rules</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ─── ROOT COMPONENT ───────────────────────────────────────────────────────────
 export function HomeContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const queryParam = searchParams.get('q') ?? ''
   const [selectedCategory, setSelectedCategory] = useState<SubstanceCategory | 'all'>('all')
   const [selectedSubstance, setSelectedSubstance] = useState<Substance | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(queryParam)
   const lastProcessedSubstanceRef = useRef<string | null>(null)
   const deferredQuery = useDeferredValue(searchQuery)
 
-  // UI store for modal control
-  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger } = useUIStore()
-
-  // Listen for search events from Header
+  // Listen for search events from the app shell search input
   useEffect(() => {
     const handler = (e: Event) => {
       const query = (e as CustomEvent).detail
@@ -1113,15 +1199,6 @@ export function HomeContent() {
     window.addEventListener('drugucopia:search', handler)
     return () => window.removeEventListener('drugucopia:search', handler)
   }, [])
-
-  // Listen for dose-log events from Header
-  useEffect(() => {
-    const handler = () => {
-      router.push(`${pathname}?view=dose-log`)
-    }
-    window.addEventListener('drugucopia:dose-log', handler)
-    return () => window.removeEventListener('drugucopia:dose-log', handler)
-  }, [pathname, router])
 
   // Handle URL query parameters
   useEffect(() => {
@@ -1228,28 +1305,41 @@ export function HomeContent() {
   // ── List view ──
   return (
     <div className="container mx-auto py-6 lg:py-10 px-4 lg:px-6">
-      {/* DoseLoggerModal rendered at root level */}
-      <DoseLoggerModal
-        open={doseLoggerOpen}
-        onOpenChange={(open) => !open && closeDoseLogger()}
-        preselectedSubstanceId={doseLoggerPreselect?.substanceId}
-        preselectedSubstanceName={doseLoggerPreselect?.substanceName}
-        preselectedCategory={doseLoggerPreselect?.category}
-        preselectedRoute={doseLoggerPreselect?.route}
-        onLogCreated={handleDoseLogged}
-      />
-
       {showDoseLog ? (
         <div className="space-y-6 max-w-5xl mx-auto">
-          <ActiveReminders />
-          <IntensityTimelineChart />
-          <ReminderSettings />
-          <DoseStats />
-          {/* D2 — sync conflict resolution banner. Renders as nothing
-              when there are no pending conflicts, so it's safe to keep
-              mounted at the top of the dose-log view. */}
-          <SyncConflicts />
-          <DoseHistory />
+          <TrackWorkspace />
+
+          <section id="track-reminders" className="space-y-6 scroll-mt-28">
+            <ActiveReminders />
+
+            <details className="collapse collapse-arrow border border-base-300 bg-base-100 shadow-sm">
+              <summary className="collapse-title text-base font-semibold">
+                Reminder settings
+              </summary>
+              <div className="collapse-content pt-0">
+                <p className="mb-3 text-sm text-neutral-content">
+                  Adjust auto-start behavior, notification permissions, sounds, and recurring schedules.
+                </p>
+                <ReminderSettings />
+              </div>
+            </details>
+          </section>
+
+          <section id="track-timeline" className="scroll-mt-28">
+            <IntensityTimelineChart />
+          </section>
+
+          <section id="track-insights" className="space-y-6 scroll-mt-28">
+            <DoseStats />
+            {/* D2 — sync conflict resolution banner. Renders as nothing
+                when there are no pending conflicts, so it's safe to keep
+                mounted at the top of the dose-log view. */}
+            <SyncConflicts />
+          </section>
+
+          <section id="track-history" className="scroll-mt-28">
+            <DoseHistory />
+          </section>
         </div>
       ) : (
         <>

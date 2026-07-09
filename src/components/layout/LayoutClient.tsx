@@ -1,68 +1,62 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import { Sidebar } from './Sidebar'
-import { Header } from './Header'
-import { MobileDrawer } from './MobileDrawer'
-import { cn } from '@/lib/utils'
+import { AlertTriangle } from 'lucide-react'
+import { useState, useSyncExternalStore, type ReactNode } from 'react'
+import { AppSidebar } from './AppSidebar'
+import { TopBar } from './TopBar'
+import { MobileBottomNav } from './MobileBottomNav'
 import { Toaster } from '@/components/ui/toaster'
 import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
 import { SyncProvider } from '@/contexts/sync-context'
 import { ReminderProvider } from '@/components/reminder-provider'
 import { CommandPalette } from '@/components/command-palette'
+import { DoseLoggerModal } from '@/components/dose-logger-modal'
+import { useUIStore } from '@/store/ui-store'
 
 interface LayoutClientProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
+const DRAWER_ID = 'app-shell-drawer'
+
 export function LayoutClient({ children }: LayoutClientProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const pathname = usePathname()
-
-  useEffect(() => {
-    setMounted(true)
-    try {
-      const saved = localStorage.getItem('drugucopia-sidebar-collapsed')
-      if (saved !== null) {
-        setSidebarCollapsed(JSON.parse(saved))
-      }
-    } catch { }
-
-    // Detect mobile once on mount — used to skip rendering VisualizerControls
-    // (which controls the WebGL background that is disabled on mobile anyway).
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  useEffect(() => {
-    setDrawerOpen(false)
-  }, [pathname])
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem('drugucopia-sidebar-collapsed', JSON.stringify(next))
-      } catch { }
-      return next
-    })
-  }
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('drugucopia-sidebar-expanded') === 'true'
+  })
+  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger } = useUIStore()
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  )
+  const isMobile = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener('resize', callback)
+      return () => window.removeEventListener('resize', callback)
+    },
+    () => window.innerWidth < 768,
+    () => false,
+  )
 
   if (!mounted) {
     return (
       <div className="min-h-[100dvh] bg-transparent">
         <div className="flex h-[100dvh] items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="loading loading-spinner loading-lg text-primary" />
         </div>
       </div>
     )
+  }
+
+  const toggleSidebar = () => {
+    const next = !sidebarExpanded
+    setSidebarExpanded(next)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('drugucopia-sidebar-expanded', String(next))
+    }
   }
 
   return (
@@ -71,32 +65,86 @@ export function LayoutClient({ children }: LayoutClientProps) {
         <div className="min-h-[100dvh] bg-transparent">
           <MilkdropBackgroundWrapper />
 
-          <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+          {isMobile ? (
+            <div className="drawer">
+              <input
+                id={DRAWER_ID}
+                type="checkbox"
+                className="drawer-toggle"
+                checked={drawerOpen}
+                onChange={(event) => setDrawerOpen(event.target.checked)}
+              />
 
-          <div
-            className={cn(
-              'transition-all duration-300 ease-in-out',
-              sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'
-            )}
-          >
-            <Header
-              onMenuClick={() => setDrawerOpen(true)}
-              showDoseLog={true}
-            />
+              <div className="drawer-content flex min-h-[100dvh] flex-col">
+                <TopBar
+                  onMenuClick={() => setDrawerOpen(true)}
+                  sidebarExpanded={sidebarExpanded}
+                  onSidebarToggle={toggleSidebar}
+                />
 
-            <main className="relative min-h-[calc(100vh-4rem)]">
-              {children}
-            </main>
-          </div>
+                <main className="relative flex-1 pb-20">
+                  {children}
+                </main>
 
-          <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-          {/* G1 — Global cmd-K search palette. Mounted at the root so the
-              Cmd/Ctrl+K shortcut works on every page. Returns null when
-              closed, so it adds zero render cost when not in use. */}
+                <MobileBottomNav />
+              </div>
+
+              <div className="drawer-side z-40">
+                <label
+                  htmlFor={DRAWER_ID}
+                  aria-label="close navigation"
+                  className="drawer-overlay"
+                  onClick={() => setDrawerOpen(false)}
+                />
+                <AppSidebar
+                  expanded
+                  onNavigate={() => setDrawerOpen(false)}
+                  onToggle={toggleSidebar}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex min-h-[100dvh]">
+              <AppSidebar
+                expanded={sidebarExpanded}
+                onToggle={toggleSidebar}
+              />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <TopBar
+                  onMenuClick={() => setDrawerOpen(true)}
+                  sidebarExpanded={sidebarExpanded}
+                  onSidebarToggle={toggleSidebar}
+                />
+                <main className="relative flex-1">
+                  {children}
+                </main>
+              </div>
+            </div>
+          )}
+
+          {!isMobile && (
+            <div
+              className={[
+                'pointer-events-none fixed bottom-0 right-0 z-30 hidden border-t border-warning/20 bg-base-100/95 backdrop-blur-sm md:block',
+                sidebarExpanded ? 'left-60' : 'left-16',
+              ].join(' ')}
+            >
+              <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>Educational and harm reduction purposes only. Always consult medical professionals.</span>
+              </div>
+            </div>
+          )}
+
+          <DoseLoggerModal
+            open={doseLoggerOpen}
+            onOpenChange={(open) => !open && closeDoseLogger()}
+            preselectedSubstanceId={doseLoggerPreselect?.substanceId}
+            preselectedSubstanceName={doseLoggerPreselect?.substanceName}
+            preselectedCategory={doseLoggerPreselect?.category}
+            preselectedRoute={doseLoggerPreselect?.route}
+          />
           <CommandPalette />
-          {/* Visualizer controls only on desktop — the WebGL background itself
-              is disabled on mobile, so the controls would do nothing but add
-              render cost and clutter. */}
           {!isMobile && <VisualizerControls />}
           <Toaster />
         </div>

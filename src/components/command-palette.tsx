@@ -65,13 +65,27 @@ export function CommandPalette() {
   const doses = useDoseStore((s) => s.doses)
   const openDoseLogger = useUIStore((s) => s.openDoseLogger)
 
+  const openPalette = useCallback(() => {
+    setQuery('')
+    setActiveIndex(0)
+    setOpen(true)
+  }, [])
+
+  const closePalette = useCallback(() => {
+    setOpen(false)
+  }, [])
+
   // Open palette on Cmd/Ctrl+K, or "/" when not focused in an input.
   // Close on Escape (handled by the input itself too).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        setOpen((v) => !v)
+        if (open) {
+          closePalette()
+        } else {
+          openPalette()
+        }
         return
       }
       // Don't intercept "/" when typing in a form field
@@ -84,28 +98,20 @@ export function CommandPalette() {
           target.isContentEditable)
       if (e.key === '/' && !isEditable) {
         e.preventDefault()
-        setOpen(true)
+        openPalette()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [closePalette, open, openPalette])
 
-  // Focus input when opening; clear query when closing.
+  // Focus input when opening.
   useEffect(() => {
     if (open) {
-      setQuery('')
-      setActiveIndex(0)
-      // Defer focus so the input is mounted
       const t = window.setTimeout(() => inputRef.current?.focus(), 0)
       return () => window.clearTimeout(t)
     }
   }, [open])
-
-  // Reset active index when query changes
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
 
   // Build the results list. Memoized so we don't re-search on every render.
   const results = useMemo<PaletteResult[]>(() => {
@@ -160,8 +166,8 @@ export function CommandPalette() {
       {
         id: 'action-history',
         kind: 'action',
-        title: 'Dose history',
-        subtitle: 'Browse past doses',
+        title: 'Track',
+        subtitle: 'Open dose history, reminders, and stats',
         icon: Activity,
         href: '/?view=dose-log',
       },
@@ -244,14 +250,14 @@ export function CommandPalette() {
   const activate = useCallback(
     (r?: PaletteResult) => {
       if (!r) return
-      setOpen(false)
+      closePalette()
       if (r.action) {
         r.action()
       } else if (r.href) {
         router.push(r.href)
       }
     },
-    [router],
+    [closePalette, router],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -266,7 +272,7 @@ export function CommandPalette() {
       activate(results[activeIndex])
     } else if (e.key === 'Escape') {
       e.preventDefault()
-      setOpen(false)
+      closePalette()
     }
   }
 
@@ -284,7 +290,7 @@ export function CommandPalette() {
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4"
-      onClick={() => setOpen(false)}
+      onClick={closePalette}
       role="dialog"
       aria-modal="true"
       aria-label="Command palette"
@@ -304,7 +310,10 @@ export function CommandPalette() {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setActiveIndex(0)
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Search substances, doses, guides, or actions…"
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-neutral-content/60"
