@@ -428,7 +428,7 @@ function SubstanceDetail({
   return (
     <div className="min-h-screen flex flex-col">
       {/* Desktop header */}
-      <header className="hidden md:flex sticky top-0 z-30 border-b border-white/8 bg-base-100/80 backdrop-blur-xl h-14 items-center gap-4 px-4 lg:px-6">
+      <header className="hidden md:flex sticky top-16 z-30 border-b border-white/8 bg-base-100/80 backdrop-blur-xl h-14 items-center gap-4 px-4 lg:px-6">
         <button className="btn btn-ghost btn-sm gap-2" onClick={onBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -457,7 +457,7 @@ function SubstanceDetail({
       </header>
 
       {/* Mobile header */}
-      <header className="md:hidden sticky top-0 z-30 bg-base-100/80 backdrop-blur-xl border-b border-white/8">
+      <header className="md:hidden sticky top-28 z-30 bg-base-100/80 backdrop-blur-xl border-b border-white/8">
         <div className="flex items-center gap-3 h-13 px-4">
           <button onClick={onBack} className="btn btn-ghost btn-sm btn-square">
             <ArrowLeft className="h-5 w-5" />

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
   FlaskConical,
@@ -33,6 +33,7 @@ interface MobileDrawerProps {
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -129,7 +130,13 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                     ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20'
                     : 'text-neutral-content'
                 )}
-                onClick={onClose}
+                onClick={(e) => {
+                  onClose()
+                  if (item.href === '/') {
+                    e.preventDefault()
+                    router.push('/')
+                  }
+                }}
               >
                 <item.icon className={cn('h-5 w-5 shrink-0', active && 'text-primary')} />
                 <span className="truncate">{item.label}</span>

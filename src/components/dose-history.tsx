@@ -825,7 +825,7 @@ export function DoseHistory() {
             <CardDescription>Your logged substance doses</CardDescription>
           </div>
 
-          <div className="flex gap-2 shrink-0 flex-wrap">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {/* Log Dose button */}
             <Button
               variant="default"

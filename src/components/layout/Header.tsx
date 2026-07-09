@@ -58,6 +58,7 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const searchRef = useRef<HTMLDivElement>(null)
+  const mobileSearchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const title = pageTitles[pathname] || 'Drugucopia'
@@ -71,7 +72,9 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
   useEffect(() => {
     if (!searchOpen) return
     const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+      const clickInDesktop = searchRef.current && searchRef.current.contains(e.target as Node)
+      const clickInMobile = mobileSearchRef.current && mobileSearchRef.current.contains(e.target as Node)
+      if (!clickInDesktop && !clickInMobile) {
         setSearchOpen(false)
       }
     }
@@ -127,8 +130,8 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
   const isHomePage = pathname === '/'
 
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-base-300/50 bg-base-100/80 backdrop-blur-xl">
-      <div className="flex h-full items-center gap-3 px-4 lg:px-6">
+    <header className="sticky top-0 z-30 h-auto md:h-16 border-b border-base-300/50 bg-base-100/80 backdrop-blur-xl">
+      <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         {/* Left: Menu button (mobile) + Title */}
         <div className="flex items-center gap-3 shrink-0">
           <button
@@ -234,7 +237,7 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
       </div>
 
       {/* Mobile search bar (below header) */}
-      <div className="md:hidden px-4 pb-3 -mt-1">
+      <div ref={mobileSearchRef} className="md:hidden px-4 pb-3 -mt-1 relative">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-content" />
           <Input
@@ -246,8 +249,53 @@ export function Header({ onMenuClick, onDoseLog, showDoseLog = true }: HeaderPro
             }}
             onFocus={() => { if (searchQuery.trim()) setSearchOpen(true) }}
             onKeyDown={handleKeyDown}
-            className="pl-9 pr-4 h-9 bg-base-200/70 border-base-300/50 text-sm"
+            className="pl-9 pr-10 h-9 bg-base-200/70 border-base-300/50 text-sm focus:border-primary/50 transition-colors"
           />
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); setSearchOpen(false); setActiveIndex(-1) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-content hover:text-base-content transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+          <AnimatePresence>
+            {searchOpen && searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="absolute top-full left-0 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-xl overflow-hidden z-50"
+              >
+                <div className="max-h-72 overflow-y-auto p-1.5">
+                  {searchResults.map((result, idx) => {
+                    const sub = result.substance
+                    const isActive = idx === activeIndex
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => navigateToSubstance(sub.id)}
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        className={cn(
+                          'flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors text-left',
+                          isActive ? 'bg-accent text-accent-content' : 'hover:bg-accent/50'
+                        )}
+                      >
+                        <span className={cn('w-2 h-2 rounded-full shrink-0', CATEGORY_DOTS[sub.categories[0]] || 'bg-zinc-500')} />
+                        <span className="truncate flex-1">
+                          {result.matchField === 'name' ? highlightMatch(sub.name, searchQuery) : sub.name}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-base-200/70 text-neutral-content truncate max-w-[80px]">
+                          {sub.categories[0]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

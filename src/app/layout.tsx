@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { AlertTriangle } from "lucide-react";
@@ -16,6 +16,12 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: '400',
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: "Drugucopia - Dose Logger and Substance Resources",

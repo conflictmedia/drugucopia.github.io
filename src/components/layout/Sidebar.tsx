@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
   FlaskConical,
@@ -36,6 +36,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -51,8 +52,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-full bg-base-200/80 backdrop-blur-xl border-r border-base-300/50 transition-all duration-300 ease-in-out',
-        'flex flex-col',
+        'hidden md:flex fixed left-0 top-0 z-40 h-full bg-base-200/80 backdrop-blur-xl border-r border-base-300/50 transition-all duration-300 ease-in-out',
+        'flex-col',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
@@ -91,6 +92,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={(e) => {
+                if (item.href === '/') {
+                  e.preventDefault()
+                  router.push('/')
+                }
+              }}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                 'hover:bg-base-300/50 hover:text-base-content',

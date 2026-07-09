@@ -5,14 +5,12 @@ import { usePathname } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { MobileDrawer } from './MobileDrawer'
-import { MobileBottomNav } from './MobileBottomNav'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/toaster'
 import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
 import { SyncProvider } from '@/contexts/sync-context'
 import { ReminderProvider } from '@/components/reminder-provider'
-import { useIsMobile } from '@/hooks/use-mobile'
 
 interface LayoutClientProps {
   children: React.ReactNode
@@ -23,7 +21,6 @@ export function LayoutClient({ children }: LayoutClientProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
-  const isMobile = useIsMobile()
 
   useEffect(() => {
     setMounted(true)
@@ -51,8 +48,8 @@ export function LayoutClient({ children }: LayoutClientProps) {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-transparent">
-        <div className="flex h-screen items-center justify-center">
+      <div className="min-h-[100dvh] bg-transparent">
+        <div className="flex h-[100dvh] items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       </div>
@@ -62,7 +59,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
   return (
     <SyncProvider>
       <ReminderProvider>
-        <div className="min-h-screen bg-transparent pb-[calc(64px+env(safe-area-inset-bottom,0px))] md:pb-0">
+        <div className="min-h-[100dvh] bg-transparent">
           <MilkdropBackgroundWrapper />
 
           <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
@@ -84,7 +81,6 @@ export function LayoutClient({ children }: LayoutClientProps) {
           </div>
 
           <MobileDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-          {isMobile && <MobileBottomNav />}
           <VisualizerControls />
           <Toaster />
         </div>

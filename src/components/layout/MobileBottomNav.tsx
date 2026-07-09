@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   FlaskConical,
   Shuffle,
@@ -22,6 +22,7 @@ const navItems = [
 
 export function MobileBottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -36,9 +37,15 @@ export function MobileBottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={(e) => {
+              if (item.href === '/') {
+                e.preventDefault()
+                router.push('/')
+              }
+            }}
             className={cn('mobile-nav-item', active && 'active')}
           >
-            <item.icon />
+            <item.icon className="shrink-0" />
             <span>{item.label}</span>
           </Link>
         )

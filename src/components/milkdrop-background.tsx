@@ -154,6 +154,8 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
   }, [isDark])
 
   useEffect(() => {
+    if (!enabled) return
+
     // Create canvas directly on body
     const canvas = document.createElement('canvas')
     canvas.style.position = 'fixed'
@@ -300,7 +302,21 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
       gl.deleteShader(vert)
       gl.deleteShader(frag)
     }
-  }, [])
+  }, [enabled])
+
+  if (!enabled) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          pointerEvents: 'none',
+          background: isDark ? '#121214' : '#fafafa',
+        }}
+      />
+    )
+  }
 
   // Bright, colorful CSS fallback with faster animation
   if (useFallback) {
