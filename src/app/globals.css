@@ -305,6 +305,19 @@
     }
   }
 
+  /* 4.2: Pulsing now-dot for the intensity timeline's "now" indicator */
+  @keyframes now-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scale(0.7);
+    }
+  }
+
   .milkdrop-canvas {
     position: fixed;
     inset: 0;
