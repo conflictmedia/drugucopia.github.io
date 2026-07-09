@@ -16,10 +16,13 @@ import { AVAILABLE_THEMES, type ThemeId } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
 
 /**
- * A 3-segment color swatch that previews a theme's primary / secondary /
- * accent colors. The `data-theme` attribute on the wrapper makes daisyUI's
- * theme-scoped CSS variables apply to the inner spans, so `bg-primary` etc.
- * resolve to that theme's palette.
+ * A 4-segment color swatch that previews a theme's primary / secondary /
+ * accent / info colors. The `data-theme` attribute on the wrapper makes
+ * daisyUI's theme-scoped CSS variables apply to the inner spans, so
+ * `bg-primary` / `bg-secondary` / `bg-accent` / `bg-info` resolve to
+ * that theme's palette. Adding the 4th segment (info) makes themes
+ * whose primary/secondary happen to look similar (e.g. `black`) much
+ * easier to tell apart in the picker.
  */
 function ThemeSwatch({
   themeId,
@@ -37,8 +40,8 @@ function ThemeSwatch({
         )}
         aria-hidden
       >
-        <span data-theme="light" className="flex-1 bg-primary" />
-        <span data-theme="dark" className="flex-1 bg-primary" />
+        <span data-theme="drugucopia-light" className="flex-1 bg-primary" />
+        <span data-theme="drugucopia" className="flex-1 bg-primary" />
       </span>
     )
   }
@@ -54,6 +57,7 @@ function ThemeSwatch({
       <span className="flex-1 bg-primary" />
       <span className="flex-1 bg-secondary" />
       <span className="flex-1 bg-accent" />
+      <span className="flex-1 bg-info" />
     </span>
   )
 }
@@ -71,7 +75,7 @@ export function ThemeToggle() {
   const current = (
     theme && knownIds.includes(theme) ? theme : 'system'
   ) as ThemeId
-  const isDark = resolvedTheme === 'dark'
+  const isDark = resolvedTheme !== 'drugucopia-light'
 
   return (
     <DropdownMenu>
@@ -119,7 +123,7 @@ export function ThemeToggle() {
                 }
               }}
             >
-              <ThemeSwatch themeId={t.id} className="h-3 w-6" />
+              <ThemeSwatch themeId={t.id} className="h-3 w-7" />
               <span className="flex flex-col">
                 <span className="text-sm font-medium leading-tight">
                   {t.label}

@@ -6,33 +6,36 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 /**
  * Curated set of daisyUI themes exposed in the theme picker.
  *
- * Only dark themes are included — DaisyUI dark themes define highly
- * saturated base-100 colors that create a colored overlay on the milkdrop
- * WebGL background. An override in globals.css forces neutral dark
- * base-100/200/300 for all non-custom themes, so the theme's personality
- * comes through primary / secondary / accent only.
+ * Every theme listed here is defined as an idiomatic daisyUI 5
+ * `@plugin "daisyui/theme"` block in `src/app/globals.css`. All themes
+ * share a neutral-dark base-100/200/300 so the milkdrop WebGL
+ * background shows through consistently; each theme's personality is
+ * carried by its primary / secondary / accent / info / success /
+ * warning / error colors only.
  *
- * `light` is kept registered (but not in the picker) so the `system`
- * virtual theme can resolve to a light theme via `prefers-color-scheme`.
+ * The `id` MUST match a theme registered in the `@plugin "daisyui"`
+ * block in `src/app/globals.css`.
  *
- * The `id` MUST match a theme registered in the `@plugin "daisyui"` block
- * in `src/app/globals.css`.
+ * `drugucopia-light` is intentionally NOT in the picker — it is the
+ * hidden fallback the `system` virtual theme resolves to when the OS
+ * is in light mode. It uses a low-tint dark base so the milkdrop
+ * doesn't clash.
  */
 export const AVAILABLE_THEMES = [
   { id: 'system', label: 'System', description: 'Match OS' },
-  { id: 'dark', label: 'Drugucopia', description: 'Custom dark' },
-  // ─── DaisyUI dark themes ───
-  { id: 'dracula', label: 'Dracula', description: 'Classic dark' },
-  { id: 'night', label: 'Night', description: 'Deep dark' },
-  { id: 'black', label: 'Black', description: 'Pure black' },
-  { id: 'dim', label: 'Dim', description: 'Subdued dark' },
-  { id: 'sunset', label: 'Sunset', description: 'Warm dark' },
+  { id: 'drugucopia', label: 'Drugucopia', description: 'Default warm-white' },
+  // ─── Curated daisyUI dark themes ───
+  { id: 'dracula', label: 'Dracula', description: 'Pink & purple' },
+  { id: 'night', label: 'Night', description: 'Blue & magenta' },
+  { id: 'black', label: 'Black', description: 'Pure monochrome' },
+  { id: 'dim', label: 'Dim', description: 'Soft pastels' },
+  { id: 'sunset', label: 'Sunset', description: 'Warm orange & red' },
   { id: 'synthwave', label: 'Synthwave', description: 'Neon retro' },
-  { id: 'halloween', label: 'Halloween', description: 'Spooky orange' },
-  { id: 'aqua', label: 'Aqua', description: 'Cool cyan' },
+  { id: 'halloween', label: 'Halloween', description: 'Orange & purple' },
+  { id: 'aqua', label: 'Aqua', description: 'Cyan & magenta' },
   { id: 'forest', label: 'Forest', description: 'Deep green' },
-  { id: 'luxury', label: 'Luxury', description: 'Gold & dark' },
-  { id: 'business', label: 'Business', description: 'Professional' },
+  { id: 'luxury', label: 'Luxury', description: 'White & gold' },
+  { id: 'business', label: 'Business', description: 'Corporate blue' },
   { id: 'coffee', label: 'Coffee', description: 'Warm brown' },
 ] as const
 
@@ -46,12 +49,10 @@ export const THEME_IDS = AVAILABLE_THEMES.filter((t) => t.id !== 'system').map(
 /**
  * Themes that are visually "dark" — used to tell the milkdrop shader
  * whether to apply light-mode desaturation.  All registered themes
- * (except the hidden `light` fallback) are dark, but we also include
- * `light` here so that `system` resolving to light on an OS light
- * preference still works correctly.
+ * (except the hidden `drugucopia-light` fallback) are dark.
  */
 export const DARK_THEME_IDS = new Set<string>([
-  'dark',
+  'drugucopia',
   'dracula',
   'night',
   'black',
@@ -70,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <NextThemesProvider
       attribute="data-theme"
-      defaultTheme="system"
+      defaultTheme="drugucopia"
       enableSystem
       disableTransitionOnChange
       themes={THEME_IDS}

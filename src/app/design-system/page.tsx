@@ -34,6 +34,7 @@ import {
   FieldsetLegend,
   FieldsetDescription,
 } from "@/components/ui/fieldset"
+import { AVAILABLE_THEMES } from "@/components/theme-provider"
 
 /**
  * /design-system — Phase 2 showcase + smoke test.
@@ -414,11 +415,105 @@ export default function DesignSystemPage() {
           </Card>
         </Section>
 
+        {/* ─── Theme Gallery ─── */}
+        <Section
+          title="Theme gallery"
+          description={`Every theme below is defined as an idiomatic daisyUI 5 \`@plugin "daisyui/theme"\` block in globals.css. All themes share a neutral-dark base canvas so the milkdrop background shows through; each theme's personality is carried by primary / secondary / accent / info / success / warning / error only.`}
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {AVAILABLE_THEMES.filter((t) => t.id !== "system").map((t) => (
+              <ThemePreviewCard key={t.id} themeId={t.id} label={t.label} description={t.description} />
+            ))}
+          </div>
+          <p className="text-xs text-neutral-content">
+            Tip: open the theme picker in the top bar to apply any of these to
+            the whole app. The swatches above are scoped previews — each card
+            sets <code className="kbd kbd-xs">data-theme</code> on its wrapper
+            so daisyUI's theme-scoped CSS variables apply inside it.
+          </p>
+        </Section>
+
         <footer className="border-t border-base-300 pt-6">
           <p className="text-xs text-neutral-content">
             Phase 2 — Shared design primitives. See <code className="kbd kbd-sm">daisyui-redesign-plan.md</code> §10.
           </p>
         </footer>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Scoped theme preview card. The outer <div> sets `data-theme` so all
+ * daisyUI semantic colors inside resolve to that theme's palette. The
+ * card surface itself uses an opaque `bg-base-100` so the parent
+ * theme doesn't bleed through.
+ */
+function ThemePreviewCard({
+  themeId,
+  label,
+  description,
+}: {
+  themeId: string
+  label: string
+  description: string
+}) {
+  return (
+    <div
+      data-theme={themeId}
+      className="card bg-base-100 text-base-content border border-base-300 shadow-sm overflow-hidden"
+    >
+      <div className="card-body gap-3 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold leading-tight">{label}</span>
+            <span className="text-[11px] leading-tight text-neutral-content">
+              {description}
+            </span>
+          </div>
+          <code className="kbd kbd-xs text-[10px]">{themeId}</code>
+        </div>
+
+        {/* Semantic color swatches — 7 segments, no gaps, rounded */}
+        <div className="flex h-6 w-full overflow-hidden rounded-md border border-base-300">
+          <span className="flex-1 bg-primary" title="primary" />
+          <span className="flex-1 bg-secondary" title="secondary" />
+          <span className="flex-1 bg-accent" title="accent" />
+          <span className="flex-1 bg-info" title="info" />
+          <span className="flex-1 bg-success" title="success" />
+          <span className="flex-1 bg-warning" title="warning" />
+          <span className="flex-1 bg-error" title="error" />
+        </div>
+
+        {/* Live component preview using that theme's tokens */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn btn-primary btn-xs">Primary</button>
+          <button className="btn btn-secondary btn-xs">Secondary</button>
+          <button className="btn btn-accent btn-xs">Accent</button>
+          <span className="badge badge-info badge-sm">info</span>
+          <span className="badge badge-success badge-sm">success</span>
+          <span className="badge badge-warning badge-sm">warning</span>
+          <span className="badge badge-error badge-sm">error</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+          <div className="flex items-center justify-between rounded bg-base-200 px-2 py-1">
+            <span className="text-neutral-content">base-100</span>
+            <span className="font-mono">bg-base-100</span>
+          </div>
+          <div className="flex items-center justify-between rounded bg-base-200 px-2 py-1">
+            <span className="text-neutral-content">base-200</span>
+            <span className="font-mono">bg-base-200</span>
+          </div>
+          <div className="flex items-center justify-between rounded bg-base-300 px-2 py-1">
+            <span className="text-neutral-content">base-300</span>
+            <span className="font-mono">bg-base-300</span>
+          </div>
+          <div className="flex items-center justify-between rounded bg-neutral px-2 py-1">
+            <span className="text-neutral-content">neutral</span>
+            <span className="font-mono text-neutral-content">bg-neutral</span>
+          </div>
+        </div>
       </div>
     </div>
   )
