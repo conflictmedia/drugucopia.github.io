@@ -81,7 +81,7 @@ export function InteractionResults({
           disappear into a matching-colored alert background (red-on-red, etc.) */}
       <div
         className={cn(
-          'alert alert-transparent border-l-4',
+          'alert border-l-4 bg-base-100 border-base-300',
           result.summary.dangerous > 0
             ? 'border-l-red-500'
             : result.summary.unsafe > 0
@@ -258,7 +258,7 @@ export function InteractionResults({
 
       {/* Disclaimer */}
       <div className="divider" />
-      <div className="alert alert-transparent alert-warning">
+      <div className="alert alert-warning">
         <AlertTriangle className="h-4 w-4 shrink-0" />
         <div>
           <h3 className="font-bold text-xs">Disclaimer</h3>
