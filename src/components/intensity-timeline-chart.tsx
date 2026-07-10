@@ -491,7 +491,9 @@ export function IntensityTimelineChart() {
 
   useEffect(() => {
     setNowTs(Date.now())
-    const id = setInterval(() => setNowTs(Date.now()), 60_000)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    const intervalMs = isMobile ? 30_000 : 60_000
+    const id = setInterval(() => setNowTs(Date.now()), intervalMs)
     return () => clearInterval(id)
   }, [])
 
@@ -682,7 +684,7 @@ function GroupCard({
     return group.routes
   }, [group, selectedRoute, selectedDose])
 
-  const sampleCount = isMobile ? 80 : 120
+  const sampleCount = isMobile ? 40 : 120
   // 2.1: compute the window override from the zoom selector. When windowHours
   // is set, clamp to [now - hours, now]. The override is memoized separately
   // from the chart config so the config memo only invalidates when the

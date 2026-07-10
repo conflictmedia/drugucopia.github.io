@@ -641,6 +641,20 @@
     display: none;
   }
 
+  /* ─── Mobile Performance Optimizations ─── */
+  @media (max-width: 767px) {
+    .content-visibility-auto {
+      content-visibility: auto;
+      contain-intrinsic-size: 200px;
+    }
+    .card-lift,
+    .chart-container,
+    .substance-grid > * {
+      content-visibility: auto;
+      contain-intrinsic-size: 200px;
+    }
+  }
+
   /* ─── Phase 2: legacy glass / card-transparent now resolve to a solid
      surface. New code should use <Card /> or <Card variant="..." /> from
      @/components/ui/card. These aliases exist only so existing markup
@@ -1113,6 +1127,16 @@
   /* Card title uses medium weight, not bold — calmer clinical tone */
   .card-title {
     @apply font-semibold;
+  }
+
+  /* ─── Mobile content-visibility optimization ─── */
+  @media (max-width: 767px) {
+    .substance-card,
+    .chart-container,
+    .substance-grid > * {
+      content-visibility: auto;
+      contain-intrinsic-size: 200px;
+    }
   }
 
   /* ─── Scrollbar styling ─── */

@@ -159,7 +159,8 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
   }, [isDark])
 
   useEffect(() => {
-    if (!enabled || isMobile) return
+    // Synchronous check - avoid creating canvas on mobile even on first render
+    if (!enabled || (typeof window !== 'undefined' && window.innerWidth < 768)) return
 
     // Create canvas directly on body
     const canvas = document.createElement('canvas')
@@ -307,7 +308,7 @@ export function MilkdropBackground({ isDark }: MilkdropBackgroundProps) {
       gl.deleteShader(vert)
       gl.deleteShader(frag)
     }
-  }, [enabled, isMobile])
+  }, [enabled])
 
   if (isMobile) {
     return (

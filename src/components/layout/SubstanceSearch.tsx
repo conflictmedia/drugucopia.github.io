@@ -8,6 +8,15 @@ import { Input } from '@/components/ui/input'
 import { searchSubstancesRanked } from '@/lib/substances/index'
 import { cn } from '@/lib/utils'
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay)
+    return () => clearTimeout(handler)
+  }, [value, delay])
+  return debouncedValue
+}
+
 const CATEGORY_DOTS: Record<string, string> = {
   stimulants: 'bg-amber-500',
   depressants: 'bg-indigo-500',
@@ -54,6 +63,7 @@ export function SubstanceSearch({
   const searchParams = useSearchParams()
   const queryParam = searchParams.get('q') ?? ''
   const [searchQuery, setSearchQuery] = useState(queryParam)
+  const debouncedQuery = useDebounce(searchQuery, 300)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const searchRef = useRef<HTMLDivElement>(null)
@@ -83,9 +93,9 @@ export function SubstanceSearch({
   }, [searchOpen])
 
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return []
-    return searchSubstancesRanked(searchQuery, { limit: 8 })
-  }, [searchQuery])
+    if (!debouncedQuery.trim()) return []
+    return searchSubstancesRanked(debouncedQuery, { limit: 8 })
+  }, [debouncedQuery])
 
   const navigateToSubstance = useCallback(
     (substanceId: string) => {

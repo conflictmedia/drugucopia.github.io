@@ -47,7 +47,7 @@ export const SubstanceCard = memo(function SubstanceCard({
   const cats = getSubstanceCategories(substance)
   const hasRouteData = substance.routeData && Object.keys(substance.routeData).length > 1
 
-  return (
+return (
     <button
       type="button"
       onClick={() => onSelect(substance)}
@@ -59,6 +59,8 @@ export const SubstanceCard = memo(function SubstanceCard({
         // Make the whole card a button
         'cursor-pointer text-left',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+        // Mobile: content-visibility for offscreen cards
+        'content-visibility-auto',
       )}
     >
       <div className="card-body gap-3 p-4 md:p-5">
