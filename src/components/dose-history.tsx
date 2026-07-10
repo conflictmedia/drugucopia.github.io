@@ -545,7 +545,7 @@ export function DoseHistory() {
       updateDose: s.updateDose,
     }))
   )
-  const { syncStatus, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync } = useSync()
+  const { syncStatus, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync, pushToSync } = useSync()
   const openDoseLogger = useUIStore((s) => s.openDoseLogger)
 
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -810,10 +810,22 @@ export function DoseHistory() {
 
     // Single bulk state update instead of N individual addDose/deleteDose calls.
     // This prevents Firestore write stream exhaustion from rapid-fire sync pushes.
-    const toAdd = importPreview.doses.filter(d => !existingIds.has(d.id) || strategy === 'overwrite')
+    //
+    // CRITICAL: stamp all imported doses with a fresh updatedAt timestamp so
+    // they win the last-writer-wins merge on other synced devices. Without this,
+    // imported doses keep their original (old) updatedAt from the JSON and lose
+    // the merge against existing data on the receiving device — so the import
+    // appears to "not sync" even though the data was pushed to Firestore.
+    const nowIso = new Date().toISOString()
+    const stampedDoses = importPreview.doses.map(d => ({
+      ...d,
+      updatedAt: nowIso,
+      createdAt: d.createdAt ?? nowIso,
+    }))
+    const toAdd = stampedDoses.filter(d => !existingIds.has(d.id) || strategy === 'overwrite')
     if (strategy === 'overwrite') {
       // replaceDoses handles removing old versions of incoming IDs
-      replaceDoses(importPreview.doses)
+      replaceDoses(stampedDoses)
     } else {
       addDoses(toAdd)
     }
@@ -830,6 +842,14 @@ export function DoseHistory() {
       title: 'Import complete',
       description: parts.join(', ') + '.',
     })
+
+    // Explicitly trigger sync pushes — the bulk addDoses/replaceDoses update
+    // the Zustand store, but the auto-push subscription can miss bulk updates.
+    // We call pushToSync() directly (bypassing the 2s debounce) and also
+    // schedule a backup push at 3.5s (after the 3s rate-limiter window).
+    // pushToSync now reschedules itself if a push is already in progress.
+    pushToSync()
+    setTimeout(() => { pushToSync() }, 3500)
   }
 
   const handleDeleteAll = async () => {
@@ -851,6 +871,10 @@ export function DoseHistory() {
       title: 'All doses deleted',
       description: `${doseCount} dose${doseCount !== 1 ? 's' : ''} permanently deleted.`,
     })
+
+    // Explicitly trigger sync push for bulk operations
+    pushToSync()
+    setTimeout(() => { pushToSync() }, 3500)
   }
 
   const openDeleteAllDialog = () => {
@@ -1094,7 +1118,10 @@ export function DoseHistory() {
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-sm font-medium">Connected to Room: {roomId}</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={disconnectSync}>Disconnect</Button>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => pushToSync()}>Force Sync</Button>
+                    <Button size="sm" variant="ghost" onClick={disconnectSync}>Disconnect</Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">

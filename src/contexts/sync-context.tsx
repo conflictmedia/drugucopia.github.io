@@ -228,6 +228,29 @@ const mergeDoses = (
   const map = new Map<string, DoseLog>()
   const conflicts: DoseConflict[] = []
 
+  // "Undelete" protection: if a local dose was recently added/modified, it
+  // should NOT be deleted by a stale remote `deleted` array entry — the user
+  // intentionally re-added it (e.g. via import). We consider a dose "recently
+  // modified" if either:
+  //   a) its updatedAt is newer than the last sync baseline, OR
+  //   b) its updatedAt is within the last 10 minutes (covers the no-baseline
+  //      case, e.g. first-ever sync after an import)
+  const TEN_MINUTES_MS = 10 * 60 * 1000
+  const nowMs = Date.now()
+  const localUndeleted = new Set<string>()
+  for (const d of local) {
+    const updateTime = getUpdateTime(d)
+    const baselineTime = baseline.get(d.id)
+    const isNewerThanBaseline = baselineTime !== undefined && updateTime > baselineTime
+    const isVeryRecent = Math.abs(nowMs - updateTime) < TEN_MINUTES_MS
+    if (isNewerThanBaseline || isVeryRecent) {
+      localUndeleted.add(d.id)
+    }
+  }
+  for (const id of localUndeleted) {
+    allDeleted.delete(id)
+  }
+
   for (const d of local) {
     if (!allDeleted.has(d.id)) map.set(d.id, d)
   }
@@ -350,6 +373,8 @@ interface SyncContextType {
   setPassword: (pw: string) => void
   connectToSync: (rId?: string, pass?: string) => Promise<void>
   disconnectSync: () => void
+  // Manually trigger a push to Firestore (useful for debugging / force-sync).
+  pushToSync: () => Promise<void>
   // D2 — Pending sync conflicts awaiting user resolution.
   pendingConflicts: DoseConflict[]
   // Resolve a conflict by ID. Choices:
@@ -437,15 +462,47 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   })
 
   const pushToSync = useCallback(async () => {
-    if (!cryptoKeyRef.current || !hashedRoomRef.current || isPushingRef.current || !isLoaded || !reminderIsLoaded) return
+    // Debug: log all guard values so we can see exactly why pushes might not happen
+    const guard = {
+      hasCryptoKey: !!cryptoKeyRef.current,
+      hasHashedRoom: !!hashedRoomRef.current,
+      isPushing: isPushingRef.current,
+      isLoaded,
+      reminderIsLoaded,
+      syncStatus: syncStatusRef.current,
+      initialSyncDone: initialSyncDoneRef.current,
+    }
+
+    // If a push is already in progress, reschedule this call for later
+    // instead of silently dropping it. This is critical for bulk operations
+    // (import, delete-all) that call pushToSync() explicitly — without this,
+    // the push would be lost if it coincides with another push.
+    if (cryptoKeyRef.current && hashedRoomRef.current && isPushingRef.current) {
+      console.debug('[sync] pushToSync skipped — push in progress, rescheduling in 1s')
+      if (pushDebounceRef.current) clearTimeout(pushDebounceRef.current)
+      pushDebounceRef.current = setTimeout(() => {
+        pushDebounceRef.current = null
+        pushToSync()
+      }, 1000)
+      return
+    }
+
+    if (!cryptoKeyRef.current || !hashedRoomRef.current || !isLoaded || !reminderIsLoaded) {
+      console.debug('[sync] pushToSync skipped — guards:', guard)
+      return
+    }
     const db = getDb()
-    if (!db) return
+    if (!db) {
+      console.debug('[sync] pushToSync skipped — no db')
+      return
+    }
 
     // Rate-limit: enforce minimum interval between Firestore writes
     const now = Date.now()
     const elapsed = now - lastWriteTimeRef.current
     if (elapsed < MIN_WRITE_INTERVAL_MS) {
       const delay = MIN_WRITE_INTERVAL_MS - elapsed
+      console.debug(`[sync] pushToSync rate-limited, retrying in ${delay}ms`)
       if (pushDebounceRef.current) clearTimeout(pushDebounceRef.current)
       pushDebounceRef.current = setTimeout(() => {
         pushDebounceRef.current = null
@@ -455,6 +512,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     }
 
     isPushingRef.current = true
+    console.debug('[sync] pushToSync starting — writing to secure_rooms/' + hashedRoomRef.current)
     try {
       const currentDoses = dosesRef.current
       const currentDeleted = deletedIdsRef.current
@@ -477,13 +535,29 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       }
       const encrypted = await encryptData(payload, cryptoKeyRef.current)
       lastPushedHashRef.current = encrypted.ciphertext.substring(0, 32)
+      console.debug(`[sync] setDoc writing ${currentDoses.length} doses, ${currentSchedules.length} schedules`)
       await setDoc(doc(db, 'secure_rooms', hashedRoomRef.current), {
         encrypted,
         updatedAt: serverTimestamp(),
       })
       lastWriteTimeRef.current = Date.now()
+      console.debug('[sync] setDoc succeeded')
     } catch (e) {
-      console.error('Failed to push sync:', e)
+      console.error('[sync] Failed to push sync:', e)
+      // Surface the error to the user — include the FULL error message so the
+      // exact Firebase error code is visible without needing the console.
+      const msg = e instanceof Error ? e.message : String(e)
+      const isPermissionError = msg.includes('permission') || msg.includes('PERMISSION_DENIED')
+      if (isPermissionError) {
+        setSyncStatus('error')
+      }
+      toast({
+        title: 'Sync write failed',
+        description: isPermissionError
+          ? 'Firestore rules block writes to secure_rooms. Apply the firestore.rules from the repo to your Firebase project.'
+          : `Error: ${msg.substring(0, 120)}`,
+        variant: 'destructive',
+      })
     } finally {
       isPushingRef.current = false
     }
@@ -499,10 +573,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // Skip auto-push if this state change came from a sync merge.
       if (skipAutoPushCountRef.current > 0) {
         skipAutoPushCountRef.current = Math.max(0, skipAutoPushCountRef.current - 1)
+        console.debug('[sync] auto-push skipped (sync merge), remaining skips:', skipAutoPushCountRef.current)
         return
       }
 
       if (syncStatusRef.current === 'synced' && state.isLoaded && reminderIsLoaded && initialSyncDoneRef.current) {
+        console.debug('[sync] dose store changed — scheduling push in 2s')
         if (pushDebounceRef.current) {
           clearTimeout(pushDebounceRef.current)
           pushDebounceRef.current = null
@@ -511,6 +587,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           pushDebounceRef.current = null
           pushToSync()
         }, 2000)
+      } else {
+        console.debug('[sync] dose store changed but auto-push guard failed:', {
+          syncStatus: syncStatusRef.current,
+          stateIsLoaded: state.isLoaded,
+          reminderIsLoaded,
+          initialSyncDone: initialSyncDoneRef.current,
+        })
       }
     })
 
@@ -526,10 +609,12 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // Skip auto-push if this state change came from a sync merge.
       if (skipAutoPushCountRef.current > 0) {
         skipAutoPushCountRef.current = Math.max(0, skipAutoPushCountRef.current - 1)
+        console.debug('[sync] auto-push skipped (sync merge), remaining skips:', skipAutoPushCountRef.current)
         return
       }
 
       if (syncStatusRef.current === 'synced' && isLoaded && state.isLoaded && initialSyncDoneRef.current) {
+        console.debug('[sync] reminder store changed — scheduling push in 2s')
         if (pushDebounceRef.current) {
           clearTimeout(pushDebounceRef.current)
           pushDebounceRef.current = null
@@ -594,13 +679,15 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const processSnapshot = async (docSnap: any) => {
         isProcessingSnap = true
+        console.debug('[sync] processSnapshot starting, doc exists:', docSnap.exists())
         try {
           if (!docSnap.exists()) {
             // New room — nothing to pull, push local state immediately.
-            // B4 fix: persist creds here because a successful snapshot
-            // (even on an empty room) means Firestore accepted our read.
+            console.debug('[sync] new empty room — pushing local state')
             initialSyncDoneRef.current = true
+            setSyncStatus('synced')
             setLastSyncedAt(new Date().toISOString())
+            toast({ title: 'Secure Sync Active', description: 'Your data is now end-to-end encrypted and syncing.' })
             saveSyncCredentials(effectiveRId, effectivePass)
             pushToSync()
             return
@@ -608,10 +695,13 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
           const remoteData = docSnap.data()
           const remoteHash = remoteData.encrypted?.ciphertext?.substring(0, 32)
+          console.debug('[sync] remote data received, remoteHash:', remoteHash?.substring(0, 8) + '...', 'lastPushedHash:', lastPushedHashRef.current?.substring(0, 8) + '...')
           if (remoteHash && remoteHash === lastPushedHashRef.current) {
             // Even for echo-suppressed snapshots, mark initial sync done
             // so the auto-push can resume
+            console.debug('[sync] snapshot is echo of our own push — skipping merge')
             initialSyncDoneRef.current = true
+            setSyncStatus('synced')
             setLastSyncedAt(new Date().toISOString())
             // Echo of our own push — credentials are already valid.
             // D3: use the split storage helpers instead of plaintext blob.
@@ -623,6 +713,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
           try {
             const payload = await decryptData(remoteData.encrypted, cryptoKeyRef.current!)
+            console.debug('[sync] decrypt succeeded — remote doses:', Array.isArray(payload) ? payload.length : payload.doses?.length ?? 0)
 
             // ─── Dose merge (backward-compatible with old format) ───
             const remoteDoses: DoseLog[] = Array.isArray(payload) ? payload : payload.doses ?? []
@@ -630,6 +721,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
             const localDoses = useDoseStore.getState().doses
             const localDeleted = useDoseStore.getState().deletedIds
+            console.debug('[sync] merging — local:', localDoses.length, 'doses, remote:', remoteDoses.length, 'doses')
 
             // On the first sync after connect/reconnect, ignore local deletions.
             // This ensures that entries deleted while offline are restored from
@@ -637,6 +729,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             // propagated back and wiping the remote data.
             const isFirstSync = !initialSyncDoneRef.current
             initialSyncDoneRef.current = true
+            setSyncStatus('synced')
+            if (isFirstSync) {
+              toast({ title: 'Secure Sync Active', description: 'Your data is now end-to-end encrypted and syncing.' })
+            }
             setLastSyncedAt(new Date().toISOString())
 
             // B4 fix: now that we've successfully decrypted the remote payload,
@@ -716,15 +812,18 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
             )
 
           } catch (e) {
-            console.error('Decryption failed:', e)
+            console.error('[sync] Decryption failed:', e)
             setSyncStatus('error')
+            toast({ title: 'Sync Decryption Failed', description: 'Wrong password or corrupted data. Disconnect and reconnect with the correct password.', variant: 'destructive' })
           }
         } finally {
           isProcessingSnap = false
+          console.debug('[sync] processSnapshot finished, isProcessingSnap reset to false, pendingSnap:', !!pendingSnap)
           // Process any snapshot that arrived while we were busy
           if (pendingSnap) {
             const next = pendingSnap
             pendingSnap = null
+            console.debug('[sync] processing queued pending snapshot')
             processSnapshot(next)
           }
         }
@@ -732,23 +831,34 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
 
       unsubscribeRef.current = onSnapshot(docRef, {
         next: async (docSnap) => {
+          console.debug('[sync] snapshot received:', {
+            exists: docSnap.exists(),
+            isPushing: isPushingRef.current,
+            isProcessingSnap,
+          })
           // If we're currently pushing or processing a previous snapshot,
           // queue this one for later instead of dropping it.
           if (isPushingRef.current || isProcessingSnap) {
             pendingSnap = docSnap
+            console.debug('[sync] snapshot queued (push/processing in progress)')
             return
           }
           processSnapshot(docSnap)
         },
         error: (err) => {
-          console.error('Firestore snapshot error:', err)
+          console.error('[sync] Firestore snapshot error:', err)
           setSyncStatus('error')
-          toast({ title: 'Sync Error', description: 'Lost connection to sync room. Changes save locally.', variant: 'destructive' })
+          toast({ title: 'Sync Error', description: `Lost connection: ${err.message.substring(0, 100)}`, variant: 'destructive' })
         }
       })
 
-      setSyncStatus('synced')
-      toast({ title: 'Secure Sync Active', description: 'Your data is now end-to-end encrypted and syncing.' })
+      // Note: we do NOT set status to 'synced' here. The status is set to
+      // 'synced' inside processSnapshot() only after the first real snapshot
+      // arrives successfully. This avoids a misleading "Synced" flash if
+      // Firestore rules deny access (the onSnapshot error callback would
+      // then fire and set 'error', but the user would have already seen
+      // "Secure Sync Active" momentarily).
+      setSyncStatus('connecting')
     } catch (error) {
       console.error('Sync connection error:', error)
       setSyncStatus('error')
@@ -857,9 +967,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const contextValue = useMemo(() => ({
-    syncStatus, lastSyncedAt, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync,
+    syncStatus, lastSyncedAt, roomId, password, setRoomId, setPassword, connectToSync, disconnectSync, pushToSync,
     pendingConflicts, resolveConflict, dismissConflict,
-  }), [syncStatus, lastSyncedAt, roomId, password, connectToSync, disconnectSync, pendingConflicts, resolveConflict, dismissConflict])
+  }), [syncStatus, lastSyncedAt, roomId, password, connectToSync, disconnectSync, pushToSync, pendingConflicts, resolveConflict, dismissConflict])
 
   return (
     <SyncContext.Provider value={contextValue}>

@@ -11,32 +11,36 @@ interface InteractionPairCardProps {
 const severityConfig = {
   dangerous: {
     icon: ShieldAlert,
-    borderColor: 'border-red-500/25',
-    bgColor: 'bg-red-500/3',
+    borderColor: 'border-red-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-red-500/10',
     badgeColor: 'bg-red-500/25 text-red-200 border-red-500/45',
     badgeLabel: 'DANGEROUS',
     iconColor: 'text-red-400',
   },
   unsafe: {
     icon: AlertTriangle,
-    borderColor: 'border-orange-500/25',
-    bgColor: 'bg-orange-500/3',
+    borderColor: 'border-orange-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-orange-500/10',
     badgeColor: 'bg-orange-500/25 text-orange-200 border-orange-500/45',
     badgeLabel: 'UNSAFE',
     iconColor: 'text-orange-400',
   },
   caution: {
     icon: HelpCircle,
-    borderColor: 'border-amber-500/25',
-    bgColor: 'bg-amber-500/3',
+    borderColor: 'border-amber-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-amber-500/10',
     badgeColor: 'bg-amber-500/25 text-amber-200 border-amber-500/45',
     badgeLabel: 'CAUTION',
     iconColor: 'text-amber-400',
   },
   'low-risk': {
     icon: ThumbsUp,
-    borderColor: 'border-emerald-500/25',
-    bgColor: 'bg-emerald-500/3',
+    borderColor: 'border-emerald-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-emerald-500/10',
     badgeColor: 'bg-emerald-500/25 text-emerald-200 border-emerald-500/45',
     badgeLabel: 'LOW RISK',
     iconColor: 'text-emerald-400',
@@ -70,7 +74,7 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
       <div className="card-body p-4">
         <div className="flex items-start gap-3">
           {/* Icon */}
-          <div className={cn('p-1.5 rounded-lg shrink-0', config.bgColor)}>
+          <div className={cn('p-1.5 rounded-lg shrink-0', config.iconBgColor)}>
             {result.tripsitStatus === 'Low Risk & Decrease' ? (
               <TrendingDown className={cn('h-4 w-4', config.iconColor)} />
             ) : result.tripsitStatus === 'Low Risk & No Synergy' ? (
