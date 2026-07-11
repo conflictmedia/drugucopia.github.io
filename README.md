@@ -77,6 +77,13 @@ Substance library, interaction checker, and dose logger for harm reduction. Buil
 | Kratom Calculator | <img width="1660" height="996" alt="kratom_calc" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/kratom_calc.png?raw=true" /> |
 | DXM Calculator | <img width="1660" height="996" alt="dxm_calc" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/dxm_calc.png?raw=true" /> |
 
+
+## WIP Companion Android App
+You can download this WIP app to get access to better Reminder notifications!
+
+https://github.com/conflictmedia/drugucopia-app
+
+
 ## Getting Started
 
 ### Prerequisites
