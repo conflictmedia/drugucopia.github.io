@@ -75,7 +75,7 @@ Substance library, interaction checker, and dose logger for harm reduction. Buil
 | Analytics | `docs/screenshots/analytics.png` |
 | Harm Reduction | `docs/screenshots/harm_reduction.png` |
 | Kratom Calculator | `docs/screenshots/kratom_calc.png` |
-| DXM Calculator | `docs/screenshots/dxm_calc.png` |
+| DXM Calculator | <img width="1660" height="996" alt="dxm_calc" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/dxm_calc.png?raw=true" /> |
 
 > Add screenshots to `docs/screenshots/` and they will render above.
 
