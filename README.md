@@ -68,12 +68,14 @@ Substance library, interaction checker, and dose logger for harm reduction. Buil
 | Page | Preview |
 |------|---------|
 | Substance Library | `docs/screenshots/library.png` |
-| Substance Detail | `docs/screenshots/detail.png` |
-| Interaction Checker | `docs/screenshots/interactions.png` |
+| Substance Detail | `docs/screenshots/substance_detail.png` |
+| Interaction Checker | `docs/screenshots/interaction_checker.png` |
 | Dose Logger – Session | `docs/screenshots/session.png` |
+| Dose Logger – History | `docs/screenshots/history.png` |
 | Analytics | `docs/screenshots/analytics.png` |
-| Harm Reduction | `docs/screenshots/harm-reduction.png` |
-| Kratom Calculator | `docs/screenshots/kratom-calc.png` |
+| Harm Reduction | `docs/screenshots/harm_reduction.png` |
+| Kratom Calculator | `docs/screenshots/kratom_calc.png` |
+| DXM Calculator | `docs/screenshots/dxm_calc.png` |
 
 > Add screenshots to `docs/screenshots/` and they will render above.
 
