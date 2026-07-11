@@ -67,17 +67,15 @@ Substance library, interaction checker, and dose logger for harm reduction. Buil
 
 | Page | Preview |
 |------|---------|
-| Substance Library | `docs/screenshots/library.png` |
-| Substance Detail | `docs/screenshots/substance_detail.png` |
-| Interaction Checker | `docs/screenshots/interaction_checker.png` |
-| Dose Logger – Session | `docs/screenshots/session.png` |
-| Dose Logger – History | `docs/screenshots/history.png` |
-| Analytics | `docs/screenshots/analytics.png` |
-| Harm Reduction | `docs/screenshots/harm_reduction.png` |
-| Kratom Calculator | `docs/screenshots/kratom_calc.png` |
+| Substance Library | <img width="1660" height="996" alt="library" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/library.png?raw=true" /> |
+| Substance Detail | <img width="1660" height="996" alt="substance_detail" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/substance_detail.png?raw=true" /> |
+| Interaction Checker | <img width="1660" height="996" alt="interactions" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/interaction_checker.png?raw=true" /> |
+| Dose Logger – Session | <img width="1660" height="996" alt="session" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/session.png?raw=true" /> |
+| Dose Logger – History | <img width="1660" height="996" alt="history" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/history.png?raw=true" /> |
+| Analytics | <img width="1660" height="996" alt="analytics" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/analytics.png?raw=true" /> |
+| Harm Reduction | <img width="1660" height="996" alt="harm_reduction" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/harm_reduction.png?raw=true" /> |
+| Kratom Calculator | <img width="1660" height="996" alt="kratom_calc" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/kratom_calc.png?raw=true" /> |
 | DXM Calculator | <img width="1660" height="996" alt="dxm_calc" src="https://github.com/drugucopia/drugucopia.github.io/blob/dev/docs/screenshots/dxm_calc.png?raw=true" /> |
-
-> Add screenshots to `docs/screenshots/` and they will render above.
 
 ## Getting Started
 
