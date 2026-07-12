@@ -214,3 +214,42 @@ export function classifyDose(
     averageCommonDose,
   }
 }
+
+/**
+ * Calculate intensity (1-10 scale) from dose classification.
+ * Maps dose class to intensity:
+ *   threshold → 1-2
+ *   light → 3-4
+ *   common → 5-6
+ *   strong → 7-8
+ *   heavy → 9-10
+ * Uses horizontalWeight for finer granularity within each class.
+ */
+export function calculateIntensityFromDose(
+  amount: number,
+  unit: string,
+  substance: Substance,
+  route: string
+): number {
+  const classification = classifyDose(amount, unit, substance, route)
+  if (!classification) return 5 // default middle value
+
+  const { doseClass, horizontalWeight } = classification
+
+  // Base intensity per dose class (1-10 scale)
+  let baseIntensity: number
+  switch (doseClass) {
+    case 'threshold': baseIntensity = 1; break
+    case 'light': baseIntensity = 3; break
+    case 'common': baseIntensity = 5; break
+    case 'strong': baseIntensity = 7; break
+    case 'heavy': baseIntensity = 9; break
+  }
+
+  // Add finer granularity using horizontalWeight (0-1 within class)
+  // horizontalWeight goes 0, 0.25, 0.5, 0.75, 1.0 for threshold, light, common, strong, heavy
+  // We want to add up to +1 within each class
+  const intensity = Math.min(10, Math.max(1, Math.round(baseIntensity + horizontalWeight)))
+
+  return intensity
+}
