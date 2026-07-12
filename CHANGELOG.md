@@ -1,0 +1,53 @@
+# Changelog
+
+## [0.2.4] - 2026-07-12
+
+### Fixed
+-changelog popup maybe?
+
+## [0.2.3] - 2026-07-12
+
+### Fixed
+- Actually fix the markdown for the changelog this time
+
+## [0.2.2] - 2026-07-12
+
+### Fixed
+- Fixed markdown for the changelog
+
+## [0.2.1] - 2026-07-12
+
+### Added
+- Changelog, and changelog popup.
+
+## [0.2.0] - 2026-XX-XX
+
+### Added
+- Kratom Extract Calculator with leaf powder ↔ extract conversion, dose-tier warnings, test-dose recommendation, enhanced-extract flag, redose planner, and one-click logging
+- DXM Plateau Calculator with weight-based dosing, sigma/dextrorphan ratio, and redose planner
+- Harm Reduction Hub: emergency contacts, 12 principles, 20+ searchable guides, 40+ dangerous interactions, curated external resources, substance-specific deep links
+- Analytics dashboard: daily/weekly/monthly charts, substance/category breakdowns, streak tracking, heuristic tolerance estimation, 7d/30d/90d/1y range selector
+- PWA/offline support: service worker caching, web app manifest, full offline functionality after first visit
+- Substance library: 277 substances across 10 categories with detailed pages (effects, dosage, duration, onset/peak/offset, harm reduction, interactions, chemical class, aliases)
+- Interaction checker: pairwise checking with severity levels, cross-tolerance info, single-substance mode, quick-combo buttons, shareable URLs
+- Dose Logger (Track): local-first logging (localStorage + IndexedDB via Dexie), session timeline with live intensity estimates, history with edit/delete/CSV export, reminder engine (one-off, interval, redose), sync conflict resolution UI
+- Fuzzy search across library (name, aliases, class, description) with deep linking via `?substance=<id>`
+
+### Changed
+- Migrated to Next.js 15 App Router with static export
+- Updated to React 19, Tailwind CSS 4, daisyUI 5
+- Switched to Bun for package management
+
+### Fixed
+- Service worker registration for GitHub Pages deployment
+- TypeScript strict mode compliance across codebase
+
+## [0.1.0] - 2026-XX-XX
+
+### Added
+- Initial release of Drugucopia
+- Substance library with core dataset
+- Basic interaction checker
+- Dose logging with localStorage
+- Harm reduction guides and resources
+- Deployment to GitHub Pages via GitHub Actions
