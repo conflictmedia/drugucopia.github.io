@@ -15,6 +15,7 @@ import { useDoseStore } from '@/store/dose-store'
 import { DoseLog, Duration } from '@/types'
 import { calculatePhaseTimings, getPhaseStatus } from '@/components/dose-timeline/dose-timeline-utils'
 import { getDurationForRoute } from '@/lib/duration-interpolation'
+import { classifyDose, calculateIntensityFromDose } from '@/lib/dose-classification'
 import { DurationOverrideFields } from '@/components/duration-override-fields'
 import { useReminderStore } from '@/store/reminder-store'
 import { formatIntervalMinutes } from '@/lib/notification-utils'
@@ -899,6 +900,17 @@ export function DoseLoggerModal({
   }, [showQuickSuggestions, quickSuggestions, quickActiveIndex, substanceName, amount, selectQuickSuggestion])
 
   const selectedSubstance = useMemo(() => substances.find(s => s.id === substanceId), [substanceId, substances])
+
+  // Auto-calculate intensity from dose classification
+  useEffect(() => {
+    if (selectedSubstance && amount && unit && route) {
+      const amt = parseFloat(amount)
+      if (!isNaN(amt) && amt > 0) {
+        const autoIntensity = calculateIntensityFromDose(amt, unit, selectedSubstance, route)
+        setIntensity(autoIntensity)
+      }
+    }
+  }, [amount, unit, route, selectedSubstance])
 
   const recentSubstances = useMemo(() => {
     // A2: include the last-dose amount/unit/route so the chip can
