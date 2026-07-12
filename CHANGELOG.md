@@ -1,9 +1,14 @@
 # Changelog
 
+## [0.2.5] - 2026-07-12
+
+### Fixed
+- Changelog popup not working
+
 ## [0.2.4] - 2026-07-12
 
 ### Fixed
--changelog popup maybe?
+- changelog popup maybe?
 
 ## [0.2.3] - 2026-07-12
 
