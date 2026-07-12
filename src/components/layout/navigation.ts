@@ -4,6 +4,7 @@ import {
   BarChart3,
   Calculator,
   FlaskConical,
+  History,
   Leaf,
   Shield,
   Shuffle,
@@ -17,11 +18,12 @@ export interface NavItem {
     | "analytics"
     | "dxm"
     | "kratom"
-    | "safety";
+    | "safety"
+    | "changelog";
   href: string;
   label: string;
   icon: LucideIcon;
-  section: "explore" | "track" | "tools";
+  section: "explore" | "track" | "tools" | "info";
   /**
    * DaisyUI semantic color token used for the item's icon. Inactive items
    * render the icon at ~70% opacity in this color; active items render at
@@ -95,6 +97,14 @@ export const NAV_ITEMS: NavItem[] = [
     section: "explore",
     color: "error",
   },
+  {
+    id: "changelog",
+    href: "/changelog",
+    label: "Changelog",
+    icon: History,
+    section: "info",
+    color: "info",
+  },
 ];
 
 export const NAV_SECTIONS: Array<{
@@ -104,6 +114,7 @@ export const NAV_SECTIONS: Array<{
   { title: "Explore", section: "explore" },
   { title: "Track", section: "track" },
   { title: "Tools", section: "tools" },
+  { title: "Info", section: "info" },
 ];
 
 export function isNavItemActive(item: NavItem, pathname: string) {
@@ -126,6 +137,8 @@ export function isNavItemActive(item: NavItem, pathname: string) {
       return p.startsWith("/kratom-calculator");
     case "safety":
       return p.startsWith("/harm-reduction");
+    case "changelog":
+      return p.startsWith("/changelog");
     default:
       return false;
   }
@@ -149,6 +162,8 @@ export function getPageTitle(pathname: string) {
       return "Kratom Calculator";
     case "/harm-reduction":
       return "Safety";
+    case "/changelog":
+      return "Changelog";
     default:
       return "Drugucopia";
   }

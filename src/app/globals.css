@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ───────────────────────────────────────────────────────────────────
    daisyUI 5 plugin registration
