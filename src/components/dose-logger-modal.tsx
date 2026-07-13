@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical } from 'lucide-react'
-import { substances, searchSubstancesRanked } from '@/lib/substances/index'
+import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical, Pill } from 'lucide-react'
+import { substances, searchSubstancesRanked, getAllSubstances, searchSubstancesRankedAll } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
 import { DoseLog, Duration } from '@/types'
@@ -24,6 +24,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/store/ui-store'
 import { cn } from '@/lib/utils'
 import { useMedia } from 'react-use'
+import { useMedicationStore, getMedicationsAsSubstances, isMedicationSelectorId, getMedicationBySelectorId, toMedicationSelectorId } from '@/store/medication-store'
+import { checkInteractions as checkInteractionsEngine } from '@/lib/interaction-checker'
 
 interface DoseLoggerModalProps {
   open?: boolean
@@ -706,6 +708,18 @@ export function DoseLoggerModal({
   const initializeFavorites = useUIStore(s => s.initializeFavorites)
   useEffect(() => { initializeFavorites() }, [initializeFavorites])
 
+  // Medication profile — used for two things:
+  //   1. The substance selector dropdown includes active medications
+  //      (namespaced with `med-<uuid>`) so users can log a dose of their
+  //      prescription directly without re-typing the name.
+  //   2. The interaction-warning section checks the selected substance
+  //      against active medications (not just against active doses) and
+  //      surfaces a separate warning panel for medication interactions.
+  const medications = useMedicationStore(s => s.medications)
+  const initializeMedications = useMedicationStore(s => s.initialize)
+  useEffect(() => { initializeMedications() }, [initializeMedications])
+  const activeMedications = useMemo(() => medications.filter(m => m.isActive), [medications])
+
   const [quickInput, setQuickInput] = useState('')
   const [quickInputSubstanceQuery, setQuickInputSubstanceQuery] = useState('')
   const [mathResult, setMathResult] = useState<{ result: number; unit: string; expression: string } | null>(null)
@@ -742,7 +756,7 @@ export function DoseLoggerModal({
     if (preselectedSubstanceId) setSubstanceId(preselectedSubstanceId)
     if (preselectedSubstanceName) setSubstanceName(preselectedSubstanceName)
     if (preselectedSubstanceId) {
-      const found = substances.find(s => s.id === preselectedSubstanceId)
+      const found = getAllSubstances().find(s => s.id === preselectedSubstanceId)
       if (found) {
         const raw = found as any
         const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
@@ -787,7 +801,7 @@ export function DoseLoggerModal({
     const value = e.target.value
     setQuickInput(value)
 
-    const parsed = parseQuickInput(value, substances)
+    const parsed = parseQuickInput(value, getAllSubstances())
 
     const hasAmount = !!parsed.amount
     const queryForSuggestions = hasAmount ? parsed.substanceName : value
@@ -831,7 +845,7 @@ export function DoseLoggerModal({
 
   const quickSuggestions = useMemo(() => {
     if (!quickInputSubstanceQuery.trim() || !showQuickSuggestions) return []
-    return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
+    return searchSubstancesRankedAll(quickInputSubstanceQuery, { limit: 6 })
   }, [quickInputSubstanceQuery, showQuickSuggestions])
 
   // A2: "log same as last time" — tapping a recent chip pre-fills the
@@ -899,7 +913,22 @@ export function DoseLoggerModal({
     }
   }, [showQuickSuggestions, quickSuggestions, quickActiveIndex, substanceName, amount, selectQuickSuggestion])
 
-  const selectedSubstance = useMemo(() => substances.find(s => s.id === substanceId), [substanceId, substances])
+  const selectedSubstance = useMemo(() => {
+    // Built-in or custom substance (looked up via the unified
+    // getAllSubstances() helper which merges localStorage custom
+    // substances with the built-in DB).
+    const builtin = getAllSubstances().find(s => s.id === substanceId)
+    if (builtin) return builtin
+    // User medication (namespaced `med-<uuid>` selector ID). We
+    // resolve these to Substance-shaped objects via the medication
+    // store so downstream duration / classification / interaction
+    // logic treats them like any other substance.
+    if (isMedicationSelectorId(substanceId)) {
+      return getMedicationsAsSubstances({ onlyActive: false })
+        .find(s => s.id === substanceId)
+    }
+    return undefined
+  }, [substanceId])
 
   // Auto-calculate intensity from dose classification
   useEffect(() => {
@@ -915,6 +944,7 @@ export function DoseLoggerModal({
   const recentSubstances = useMemo(() => {
     // A2: include the last-dose amount/unit/route so the chip can
     // pre-fill all of them with a single tap ("log same as last time").
+    // doses is sorted newest first, so iterate from 0 to capture the most recent dose of each substance.
     const seen = new Map<string, {
       name: string
       id: string
@@ -923,7 +953,7 @@ export function DoseLoggerModal({
       unit?: string
       route?: string
     }>()
-    for (let i = doses.length - 1; i >= 0; i--) {
+    for (let i = 0; i < doses.length; i++) {
       const d = doses[i]
       if (d.substanceName && !seen.has(d.substanceName)) {
         seen.set(d.substanceName, {
@@ -971,6 +1001,19 @@ export function DoseLoggerModal({
     })
   }, [doses])
 
+  /**
+   * Active-dose interaction check.
+   *
+   * Compares the currently selected substance against the user's other
+   * active doses (those still within their duration window). Uses the
+   * per-substance `interactions` lists (dangerous / unsafe / uncertain)
+   * plus a keyword matcher that falls back to plain name matching for
+   * custom substances / medications that don't ship interaction lists.
+   *
+   * This does NOT cover user medications from the medication profile —
+   * those are handled separately by `medicationInteractions` below so
+   * we can render them in their own warning panel.
+   */
   const interactingSubstances = useMemo(() => {
     if (!selectedSubstance) return []
     const interactions = new Set<string>()
@@ -1006,7 +1049,13 @@ export function DoseLoggerModal({
 
     for (const dose of activeDoses) {
       if (dose.substanceId === selectedSubstance.id) continue
-      const activeSubstance = substances.find(s => s.id === dose.substanceId || s.name === dose.substanceName)
+      // Look up the active substance across built-in DB, custom
+      // substances, AND user medications so old dose logs of meds
+      // still resolve correctly.
+      const activeSubstance = getAllSubstances().find(s => s.id === dose.substanceId || s.name === dose.substanceName)
+        ?? (isMedicationSelectorId(dose.substanceId || '')
+          ? getMedicationsAsSubstances({ onlyActive: false }).find(s => s.id === dose.substanceId)
+          : undefined)
 
       if (!activeSubstance) {
         const activeNameLower = dose.substanceName.toLowerCase()
@@ -1029,7 +1078,98 @@ export function DoseLoggerModal({
     return Array.from(interactions)
   }, [selectedSubstance, activeDoses])
 
-  const substanceOptions: ComboboxOption[] = useMemo(() => substances.map(s => ({ value: s.id, label: s.name })), [substances])
+  /**
+   * Medication-profile interaction check.
+   *
+   * Compares the currently selected substance against the user's
+   * active medications from the medication profile. This is separate
+   * from `interactingSubstances` (which only checks active doses) so
+   * that medication warnings can be rendered in their own panel and
+   * so we don't double-count a substance that's both an active dose
+   * and an active medication.
+   *
+   * Implementation: we lean on the existing `checkInteractions`
+   * engine by passing the selected substance ID plus every active
+   * medication's namespaced ID, along with an `extraSubstances`
+   * pool that lets the engine resolve `med-<uuid>` IDs. Pairs where
+   * one side is a medication and the other is the selected substance
+   * are surfaced as warnings.
+   */
+  const medicationInteractions = useMemo(() => {
+    if (!selectedSubstance || activeMedications.length === 0) return []
+    // Build the extras pool: every active medication as a Substance.
+    const medSubstances = activeMedications.map(m =>
+      // Re-derive from store helper so we always get the latest
+      // linkedSubstanceId / medicationType without memo staleness.
+      getMedicationsAsSubstances({ onlyActive: true }).find(s => s.id === toMedicationSelectorId(m.id))
+    ).filter(Boolean) as NonNullable<ReturnType<typeof getMedicationsAsSubstances>[number]>[]
+
+    if (medSubstances.length === 0) return []
+
+    const selectedId = selectedSubstance.id
+    const allIds = [selectedId, ...medSubstances.map(s => s.id)]
+
+    // Use the shared engine. We pass the medSubstances as extras so
+    // `med-<uuid>` IDs resolve correctly.
+    const result = checkInteractionsEngine(allIds, medSubstances)
+
+    return result.pairs.filter(p => p.severity !== 'low-risk')
+  }, [selectedSubstance, activeMedications])
+
+  /**
+   * Substance selector options.
+   *
+   * Combines four sources, each tagged so the UI can render a badge:
+   *   - Built-in substances (no tag — the default)
+   *   - Custom substances from the custom-substance store (loaded via
+   *     getAllSubstances() which merges localStorage entries)
+   *   - Active medications from the medication profile (namespaced
+   *     with `med-<uuid>`)
+   *
+   * The Combobox component doesn't natively support per-option badges,
+   * so we encode the kind in the label: medications get a "[Rx]" prefix
+   * and custom substances get a "[Custom]" prefix. The search box still
+   * matches against the underlying name.
+   */
+  const substanceOptions: ComboboxOption[] = useMemo(() => {
+    // Built-in + custom substances (getAllSubstances already merges them).
+    const all = getAllSubstances()
+    // Custom substance IDs live in localStorage; we identify them by
+    // checking that they're NOT in the built-in substances array.
+    const builtinIds = new Set(substances.map(s => s.id))
+    const customIds = new Set(all.filter(s => !builtinIds.has(s.id)).map(s => s.id))
+
+    const opts: ComboboxOption[] = all.map(s => {
+      const isCustom = customIds.has(s.id)
+      return {
+        value: s.id,
+        label: isCustom ? `[Custom] ${s.name}` : s.name,
+        keywords: [s.name, ...(s.commonNames || []), ...(s.aliases || [])],
+      }
+    })
+
+    // Append active medications as `med-<uuid>` options so users can
+    // log a dose of their prescription directly. Skip medications
+    // that are already represented by a linked built-in substance to
+    // avoid clutter (the user can just pick the substance itself).
+    for (const m of activeMedications) {
+      // If the medication is linked to a built-in substance AND the
+      // user hasn't renamed it, skip — the built-in entry already
+      // covers this case.
+      if (m.linkedSubstanceId && builtinIds.has(m.linkedSubstanceId) && m.name === all.find(s => s.id === m.linkedSubstanceId)?.name) {
+        continue
+      }
+      const id = toMedicationSelectorId(m.id)
+      const label = `[Rx] ${m.name}${m.dosage ? ` (${m.dosage})` : ''}`
+      opts.push({
+        value: id,
+        label,
+        keywords: [m.name, ...(m.genericName ? [m.genericName] : []), ...(m.medicationType ? [m.medicationType] : [])],
+      })
+    }
+
+    return opts.sort((a, b) => a.label.localeCompare(b.label))
+  }, [activeMedications])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
@@ -1137,7 +1277,42 @@ export function DoseLoggerModal({
   }
 
   const handleSubstanceChange = (value: string) => {
-    const found = substances.find(s => s.id === value)
+    // Selected a user medication from the dropdown (namespaced ID).
+    // Resolve it via the medication store so we can pull the user's
+    // custom dosage / route defaults into the form.
+    if (isMedicationSelectorId(value)) {
+      const med = getMedicationBySelectorId(value)
+      if (med) {
+        // Use the medication's UUID-namespaced selector ID as the
+        // substanceId so the rest of the modal can resolve it back
+        // to the medication via getMedicationsAsSubstances().
+        setSubstanceId(value)
+        setSubstanceName(med.name)
+        setCategories(['medications'])
+        // Pre-fill route from the medication's route if it's a known
+        // route (the route combobox accepts arbitrary strings).
+        if (med.route) setRoute(med.route)
+        // Pre-fill amount+unit by parsing the medication's dosage
+        // string (e.g. "20mg" → amount="20", unit="mg"). If parsing
+        // fails we leave amount/unit untouched.
+        if (med.dosage) {
+          const parsed = parseAmountUnit(med.dosage)
+          if (parsed.amount) setAmount(parsed.amount)
+          if (parsed.unit) setUnit(parsed.unit)
+        }
+        setDurationOverride(null)
+        return
+      }
+      // Fallback: unknown med ID — treat as a custom-typed entry.
+      setSubstanceId(value)
+      setSubstanceName(value)
+      setCategories([])
+      setDurationOverride(null)
+      return
+    }
+
+    // Built-in or custom substance.
+    const found = getAllSubstances().find(s => s.id === value)
     if (found) {
       setSubstanceId(found.id)
       setSubstanceName(found.name)
@@ -1573,7 +1748,16 @@ export function DoseLoggerModal({
               placeholder="Select from list or type custom..."
               allowCustom={true}
             />
-            <p className="text-xs text-neutral-content">Select from list or type a custom substance</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-content">
+              <span>Select from list or type a custom substance</span>
+              {activeMedications.length > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Pill className="w-3 h-3" />
+                  <code className="px-1 py-0.5 rounded bg-base-200 text-[10px]">[Rx]</code>
+                  = your medication ({activeMedications.length})
+                </span>
+              )}
+            </div>
           </div>
 
           {interactingSubstances.length > 0 && (
@@ -1584,6 +1768,71 @@ export function DoseLoggerModal({
                 This substance may interact with your currently active dose(s) of: <strong>{interactingSubstances.join(', ')}</strong>.
                 Please exercise caution and research potential interactions.
               </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Medication-profile interaction warnings.
+              These are separate from active-dose warnings above so the
+              user can tell "I just took X" warnings apart from "I'm
+              prescribed Y" warnings. Rendered as a list because a user
+              may be on multiple medications and each pair can have its
+              own severity / description. */}
+          {medicationInteractions.length > 0 && (
+            <Alert variant="destructive" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30">
+              <div className="flex items-start gap-2">
+                <Pill className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <AlertTitle className="text-amber-800 dark:text-amber-200">
+                    Medication Interaction Warning
+                  </AlertTitle>
+                  <AlertDescription className="space-y-1.5">
+                    <p>
+                      This substance interacts with {medicationInteractions.length === 1 ? 'an active medication' : `${medicationInteractions.length} active medications`} in your <a href="/medications" className="underline font-medium">medication profile</a>:
+                    </p>
+                    <ul className="space-y-1.5 mt-1">
+                      {medicationInteractions.map((pair, idx) => {
+                        // Determine which side of the pair is the
+                        // medication (the side whose name matches one
+                        // of the user's active medications).
+                        const med = activeMedications.find(m =>
+                          pair.substanceA.toLowerCase() === m.name.toLowerCase() ||
+                          (m.genericName && pair.substanceA.toLowerCase() === m.genericName.toLowerCase())
+                        ) || activeMedications.find(m =>
+                          pair.substanceB.toLowerCase() === m.name.toLowerCase() ||
+                          (m.genericName && pair.substanceB.toLowerCase() === m.genericName.toLowerCase())
+                        )
+                        const otherName = med
+                          ? (pair.substanceA.toLowerCase() === med.name.toLowerCase() || (med.genericName && pair.substanceA.toLowerCase() === med.genericName.toLowerCase()) ? pair.substanceB : pair.substanceA)
+                          : `${pair.substanceA} + ${pair.substanceB}`
+                        const sevColor =
+                          pair.severity === 'dangerous' ? 'text-red-600 dark:text-red-400'
+                            : pair.severity === 'unsafe' ? 'text-orange-600 dark:text-orange-400'
+                              : 'text-amber-600 dark:text-amber-400'
+                        const sevLabel = pair.severity === 'dangerous' ? 'DANGEROUS'
+                          : pair.severity === 'unsafe' ? 'Unsafe'
+                            : 'Caution'
+                        return (
+                          <li key={idx} className="text-xs flex items-start gap-2">
+                            <span className={`font-semibold uppercase shrink-0 ${sevColor}`}>{sevLabel}:</span>
+                            <span className="flex-1">
+                              <strong>{med?.name || '?'}</strong>
+                              {med?.medicationType && <span className="opacity-70"> ({med.medicationType})</span>}
+                              {' × '}
+                              <strong>{otherName}</strong>
+                              {pair.description && (
+                                <span className="block opacity-80 mt-0.5">{pair.description}</span>
+                              )}
+                              {pair.sources.length > 0 && (
+                                <span className="block opacity-50 mt-0.5">Source: {pair.sources.join(', ')}</span>
+                              )}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </AlertDescription>
+                </div>
+              </div>
             </Alert>
           )}
 

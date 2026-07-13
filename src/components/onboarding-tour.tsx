@@ -86,17 +86,30 @@ const TOUR_STEPS = [
   },
 ]
 
-export function OnboardingTour() {
-  const [isOpen, setIsOpen] = useState(false)
+export function OnboardingTour({ isOpen: controlledOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
   const [currentStep, setCurrentStep] = useState(0)
   const [completed, setCompleted] = useState(false)
 
-  useEffect(() => {
-    const hasSeenTour = localStorage.getItem('drugucopia-tour-complete')
-    if (!hasSeenTour) {
-      setTimeout(() => setIsOpen(true), 1000)
+  const isOpen = controlledOpen ?? internalIsOpen
+  const setIsOpen = controlledOpen ? () => {} : setInternalIsOpen
+
+  const closeTour = () => {
+    if (controlledOpen) {
+      onClose?.()
+    } else {
+      setInternalIsOpen(false)
     }
-  }, [])
+  }
+
+  useEffect(() => {
+    if (!controlledOpen) {
+      const hasSeenTour = localStorage.getItem('drugucopia-tour-complete')
+      if (!hasSeenTour) {
+        setTimeout(() => setInternalIsOpen(true), 1000)
+      }
+    }
+  }, [controlledOpen])
 
   const step = TOUR_STEPS[currentStep]
   const isLastStep = currentStep === TOUR_STEPS.length - 1
@@ -113,13 +126,13 @@ export function OnboardingTour() {
 
   const completeTour = () => {
     localStorage.setItem('drugucopia-tour-complete', 'true')
-    setIsOpen(false)
+    closeTour()
     setCompleted(true)
   }
 
   const skipTour = () => {
     localStorage.setItem('drugucopia-tour-complete', 'true')
-    setIsOpen(false)
+    closeTour()
   }
 
   if (!isOpen) return null
