@@ -1286,7 +1286,7 @@ export function DoseHistory() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     {knownSubstance ? (
-                                      <Link href={`/?substance=${knownSubstance.id}`} className="font-medium hover:underline hover:text-primary transition-colors">
+                                      <Link href={`/?substance=${knownSubstance.id}`} prefetch={false} className="font-medium hover:underline hover:text-primary transition-colors">
                                         {dose.substanceName}
                                       </Link>
                                     ) : (

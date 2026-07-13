@@ -31,7 +31,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useDoseStore } from '@/store/dose-store'
 import { toast } from '@/hooks/use-toast'
 import { dextromethorphan as dxm } from '@/lib/substances/dissociatives/dextromethorphan'
@@ -246,8 +246,6 @@ function SectionToggle({
 
 function DXMCalculatorContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
   const addDose = useDoseStore(s => s.addDose)
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
@@ -315,17 +313,27 @@ function DXMCalculatorContent() {
     }
   }, [weight, unit, selectedPlateauIdx])
 
-  // Sync URL when inputs change (replace, no scroll)
+  // Sync URL when inputs change.
+  // IMPORTANT: use window.history.replaceState — NOT router.replace().
+  // router.replace() in Next 16 App Router triggers an RSC fetch on every
+  // call, even when only query params changed. Since the calculator
+  // updates the URL on every keystroke, that produced a flood of 304
+  // Not Modified responses in the network tab. replaceState updates the
+  // address bar (for shareable links) without any server round-trip.
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const params = new URLSearchParams()
     if (weight) params.set('weight', weight)
     if (unit !== 'lbs') params.set('unit', unit)
     if (selectedPlateauIdx !== 0) params.set('plateau', String(selectedPlateauIdx))
 
     const query = params.toString()
-    const newUrl = query ? `${pathname}?${query}` : pathname
-    router.replace(newUrl, { scroll: false })
-  }, [weight, unit, selectedPlateauIdx, pathname, router])
+    // Preserve the current pathname (incl. trailing slash from trailingSlash: true)
+    // so we don't trigger a redirect-to-add-trailing-slash on reload.
+    const currentPath = window.location.pathname
+    const newUrl = query ? `${currentPath}?${query}` : currentPath
+    window.history.replaceState(null, '', newUrl)
+  }, [weight, unit, selectedPlateauIdx])
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const weightKg = useMemo(() => {
@@ -515,8 +523,8 @@ function DXMCalculatorContent() {
               <button
                 onClick={() => setUnit('lbs')}
                 className={`px-4 text-sm font-medium transition-colors ${unit === 'lbs'
-                    ? 'bg-primary text-primary-content'
-                    : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-200 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 lbs
@@ -524,8 +532,8 @@ function DXMCalculatorContent() {
               <button
                 onClick={() => setUnit('kg')}
                 className={`px-4 text-sm font-medium transition-colors ${unit === 'kg'
-                    ? 'bg-primary text-primary-content'
-                    : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-200 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 kg
@@ -540,8 +548,8 @@ function DXMCalculatorContent() {
                 key={w}
                 onClick={() => setWeight(String(w))}
                 className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${parseFloat(weight) === w
-                    ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                    : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                  ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                  : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 {w} {unit}
@@ -733,8 +741,8 @@ function DXMCalculatorContent() {
                   key={i}
                   onClick={() => setSelectedPlateauIdx(i)}
                   className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${selectedPlateauIdx === i
-                      ? `${p.borderColor} ${p.bgColor} ${p.color}`
-                      : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                    ? `${p.borderColor} ${p.bgColor} ${p.color}`
+                    : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                     }`}
                 >
                   <p.icon className="h-3.5 w-3.5" />

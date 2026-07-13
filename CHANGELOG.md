@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0] - 2026-07-13
+
+### Added
+- Test Suite
+- Custom Substances Enhancement
+- Medication Checker
+- Benzodiazapine Equivalence Calculator
+- Onboarding Tou
+
 ## [0.2.5] - 2026-07-12
 
 ### Fixed

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCustomSubstanceStore, type CustomSubstance } from '@/store/custom-substance-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Plus, Trash, Edit } from 'lucide-react';
 const CATEGORIES = ['Research Chemical', 'Personal', 'Experimental'] as const;
 
 export default function CustomSubstancesPage() {
-  const { substances, loaded, addSubstance, updateSubstance, deleteSubstance } =
+  const { substances, loaded, addSubstance, updateSubstance, deleteSubstance, initialize } =
     useCustomSubstanceStore();
 
   const [showForm, setShowForm] = useState(false);
@@ -21,7 +21,11 @@ export default function CustomSubstancesPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
 
-  if (!loaded) return null;
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  if (!loaded) return <div className="flex items-center justify-center py-12"><div className="loading loading-spinner loading-lg text-primary" /></div>;
 
   const resetForm = () => {
     setName('');
