@@ -40,17 +40,27 @@ const sizeClasses = {
 export type ButtonVariant = keyof typeof variantClasses
 export type ButtonSize = keyof typeof sizeClasses
 
+// Support both 'intent' (legacy) and 'variant' for backward compatibility
+export type ButtonIntent = ButtonVariant | 'primary' | 'danger' | 'ghost'
+
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
+  intent?: ButtonIntent
   size?: ButtonSize
+  iconOnly?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", ...props }, ref) => {
+  ({ className, variant = "default", intent, size = "default", ...props }, ref) => {
+    // Support both 'intent' (legacy) and 'variant' - intent takes precedence for backward compat
+    const resolvedVariant = intent
+      ? (intent === 'primary' ? 'default' : intent === 'danger' ? 'destructive' : intent)
+      : variant;
+    
     return (
       <button
-        className={cn(variantClasses[variant], sizeClasses[size], className)}
+        className={cn(variantClasses[resolvedVariant], sizeClasses[size], className)}
         ref={ref}
         {...props}
       />

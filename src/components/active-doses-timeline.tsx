@@ -54,6 +54,7 @@ import {
   Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers, Clock,
 } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
+import type { SubstanceCategory } from '@/lib/substances/types'
 import { useDoseStore } from '@/store/dose-store'
 import {
   EnrichedDose, RouteGroup, SubstanceGroup, TooltipData,
@@ -497,12 +498,12 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
   }, [])
 
   /* ---------------------------------------------------------------- */
-  /*  Helpers                                                          */
-  /* ---------------------------------------------------------------- */
+/*  Helpers                                                          */
+/* ---------------------------------------------------------------- */
 
   const getCategoryColor = useCallback((categories: string[]): string => {
     if (categories.length === 0) return 'hsl(var(--muted-foreground))'
-    const primary = categories[0]
+    const primary = categories[0] as SubstanceCategory
     return categoryColors[primary] ?? 'hsl(var(--muted-foreground))'
   }, [])
 

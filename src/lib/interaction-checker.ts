@@ -2,7 +2,7 @@
 // Checks drug-drug interactions between selected substances using
 // the TripSit combos database (primary) and per-substance interaction data (fallback).
 
-import { substances, getSubstanceById } from '@/lib/substances/index';
+import { substances, getSubstanceById, getAllSubstances, getSubstanceByIdAll } from '@/lib/substances/index';
 import { tripsitLookup } from '@/lib/tripsit-combos';
 import { resolveTripsitClasses } from '@/lib/tripsit-aliases';
 import type { Substance, TripSitCombo } from '@/lib/types';
@@ -106,7 +106,7 @@ function matchInteractionList(
 }
 
 function resolveSubstance(id: string): Substance | undefined {
-  return getSubstanceById(id) ?? substances.find(
+  return getSubstanceByIdAll(id) ?? getAllSubstances().find(
     (s) => s.name.toLowerCase() === id.toLowerCase()
   );
 }
@@ -347,7 +347,7 @@ export function checkSingleSubstanceInteractions(substanceId: string): Interacti
 
         const otherDisplay = otherName
           .split(/[\s-/]/)
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
           .join(' ')
 
         results.push({

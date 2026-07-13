@@ -70,7 +70,8 @@ export const categoryGlowClasses: Record<SubstanceCategory, string> = {
   medications: 'hover:glow-green',
 }
 
-export const riskLevelColors = {
+export const riskLevelColors: Record<'none' | 'low' | 'moderate' | 'high' | 'very-high', string> = {
+  none: 'bg-base-300 text-base-content/60 border-base-300',
   low: 'bg-green-500/20 text-green-400 border-green-500/30',
   moderate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
