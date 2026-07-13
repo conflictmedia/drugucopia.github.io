@@ -1,7 +1,7 @@
 'use client'
 
-import { AlertTriangle } from 'lucide-react'
-import { useState, useSyncExternalStore, type ReactNode } from 'react'
+import { AlertTriangle, HelpCircle } from 'lucide-react'
+import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { AppSidebar } from './AppSidebar'
 import { TopBar } from './TopBar'
 import { Toaster } from '@/components/ui/toaster'
@@ -11,6 +11,7 @@ import { SyncProvider } from '@/contexts/sync-context'
 import { ReminderProvider } from '@/components/reminder-provider'
 import { CommandPalette } from '@/components/command-palette'
 import { DoseLoggerModal } from '@/components/dose-logger-modal'
+import { OnboardingTour } from '@/components/onboarding-tour'
 import { useUIStore } from '@/store/ui-store'
 
 interface LayoutClientProps {
@@ -25,7 +26,8 @@ export function LayoutClient({ children }: LayoutClientProps) {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem('drugucopia-sidebar-expanded') === 'true'
   })
-  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger } = useUIStore()
+  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger, onboardingCompleted, setOnboardingCompleted, showOnboardingTour } = useUIStore()
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
@@ -39,6 +41,28 @@ export function LayoutClient({ children }: LayoutClientProps) {
     () => window.innerWidth < 768,
     () => false,
   )
+
+  // Keyboard shortcut: Ctrl+Shift+O to show onboarding tour
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'O') {
+        e.preventDefault()
+        showOnboardingTour()
+        setShowOnboarding(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showOnboardingTour])
+
+  // Sync onboarding state
+  useEffect(() => {
+    const hasCompleted = localStorage.getItem('drugucopia-tour-complete') === 'true'
+    setOnboardingCompleted(hasCompleted)
+    if (!hasCompleted) {
+      setShowOnboarding(true)
+    }
+  }, [setOnboardingCompleted])
 
   if (!mounted) {
     return (
@@ -82,20 +106,20 @@ export function LayoutClient({ children }: LayoutClientProps) {
                 <main className="relative flex-1 pb-[env(safe-area-inset-bottom)]">
                   {children}
                 </main>
-              </div>
 
-              <div className="drawer-side z-40">
-                <label
-                  htmlFor={DRAWER_ID}
-                  aria-label="close navigation"
-                  className="drawer-overlay"
-                  onClick={() => setDrawerOpen(false)}
-                />
-                <AppSidebar
-                  expanded
-                  onNavigate={() => setDrawerOpen(false)}
-                  onToggle={toggleSidebar}
-                />
+                <div className="drawer-side z-40">
+                  <label
+                    htmlFor={DRAWER_ID}
+                    aria-label="close navigation"
+                    className="drawer-overlay"
+                    onClick={() => setDrawerOpen(false)}
+                  />
+                  <AppSidebar
+                    expanded
+                    onNavigate={() => setDrawerOpen(false)}
+                    onToggle={toggleSidebar}
+                  />
+                </div>
               </div>
             </div>
           ) : (
@@ -140,6 +164,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
           <CommandPalette />
           {!isMobile && <VisualizerControls />}
           <Toaster />
+          <OnboardingTour isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
         </div>
       </ReminderProvider>
     </SyncProvider>

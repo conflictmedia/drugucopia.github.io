@@ -5,6 +5,25 @@ export interface CustomSubstance {
   name: string;
   description: string;
   category: string;
+  // Dose ranges for different routes (matches RouteDosageDuration structure)
+  routeData?: Record<string, {
+    dosage: {
+      threshold: string;
+      light: string;
+      common: string;
+      strong: string;
+      heavy: string;
+    };
+    duration: {
+      onset: string;
+      comeup: string;
+      peak: string;
+      offset: string;
+      total: string;
+      afterglow: string;
+    };
+    notes?: string;
+  }>;
   customData: Record<string, any>;
   createdAt: string;
   updatedAt: string;

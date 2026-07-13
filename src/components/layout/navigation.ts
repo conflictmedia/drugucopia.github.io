@@ -9,6 +9,7 @@ import {
   PlusCircle,
   Shield,
   Shuffle,
+  Pill,
 } from "lucide-react";
 
 export interface NavItem {
@@ -20,7 +21,8 @@ export interface NavItem {
     | "calculators"
     | "custom-substances"
     | "safety"
-    | "changelog";
+    | "changelog"
+    | "medications";
   href: string;
   label: string;
   icon: LucideIcon;
@@ -85,6 +87,14 @@ export const NAV_ITEMS: NavItem[] = [
     color: "success",
   },
   {
+    id: "medications",
+    href: "/medications",
+    label: "Medications",
+    icon: Pill,
+    section: "track",
+    color: "info",
+  },
+  {
     id: "safety",
     href: "/harm-reduction",
     label: "Safety",
@@ -130,6 +140,8 @@ export function isNavItemActive(item: NavItem, pathname: string) {
       return p.startsWith("/calculators");
     case "custom-substances":
       return p.startsWith("/custom-substances");
+    case "medications":
+      return p.startsWith("/medications");
     case "safety":
       return p.startsWith("/harm-reduction");
     case "changelog":
@@ -155,6 +167,8 @@ export function getPageTitle(pathname: string) {
       return "Calculators";
     case "/custom-substances":
       return "Custom Substances";
+    case "/medications":
+      return "Medications";
     case "/calculators/benzo-equivalence":
       return "Benzo Equivalence";
     case "/calculators/dxm":

@@ -8,7 +8,8 @@ import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { X } from 'lucide-react';
-import type { UserMedication } from '@/store/medication-store';
+import type { UserMedication, MedicationType } from '@/store/medication-store';
+import { MEDICATION_TYPES } from '@/store/medication-store';
 
 interface MedicationFormProps {
   initialData?: UserMedication;
@@ -28,6 +29,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
   const [prescribedFor, setPrescribedFor] = useState(initialData?.prescribedFor || '');
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
   const [notes, setNotes] = useState(initialData?.notes || '');
+  const [medicationType, setMedicationType] = useState<MedicationType | ''>(initialData?.medicationType || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +48,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
       startDate: initialData?.startDate || now,
       endDate: initialData?.endDate,
       createdAt: now,
+      medicationType: medicationType || undefined,
     });
   };
 
@@ -81,6 +84,13 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
             <Label htmlFor="frequency">Frequency</Label>
             <Select id="frequency" value={frequency} onChange={e => setFrequency(e.target.value)}>
               {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+            </Select>
+          </div>
+          <div className="form-control">
+            <Label htmlFor="medicationType">Medication Type</Label>
+            <Select id="medicationType" value={medicationType} onChange={e => setMedicationType(e.target.value as MedicationType)}>
+              <option value="">Select type...</option>
+              {MEDICATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </Select>
           </div>
           <div className="form-control">

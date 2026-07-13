@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical } from 'lucide-react'
-import { substances, searchSubstancesRanked } from '@/lib/substances/index'
+import { substances, searchSubstancesRanked, getAllSubstances, searchSubstancesRankedAll } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
 import { DoseLog, Duration } from '@/types'
@@ -742,7 +742,7 @@ export function DoseLoggerModal({
     if (preselectedSubstanceId) setSubstanceId(preselectedSubstanceId)
     if (preselectedSubstanceName) setSubstanceName(preselectedSubstanceName)
     if (preselectedSubstanceId) {
-      const found = substances.find(s => s.id === preselectedSubstanceId)
+      const found = getAllSubstances().find(s => s.id === preselectedSubstanceId)
       if (found) {
         const raw = found as any
         const cats: string[] = Array.isArray(raw.categories) && raw.categories.length > 0
@@ -787,7 +787,7 @@ export function DoseLoggerModal({
     const value = e.target.value
     setQuickInput(value)
 
-    const parsed = parseQuickInput(value, substances)
+    const parsed = parseQuickInput(value, getAllSubstances())
 
     const hasAmount = !!parsed.amount
     const queryForSuggestions = hasAmount ? parsed.substanceName : value
@@ -831,7 +831,7 @@ export function DoseLoggerModal({
 
   const quickSuggestions = useMemo(() => {
     if (!quickInputSubstanceQuery.trim() || !showQuickSuggestions) return []
-    return searchSubstancesRanked(quickInputSubstanceQuery, { limit: 6 })
+    return searchSubstancesRankedAll(quickInputSubstanceQuery, { limit: 6 })
   }, [quickInputSubstanceQuery, showQuickSuggestions])
 
   // A2: "log same as last time" — tapping a recent chip pre-fills the
@@ -899,7 +899,7 @@ export function DoseLoggerModal({
     }
   }, [showQuickSuggestions, quickSuggestions, quickActiveIndex, substanceName, amount, selectQuickSuggestion])
 
-  const selectedSubstance = useMemo(() => substances.find(s => s.id === substanceId), [substanceId, substances])
+  const selectedSubstance = useMemo(() => getAllSubstances().find(s => s.id === substanceId), [substanceId])
 
   // Auto-calculate intensity from dose classification
   useEffect(() => {
@@ -915,6 +915,7 @@ export function DoseLoggerModal({
   const recentSubstances = useMemo(() => {
     // A2: include the last-dose amount/unit/route so the chip can
     // pre-fill all of them with a single tap ("log same as last time").
+    // doses is sorted newest first, so iterate from 0 to capture the most recent dose of each substance.
     const seen = new Map<string, {
       name: string
       id: string
@@ -923,7 +924,7 @@ export function DoseLoggerModal({
       unit?: string
       route?: string
     }>()
-    for (let i = doses.length - 1; i >= 0; i--) {
+    for (let i = 0; i < doses.length; i++) {
       const d = doses[i]
       if (d.substanceName && !seen.has(d.substanceName)) {
         seen.set(d.substanceName, {
@@ -1029,7 +1030,7 @@ export function DoseLoggerModal({
     return Array.from(interactions)
   }, [selectedSubstance, activeDoses])
 
-  const substanceOptions: ComboboxOption[] = useMemo(() => substances.map(s => ({ value: s.id, label: s.name })), [substances])
+  const substanceOptions: ComboboxOption[] = useMemo(() => getAllSubstances().map(s => ({ value: s.id, label: s.name })), [])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
@@ -1137,7 +1138,7 @@ export function DoseLoggerModal({
   }
 
   const handleSubstanceChange = (value: string) => {
-    const found = substances.find(s => s.id === value)
+    const found = getAllSubstances().find(s => s.id === value)
     if (found) {
       setSubstanceId(found.id)
       setSubstanceName(found.name)

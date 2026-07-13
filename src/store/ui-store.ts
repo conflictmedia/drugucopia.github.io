@@ -11,6 +11,12 @@ interface UIState {
   openDoseLogger: (preselect?: UIState["doseLoggerPreselect"]) => void;
   closeDoseLogger: () => void;
 
+  // Onboarding tour state
+  onboardingCompleted: boolean;
+  setOnboardingCompleted: (completed: boolean) => void;
+  showOnboardingTour: () => void;
+  hideOnboardingTour: () => void;
+
   // A1 — Favorite / pinned substances for one-tap logging.
   // Stored as a minimal denormalized snapshot so the chip row renders
   // without looking up the substance DB on every render. The user pins
@@ -72,6 +78,24 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   closeDoseLogger: () => {
     set({ doseLoggerOpen: false, doseLoggerPreselect: undefined });
+  },
+
+  onboardingCompleted: false,
+  setOnboardingCompleted: (completed) => {
+    set({ onboardingCompleted: completed });
+    if (completed) {
+      localStorage.setItem('drugucopia-tour-complete', 'true');
+    } else {
+      localStorage.removeItem('drugucopia-tour-complete');
+    }
+  },
+  showOnboardingTour: () => {
+    set({ onboardingCompleted: false });
+    localStorage.removeItem('drugucopia-tour-complete');
+  },
+  hideOnboardingTour: () => {
+    set({ onboardingCompleted: true });
+    localStorage.setItem('drugucopia-tour-complete', 'true');
   },
 
   // A1 — start empty on both server and client to avoid hydration

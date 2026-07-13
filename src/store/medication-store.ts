@@ -2,6 +2,39 @@ import { create } from 'zustand';
 import { getSubstanceByIdAll } from '@/lib/substances/index';
 import { checkInteractions } from '@/lib/interaction-checker';
 
+export type MedicationType = 
+  | 'SSRI' 
+  | 'SNRI' 
+  | 'MAOI' 
+  | 'TCA' 
+  | 'Benzodiazepine' 
+  | 'Antipsychotic' 
+  | 'Mood Stabilizer' 
+  | 'Stimulant' 
+  | 'Opioid'
+  | 'Beta Blocker'
+  | 'Other';
+
+export const MEDICATION_TYPES: MedicationType[] = [
+  'SSRI', 'SNRI', 'MAOI', 'TCA', 
+  'Benzodiazepine', 'Antipsychotic', 'Mood Stabilizer', 'Stimulant', 'Opioid',
+  'Beta Blocker', 'Other'
+];
+
+export const MEDICATION_TYPE_TO_SUBSTANCE_CLASS: Record<MedicationType, string> = {
+  'SSRI': 'SSRI',
+  'SNRI': 'SNRI',
+  'MAOI': 'MAOI',
+  'TCA': 'TCA',
+  'Benzodiazepine': 'Benzodiazepine',
+  'Antipsychotic': 'Antipsychotic',
+  'Mood Stabilizer': 'Mood Stabilizer',
+  'Stimulant': 'Stimulant',
+  'Opioid': 'Opioid',
+  'Beta Blocker': 'Beta Blocker',
+  'Other': 'Other',
+};
+
 export interface UserMedication {
   id: string;
   name: string;
@@ -16,6 +49,7 @@ export interface UserMedication {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  medicationType?: MedicationType;
 }
 
 export interface Contraindication {
@@ -89,18 +123,24 @@ export const useMedicationStore = create<MedicationState>((set, get) => ({
     if (substanceNames.length === 0) return [];
     
     const medNames = meds.map(m => m.name.toLowerCase());
-    const allNames = [...substanceNames, ...medNames];
+    const medTypeClasses = meds
+      .filter(m => m.medicationType)
+      .map(m => MEDICATION_TYPE_TO_SUBSTANCE_CLASS[m.medicationType!].toLowerCase());
+    const allNames = [...substanceNames, ...medNames, ...medTypeClasses];
     const results = checkInteractions(allNames);
     
     const warnings: Contraindication[] = [];
     for (const pair of results.pairs) {
-      const isMedA = medNames.includes(pair.substanceA.toLowerCase());
-      const isMedB = medNames.includes(pair.substanceB.toLowerCase());
+      const isMedA = medNames.includes(pair.substanceA.toLowerCase()) || medTypeClasses.includes(pair.substanceA.toLowerCase());
+      const isMedB = medNames.includes(pair.substanceB.toLowerCase()) || medTypeClasses.includes(pair.substanceB.toLowerCase());
       
       if ((isMedA || isMedB) && pair.severity !== 'low-risk') {
         const medName = isMedA ? pair.substanceA : pair.substanceB;
         const subName = isMedA ? pair.substanceB : pair.substanceA;
-        const med = meds.find(m => m.name.toLowerCase() === medName.toLowerCase());
+        const med = meds.find(m => 
+          m.name.toLowerCase() === medName.toLowerCase() || 
+          (m.medicationType && MEDICATION_TYPE_TO_SUBSTANCE_CLASS[m.medicationType].toLowerCase() === medName.toLowerCase())
+        );
         
         if (med) {
           const subId = substanceIds.find(id => 
@@ -109,7 +149,7 @@ export const useMedicationStore = create<MedicationState>((set, get) => ({
           
           warnings.push({
             medicationId: med.id,
-            medicationName: medName,
+            medicationName: med.name,
             substanceName: subName,
             substanceId: subId,
             severity: pair.severity,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMedicationStore } from '@/store/medication-store';
-import { MedicationForm } from './MedicationForm.js';
+import { MedicationForm } from './MedicationForm';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
