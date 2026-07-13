@@ -600,8 +600,8 @@ export function IntensityTimelineChart() {
                 key={opt.label}
                 onClick={() => setWindowHours(opt.hours)}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${isActive
-                    ? 'bg-primary text-primary-content'
-                    : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'
+                  ? 'bg-primary text-primary-content'
+                  : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'
                   }`}
               >
                 {opt.label}
@@ -825,7 +825,7 @@ function GroupCard({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: catColor }} />
             <h3 className="font-semibold text-base">
-              <Link href={`/?substance=${group.substanceName}`} className="hover:underline underline-offset-4">
+              <Link href={`/?substance=${group.substanceName}`} prefetch={false} className="hover:underline underline-offset-4">
                 {group.substanceName}
               </Link>
             </h3>
@@ -914,10 +914,10 @@ function GroupCard({
                   key={`${rg.route}-${doseId}`}
                   onClick={() => onDoseClick(doseId)}
                   className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all overflow-hidden ${isIsolated
-                      ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
-                      : isDoseEnded
-                        ? 'border-base-300/50 opacity-50'
-                        : 'border-base-300 hover:border-base-300/80'
+                    ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
+                    : isDoseEnded
+                      ? 'border-base-300/50 opacity-50'
+                      : 'border-base-300 hover:border-base-300/80'
                     }`}
                   style={{ color: palette.stroke }}
                 >

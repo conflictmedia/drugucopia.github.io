@@ -98,6 +98,10 @@ export const useUIStore = create<UIState>((set, get) => ({
       next = existing.filter((_, i) => i !== idx);
     } else {
       next = [...existing, sub];
+      // Enforce max 24 favorites
+      if (next.length > 24) {
+        next = next.slice(-24);
+      }
     }
     persistFavorites(next);
     set({ favoriteSubstances: next });

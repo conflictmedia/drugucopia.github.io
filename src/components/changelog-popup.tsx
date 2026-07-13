@@ -80,6 +80,7 @@ export function ChangelogPopup({ version, changelog }: ChangelogPopupProps) {
             </button>
             <Link
               href="/changelog"
+              prefetch={false}
               onClick={handleClose}
               className={cn('btn btn-primary', 'flex items-center gap-2')}
             >

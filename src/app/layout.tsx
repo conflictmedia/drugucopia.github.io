@@ -22,7 +22,6 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // C1 — theme-color so the PWA install / browser chrome matches the app.
   themeColor: "#0a0a0a",
 };
 
@@ -35,9 +34,6 @@ export const metadata: Metadata = {
     icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`,
     apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`,
   },
-  // C1 — Web App Manifest so the app is installable to the home screen
-  // and treated as a PWA. Combined with the offline service worker
-  // (C2), this lets users log doses at festivals/bars with no signal.
   manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/manifest.webmanifest`,
   appleWebApp: {
     capable: true,

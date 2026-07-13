@@ -29,7 +29,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useDoseStore } from '@/store/dose-store'
 import { toast } from '@/hooks/use-toast'
 import { kratom } from '@/lib/substances/opioids/kratom'
@@ -279,8 +279,6 @@ function SectionToggle({
 
 function KratomCalculatorContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
   const addDose = useDoseStore(s => s.addDose)
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
@@ -392,8 +390,15 @@ function KratomCalculatorContent() {
     }
   }, [inputMode, extractValue, leafDose, extractAmountInput, calcDirection, extractUnit, isEnhanced, leafBaseline])
 
-  // Sync URL when inputs change (replace, no scroll)
+  // Sync URL when inputs change.
+  // IMPORTANT: use window.history.replaceState — NOT router.replace().
+  // router.replace() in Next 16 App Router triggers an RSC fetch on every
+  // call, even when only query params changed. Since the calculator
+  // updates the URL on every keystroke, that produced a flood of 304
+  // Not Modified responses in the network tab. replaceState updates the
+  // address bar (for shareable links) without any server round-trip.
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const params = new URLSearchParams()
     if (inputMode !== 'percent') params.set('mode', inputMode)
     if (extractValue) params.set('strength', extractValue)
@@ -405,9 +410,12 @@ function KratomCalculatorContent() {
     if (leafBaseline !== DEFAULT_MITRAGYNINE_PCT) params.set('baseline', String(leafBaseline))
 
     const query = params.toString()
-    const newUrl = query ? `${pathname}?${query}` : pathname
-    router.replace(newUrl, { scroll: false })
-  }, [inputMode, extractValue, calcDirection, leafDose, extractAmountInput, extractUnit, isEnhanced, leafBaseline, pathname, router])
+    // Preserve the current pathname (incl. trailing slash from trailingSlash: true)
+    // so we don't trigger a redirect-to-add-trailing-slash on reload.
+    const currentPath = window.location.pathname
+    const newUrl = query ? `${currentPath}?${query}` : currentPath
+    window.history.replaceState(null, '', newUrl)
+  }, [inputMode, extractValue, calcDirection, leafDose, extractAmountInput, extractUnit, isEnhanced, leafBaseline])
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const extractNumber = useMemo(() => parseFloat(extractValue), [extractValue])
@@ -605,8 +613,8 @@ function KratomCalculatorContent() {
             <button
               onClick={() => setInputMode('percent')}
               className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${inputMode === 'percent'
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                ? 'bg-primary text-primary-content'
+                : 'bg-base-200 text-neutral-content hover:bg-base-300'
                 }`}
             >
               Extract % (Mitragynine)
@@ -614,8 +622,8 @@ function KratomCalculatorContent() {
             <button
               onClick={() => setInputMode('ratio')}
               className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${inputMode === 'ratio'
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-200 text-neutral-content hover:bg-base-300'
+                ? 'bg-primary text-primary-content'
+                : 'bg-base-200 text-neutral-content hover:bg-base-300'
                 }`}
             >
               Extract Ratio (e.g. 10×)
@@ -653,8 +661,8 @@ function KratomCalculatorContent() {
                   setExtractValue(String(p.value))
                 }}
                 className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${extractNumber === p.value && inputMode === p.mode
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                    : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                  : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 {p.label}
@@ -772,8 +780,8 @@ function KratomCalculatorContent() {
               <button
                 onClick={() => setCalcDirection('leaf-to-extract')}
                 className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${calcDirection === 'leaf-to-extract'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                    : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                  : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 <Leaf className="h-4 w-4" />
@@ -783,8 +791,8 @@ function KratomCalculatorContent() {
               <button
                 onClick={() => setCalcDirection('extract-to-leaf')}
                 className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${calcDirection === 'extract-to-leaf'
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                    : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                  : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                   }`}
               >
                 <FlaskConical className="h-4 w-4" />
@@ -821,8 +829,8 @@ function KratomCalculatorContent() {
                           key={g}
                           onClick={() => setLeafDose(String(g))}
                           className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${leafGrams === g
-                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                              : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                            : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                             }`}
                         >
                           {g}g
@@ -896,8 +904,8 @@ function KratomCalculatorContent() {
                             setExtractAmountInput(String(g))
                           }}
                           className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors min-h-[36px] ${extractAmountGrams === g
-                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
-                              : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                            : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                             }`}
                         >
                           {g}g

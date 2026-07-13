@@ -33,10 +33,10 @@ function hasIncompletePhases(
   duration: { onset?: string; comeup?: string; peak?: string; offset?: string; total?: string } | null | undefined,
 ): boolean {
   if (!duration) return false
-  const hasOnset  = duration.onset  && duration.onset.trim()  !== '' && duration.onset  !== '—'
-  const hasTotal  = duration.total  && duration.total.trim()  !== '' && duration.total  !== '—'
+  const hasOnset = duration.onset && duration.onset.trim() !== '' && duration.onset !== '—'
+  const hasTotal = duration.total && duration.total.trim() !== '' && duration.total !== '—'
   const hasComeup = duration.comeup && duration.comeup.trim() !== '' && duration.comeup !== '—'
-  const hasPeak   = duration.peak   && duration.peak.trim()   !== '' && duration.peak   !== '—'
+  const hasPeak = duration.peak && duration.peak.trim() !== '' && duration.peak !== '—'
   const hasOffset = duration.offset && duration.offset.trim() !== '' && duration.offset !== '—'
   if (hasOnset && hasTotal && (!hasComeup || !hasPeak || !hasOffset)) return true
   return false
@@ -54,6 +54,7 @@ import {
   Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers, Clock,
 } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
+import type { SubstanceCategory } from '@/lib/substances/types'
 import { useDoseStore } from '@/store/dose-store'
 import {
   EnrichedDose, RouteGroup, SubstanceGroup, TooltipData,
@@ -335,7 +336,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
       const elapsedMins = (now - d.doseTime.getTime()) / 60_000
       return elapsedMins < d.timings.offsetEnd + ENDED_DOSE_RETENTION_MINS
     })
-    
+
     const bySubstance = new Map<string, EnrichedDose[]>()
 
     for (const d of activeDoses) {
@@ -502,7 +503,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
   const getCategoryColor = useCallback((categories: string[]): string => {
     if (categories.length === 0) return 'hsl(var(--muted-foreground))'
-    const primary = categories[0]
+    const primary = categories[0] as SubstanceCategory
     return categoryColors[primary] ?? 'hsl(var(--muted-foreground))'
   }, [])
 
@@ -613,11 +614,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       else next.add(g.key)
                       return next
                     })}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${
-                      hidden
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden
                         ? 'opacity-30 border-base-300 line-through'
                         : 'opacity-90 hover:opacity-100'
-                    }`}
+                      }`}
                     style={{
                       borderColor: hidden ? undefined : color,
                       color,
@@ -716,7 +716,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
               // Pick the dose with the latest doseTime
               const latestActiveDose = allActiveDoses.reduce((latest, d) =>
                 d.doseTime.getTime() > latest.doseTime.getTime() ? d : latest
-              , allActiveDoses[0])
+                , allActiveDoses[0])
               const elapsedMins = (now - latestActiveDose.doseTime.getTime()) / 60_000
               const doseOffsetMins = (latestActiveDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
               return (doseOffsetMins + elapsedMins) / group.windowDuration * 100
@@ -768,6 +768,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       {substanceEntry?.id ? (
                         <Link
                           href={`/?substance=${substanceEntry.id}`}
+                          prefetch={false}
                           className="hover:underline underline-offset-4"
                         >
                           {group.substanceName}
@@ -895,13 +896,12 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                         <button
                           key={`${rg.route}-${doseId}`}
                           onClick={() => handleDoseChipClick(group.key, doseId)}
-                          className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${
-                            isIsolated
+                          className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${isIsolated
                               ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
                               : isDoseEnded
                                 ? 'border-base-300/50 opacity-50'
                                 : 'border-base-300 hover:border-base-300/80'
-                          }`}
+                            }`}
                           style={{ color: palette.stroke }}
                         >
                           {/* Route-colored dot */}
@@ -1033,7 +1033,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
                         const bandOpacity = bandWidth < 10 ? 0.25
                           : bandWidth < NARROW_PX ? 0.12
-                          : 0.06
+                            : 0.06
 
                         return (
                           <rect
@@ -1507,10 +1507,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                             const hasAfterglow = afterglowDuration > 0
 
                             const phases: { key: string; end: number }[] = [
-                              { key: 'onset',     end: d.timings.onsetEnd  },
-                              { key: 'comeup',    end: d.timings.comeupEnd },
-                              { key: 'peak',      end: d.timings.peakEnd   },
-                              { key: 'offset',    end: d.timings.offsetEnd },
+                              { key: 'onset', end: d.timings.onsetEnd },
+                              { key: 'comeup', end: d.timings.comeupEnd },
+                              { key: 'peak', end: d.timings.peakEnd },
+                              { key: 'offset', end: d.timings.offsetEnd },
                             ]
 
                             const phaseOrder = ['onset', 'comeup', 'peak', 'offset']
@@ -1554,13 +1554,12 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                   return (
                                     <div
                                       key={p.key}
-                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${
-                                        isActive
+                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive
                                           ? 'ring-1 ring-purple-500/30 bg-purple-500/5'
                                           : isPast
                                             ? 'opacity-50'
                                             : 'opacity-30'
-                                      }`}
+                                        }`}
                                     >
                                       {(() => {
                                         const phaseKey = p.key as PhaseName

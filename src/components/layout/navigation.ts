@@ -6,6 +6,7 @@ import {
   FlaskConical,
   History,
   Leaf,
+  PlusCircle,
   Shield,
   Shuffle,
 } from "lucide-react";
@@ -16,20 +17,14 @@ export interface NavItem {
     | "interactions"
     | "track"
     | "analytics"
-    | "dxm"
-    | "kratom"
+    | "calculators"
+    | "custom-substances"
     | "safety"
     | "changelog";
   href: string;
   label: string;
   icon: LucideIcon;
   section: "explore" | "track" | "tools" | "info";
-  /**
-   * DaisyUI semantic color token used for the item's icon. Inactive items
-   * render the icon at ~70% opacity in this color; active items render at
-   * full opacity. This gives each section a stable theme-aware accent so
-   * the sidebar reads as more colorful instead of monochrome neutral.
-   */
   color:
     | "primary"
     | "secondary"
@@ -74,19 +69,19 @@ export const NAV_ITEMS: NavItem[] = [
     color: "info",
   },
   {
-    id: "dxm",
-    href: "/dxm-calculator",
-    label: "DXM Calculator",
+    id: "calculators",
+    href: "/calculators",
+    label: "Calculators",
     icon: Calculator,
     section: "tools",
     color: "warning",
   },
   {
-    id: "kratom",
-    href: "/kratom-calculator",
-    label: "Kratom Calculator",
-    icon: Leaf,
-    section: "tools",
+    id: "custom-substances",
+    href: "/custom-substances",
+    label: "Custom Substances",
+    icon: PlusCircle,
+    section: "explore",
     color: "success",
   },
   {
@@ -131,10 +126,10 @@ export function isNavItemActive(item: NavItem, pathname: string) {
       return p.startsWith("/interactions");
     case "analytics":
       return p.startsWith("/analytics");
-    case "dxm":
-      return p.startsWith("/dxm-calculator");
-    case "kratom":
-      return p.startsWith("/kratom-calculator");
+    case "calculators":
+      return p.startsWith("/calculators");
+    case "custom-substances":
+      return p.startsWith("/custom-substances");
     case "safety":
       return p.startsWith("/harm-reduction");
     case "changelog":
@@ -156,9 +151,15 @@ export function getPageTitle(pathname: string) {
       return "Track";
     case "/analytics":
       return "Analytics";
-    case "/dxm-calculator":
+    case "/calculators":
+      return "Calculators";
+    case "/custom-substances":
+      return "Custom Substances";
+    case "/calculators/benzo-equivalence":
+      return "Benzo Equivalence";
+    case "/calculators/dxm":
       return "DXM Calculator";
-    case "/kratom-calculator":
+    case "/calculators/kratom":
       return "Kratom Calculator";
     case "/harm-reduction":
       return "Safety";
