@@ -1,12 +1,17 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { Check, ChevronsUpDown, X, Zap, Search, Keyboard } from 'lucide-react'
+import { Check, ChevronsUpDown, X, Zap, Search, Keyboard, Pill } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { substances, searchSubstancesRanked, getSubstancesByCategory } from '@/lib/substances/index'
 import type { Substance, SubstanceCategory } from '@/lib/types'
+import {
+  isMedicationSelectorId,
+  getMedicationSubstanceById,
+  getMedicationBySelectorId,
+} from '@/store/medication-store'
 
 interface InteractionSubstanceSelectorProps {
   selectedIds: string[]
@@ -61,9 +66,54 @@ export function InteractionSubstanceSelector({
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
 
+  /**
+   * Resolve each selected ID to a Substance. IDs come in two flavors:
+   *   - built-in / custom substance IDs — resolved against the
+   *     built-in substances array (note: NOT getAllSubstances(), so
+   *     custom substances from localStorage won't appear as chips
+   *     here — they're surfaced through the search dropdown instead)
+   *   - `med-<uuid>` IDs — resolved against the medication store
+   *
+   * Medication chips are rendered with a Pill icon so the user can
+   * tell at a glance which selections come from their prescription
+   * profile vs. the substance database.
+   */
   const selectedSubstances = useMemo(() => {
     return selectedIds
-      .map((id) => substances.find((s) => s.id === id))
+      .map((id) => {
+        if (isMedicationSelectorId(id)) {
+          // Resolve via medication store. The returned Substance has
+          // the user's medication name (e.g. "Prozac") rather than
+          // the linked substance name (e.g. "Fluoxetine"), which is
+          // what we want to display in the chip.
+          const medSub = getMedicationSubstanceById(id)
+          if (medSub) return medSub
+          // Fallback: synthesize a minimal Substance so the chip still
+          // renders. This shouldn't normally happen — only if the
+          // medication was deleted while still in selectedIds.
+          const med = getMedicationBySelectorId(id)
+          if (med) {
+            return {
+              id,
+              name: med.name,
+              commonNames: med.genericName ? [med.genericName] : [],
+              categories: ['medications'] as SubstanceCategory[],
+              class: med.medicationType || 'Other',
+              description: '',
+              effects: { positive: [], neutral: [], negative: [] },
+              interactions: { dangerous: [], unsafe: [], uncertain: [], crossTolerances: [] },
+              harmReduction: [],
+              legality: '',
+              chemistry: { formula: '', molecularWeight: '', class: '' },
+              history: null,
+              afterEffects: '',
+              riskLevel: 'none' as const,
+            } as Substance
+          }
+          return undefined
+        }
+        return substances.find((s) => s.id === id)
+      })
       .filter(Boolean) as Substance[]
   }, [selectedIds])
 
@@ -216,25 +266,33 @@ export function InteractionSubstanceSelector({
       {/* Selected substances as chips */}
       {selectedSubstances.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {selectedSubstances.map((sub) => (
-            <Badge
-              key={sub.id}
-              variant="outline"
-              className={cn(
-                'gap-1 pr-1 text-sm font-medium py-1 px-2.5 transition-all',
-                getCategoryColor(sub.categories)
-              )}
-            >
-              <span className="truncate max-w-[120px]">{sub.name}</span>
-              <button
-                onClick={() => handleRemove(sub.id)}
-                aria-label={`Remove ${sub.name}`}
-                className="tap-sm ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+          {selectedSubstances.map((sub) => {
+            const isMed = isMedicationSelectorId(sub.id)
+            return (
+              <Badge
+                key={sub.id}
+                variant="outline"
+                className={cn(
+                  'gap-1 pr-1 text-sm font-medium py-1 px-2.5 transition-all',
+                  // Medications get a distinct info-colored chip so
+                  // they're visually separable from regular substances.
+                  isMed
+                    ? 'border-info/40 bg-info/10 text-info'
+                    : getCategoryColor(sub.categories),
+                )}
               >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
+                {isMed && <Pill className="h-3 w-3 shrink-0" />}
+                <span className="truncate max-w-[120px]">{sub.name}</span>
+                <button
+                  onClick={() => handleRemove(sub.id)}
+                  aria-label={`Remove ${sub.name}`}
+                  className="tap-sm ml-0.5 rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )
+          })}
           {selectedIds.length > 1 && (
             <Button
               variant="ghost"

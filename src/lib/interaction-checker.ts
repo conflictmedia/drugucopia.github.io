@@ -111,6 +111,30 @@ function resolveSubstance(id: string): Substance | undefined {
   );
 }
 
+/**
+ * Resolve a substance ID against an extra pool first (e.g. user
+ * medications converted to Substance shape), falling back to the
+ * built-in substance database. The extra pool is consulted *before*
+ * the built-in DB so that a `med-<uuid>` selector ID — which never
+ * exists in the built-in DB — resolves to the user's medication.
+ */
+function resolveSubstanceWithExtras(
+  id: string,
+  extras: Substance[] = [],
+): Substance | undefined {
+  // Exact ID match against extras first (handles the `med-<uuid>` case).
+  const byId = extras.find((s) => s.id === id);
+  if (byId) return byId;
+  // Case-insensitive name match against extras (handles callers that
+  // pass a medication's display name instead of its selector ID).
+  const byName = extras.find(
+    (s) => s.name.toLowerCase() === id.toLowerCase(),
+  );
+  if (byName) return byName;
+  // Fall through to the built-in resolver.
+  return resolveSubstance(id);
+}
+
 function consolidatePairs(pairs: InteractionResult[]): InteractionResult[] {
   // Key by substance pair only (no severity) — TripSit always wins for a pair.
   // If TripSit has an entry for a pair, all fallback results for that pair are dropped.
@@ -278,9 +302,18 @@ function checkPerSubstanceInteractions(selectedSubs: Substance[]): InteractionRe
 /**
  * When only one substance is selected, look up ALL known interactions
  * for that substance from the TripSit combos database and per-substance data.
+ *
+ * `extraSubstances` lets the caller pass in user-defined Substance
+ * objects (e.g. medications from the medication profile) so that
+ * `substanceId` can be a `med-<uuid>` selector ID. The extras pool is
+ * only used to resolve the primary substance; the function still
+ * returns interactions against *all* known classes in the TripSit DB.
  */
-export function checkSingleSubstanceInteractions(substanceId: string): InteractionCheckResult {
-  const sub = resolveSubstance(substanceId)
+export function checkSingleSubstanceInteractions(
+  substanceId: string,
+  extraSubstances: Substance[] = [],
+): InteractionCheckResult {
+  const sub = resolveSubstanceWithExtras(substanceId, extraSubstances)
   if (!sub) {
     return {
       pairs: [],
@@ -397,12 +430,23 @@ export function checkSingleSubstanceInteractions(substanceId: string): Interacti
  * Data sources (in priority order):
  *  1. TripSit combos database — 841 pairs with notes and academic sources
  *  2. Per-substance interaction strings — fallback for substances not in TripSit
+ *
+ * `extraSubstances` lets the caller mix user-defined Substance objects
+ * (e.g. medications from the medication profile) into the check. Any
+ * ID in `substanceIds` that matches an extra substance's `id` (e.g.
+ * `med-<uuid>`) or `name` will be resolved from the extras pool first,
+ * then fall back to the built-in substance database. This is what
+ * makes the interaction checker page and the dose logger modal aware
+ * of user medications without polluting the global substance database.
  */
-export function checkInteractions(substanceIds: string[]): InteractionCheckResult {
+export function checkInteractions(
+  substanceIds: string[],
+  extraSubstances: Substance[] = [],
+): InteractionCheckResult {
   const crossToleranceMap = new Map<string, string[]>();
 
   const resolvedSubs = substanceIds
-    .map((id) => resolveSubstance(id))
+    .map((id) => resolveSubstanceWithExtras(id, extraSubstances))
     .filter(Boolean) as Substance[];
 
   if (resolvedSubs.length < 2) {
@@ -480,11 +524,15 @@ export function checkInteractions(substanceIds: string[]): InteractionCheckResul
 /**
  * Quick check: get all interactions for a single substance
  * (useful for the substance detail view).
+ *
+ * `extraSubstances` lets the caller resolve a `med-<uuid>` ID against
+ * user medications; for built-in substance IDs it has no effect.
  */
 export function getSubstanceInteractions(
-  substanceId: string
+  substanceId: string,
+  extraSubstances: Substance[] = [],
 ): { dangerous: string[]; unsafe: string[]; uncertain: string[]; crossTolerances: string[] } {
-  const sub = resolveSubstance(substanceId);
+  const sub = resolveSubstanceWithExtras(substanceId, extraSubstances);
   if (!sub) return { dangerous: [], unsafe: [], uncertain: [], crossTolerances: [] };
   return {
     dangerous: sub.interactions.dangerous || [],
