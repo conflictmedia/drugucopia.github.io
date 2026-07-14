@@ -26,6 +26,10 @@ import { cn } from '@/lib/utils'
 import { useMedia } from 'react-use'
 import { useMedicationStore, getMedicationsAsSubstances, isMedicationSelectorId, getMedicationBySelectorId, toMedicationSelectorId } from '@/store/medication-store'
 import { checkInteractions as checkInteractionsEngine } from '@/lib/interaction-checker'
+import { AlcoholCalculatorFields } from '@/components/alcohol-calculator-fields'
+
+
+
 
 interface DoseLoggerModalProps {
   open?: boolean
@@ -1759,6 +1763,17 @@ export function DoseLoggerModal({
               )}
             </div>
           </div>
+
+          {/* ── Alcohol Calculator ──────────────────────────────────────── */}
+          {/* Show the inline alcohol→grams calculator when the selected
+              substance is alcohol and route is oral. */}
+          {substanceId === 'alcohol' && route === 'oral' && (
+            <AlcoholCalculatorFields
+              amount={amount}
+              onAmountChange={setAmount}
+              onUnitChange={setUnit}
+            />
+          )}
 
           {interactingSubstances.length > 0 && (
             <Alert variant="destructive" className="bg-error/10 text-error border-error/20">

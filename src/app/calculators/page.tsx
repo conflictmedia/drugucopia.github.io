@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Calculator, Pill, Brain, Leaf } from 'lucide-react';
+import { Calculator, Pill, Brain, Leaf, Wine } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -23,6 +23,12 @@ const calculators = [
     name: 'Kratom Calculator', 
     description: 'Estimate kratom dosage by strain and tolerance', 
     icon: Leaf 
+  },
+  {
+    href: '/calculators/alcohol',
+    name: 'Alcohol Calculator',
+    description: 'Convert shots of alcohol to grams of pure ethanol',
+    icon: Wine
   },
 ];
 
