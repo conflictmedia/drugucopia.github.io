@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.3] - 2026-07-14
+
+### Added
+- Button to go to the android app github
+
+
 ## [0.3.2] - 2026-07-13
 
 ### Fixed

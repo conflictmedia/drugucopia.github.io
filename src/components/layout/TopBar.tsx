@@ -1,6 +1,6 @@
 'use client'
 
-import { Cloud, CloudOff, Loader2, Menu, Plus, AlertCircle } from 'lucide-react'
+import { Cloud, CloudOff, Loader2, Menu, Plus, AlertCircle, Tag } from 'lucide-react'
 import { useUIStore } from '@/store/ui-store'
 import { formatDistanceToNow } from 'date-fns'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -84,10 +84,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
     openDoseLogger()
   }
 
-  // Clicking the brand title navigates to the Library view (bare `/`).
-  // Track is now its own page (/dose-log), so Library↔Track are always
-  // cross-page navigations — `router.push` works reliably and the
-  // same-pathname `window.location` workaround is no longer needed.
   const handleTitleClick = () => {
     if (pathname === '/') return
     router.push('/')
@@ -129,6 +125,17 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </div>
 
         <div className="navbar-end gap-1 sm:gap-2">
+          <a
+            href="https://github.com/conflictmedia/drugucopia-app/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-sm gap-1.5"
+            aria-label="View releases on GitHub"
+            title="View releases on GitHub"
+          >
+            <Tag className="h-4 w-4" />
+            <span className="hidden sm:inline">Get the Android app!</span>
+          </a>
           <Button
             type="button"
             variant="default"
@@ -145,10 +152,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </div>
       </div>
 
-      {/* Mobile-only search row. The Library/Track toggle that used to
-          live here has been removed — Library↔Track navigation is now
-          handled by the sidebar / bottom nav, and Track is its own page
-          at /dose-log. */}
       <div className="border-t border-base-300/70 px-3 py-3 sm:px-4 lg:hidden">
         <SubstanceSearch key={`mobile-search-${pathname}-${queryParam}`} mobile />
       </div>
