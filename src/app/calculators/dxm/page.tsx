@@ -24,7 +24,18 @@ import {
   Check,
   Plus,
   CalendarDays,
-  type LucideIcon,
+  Sparkles,
+  Download,
+  Upload,
+  X,
+  Timer,
+  Cloud,
+  CloudOff,
+  Lock,
+  CheckCircle2,
+  Pencil,
+  FileJson,
+  FileText,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -37,165 +48,21 @@ import { toast } from '@/hooks/use-toast'
 import { dextromethorphan as dxm } from '@/lib/substances/dissociatives/dextromethorphan'
 import { RedosePlanner } from '@/components/redose-planner'
 import type { DoseLog } from '@/types'
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-/** Upper bound of the Fourth Plateau in mg/kg (above this is overdose territory) */
-const MAX_PLATEAU_MGKG = 20
-/** Lower bound of the First Plateau in mg/kg (used as spectrum origin) */
-const MIN_PLATEAU_MGKG = 1.5
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface Plateau {
-  icon: LucideIcon
-  name: string
-  subtitle: string
-  emoji: string
-  rangeMin: number
-  rangeMax: number
-  color: string
-  bgColor: string
-  borderColor: string
-  glowClass: string
-  spectrumColor: string
-  description: string
-  effects: string[]
-  duration: string
-}
-
-interface OTCProduct {
-  name: string
-  dxmPerUnit: number
-  unitLabel: string
-  warning?: string
-}
-
-// ─── DXM Plateau Definitions (mg/kg) ────────────────────────────────────────
-
-const plateaus: Plateau[] = [
-  {
-    name: 'First Plateau',
-    subtitle: 'Mild Stimulation',
-    icon: Sun,
-    emoji: '☀️',
-    rangeMin: 1.5,
-    rangeMax: 2.5,
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/10',
-    borderColor: 'border-green-500/30',
-    glowClass: 'glow-green',
-    spectrumColor: 'bg-green-500',
-    description:
-      'Mild stimulant-like effects emerge at this level. Users typically report slight mood elevation, a gentle increase in sociability, and a subtle sense of restlessness or energy. Music may sound slightly more engaging, and colors can appear marginally more vivid. The experience is often compared to a mild dose of a stimulant, and many users find this level functional for social settings without significant impairment.',
-    effects: ['Mood elevation', 'Slight restlessness', 'Increased sociability', 'Mild stimulation', 'Music appreciation', 'Slight cognitive enhancement'],
-    duration: '2 – 4 hours',
-  },
-  {
-    name: 'Second Plateau',
-    subtitle: 'Intoxication / Euphoria',
-    icon: Waves,
-    emoji: '🌊',
-    rangeMin: 2.5,
-    rangeMax: 7.5,
-    color: 'text-cyan-400',
-    bgColor: 'bg-cyan-500/10',
-    borderColor: 'border-cyan-500/30',
-    glowClass: 'glow-cyan',
-    spectrumColor: 'bg-cyan-500',
-    description:
-      'Euphoric intoxication with moderate dissociation begins to take hold. Noticeable changes in perception, thought patterns, and motor coordination become apparent. The experience is frequently described as dreamlike — reality feels slightly detached, and thought processes take on a wandering, associative quality. Music becomes profoundly enhanced, and many users report closed-eye visuals at the higher end of this range. Walking and fine motor skills become noticeably impaired.',
-    effects: ['Euphoria', 'Moderate dissociation', 'Altered perception', 'Dreamlike state', 'Music enhancement', 'Closed-eye visuals', 'Impaired coordination'],
-    duration: '3 – 6 hours',
-  },
-  {
-    name: 'Third Plateau',
-    subtitle: 'Strong Dissociation',
-    icon: Orbit,
-    emoji: '🪐',
-    rangeMin: 7.5,
-    rangeMax: 15,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30',
-    glowClass: 'glow-purple',
-    spectrumColor: 'bg-purple-500',
-    description:
-      'Intense dissociation and hallucination characterize this plateau. Users experience profound detachment from physical reality, vivid open-eye and closed-eye visual hallucinations, and difficulty forming coherent thoughts. Out-of-body sensations are commonly reported. Motor control becomes significantly impaired — walking or speaking clearly may be extremely difficult. Memory formation is often disrupted, leading to fragmented recollection of the experience. This level is not recommended for beginners and requires a safe environment with a trip sitter.',
-    effects: ['Intense dissociation', 'Open-eye visuals', 'Out-of-body sensations', 'Severe motor impairment', 'Confusion', 'Memory disruption', 'Ego dissolution'],
-    duration: '4 – 8 hours',
-  },
-  {
-    name: 'Fourth Plateau',
-    subtitle: 'Extreme Dissociation',
-    icon: AlertTriangle,
-    emoji: '⚠️',
-    rangeMin: 15,
-    rangeMax: 20,
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/10',
-    borderColor: 'border-red-500/30',
-    glowClass: 'glow-red',
-    spectrumColor: 'bg-red-500',
-    description:
-      'Complete dissociation from mind and body. Users may enter near-anesthetic states with intense, overwhelming hallucinations. The boundary between self and environment dissolves entirely, often described as a "hole" experience similar to high-dose ketamine. Physical mobility is essentially nonexistent — users may be unable to move, speak, or respond to external stimuli. There is a significant risk of dangerous behavior, psychotic episodes, and severe psychological distress. Amnesia is common. This plateau is strongly discouraged due to the high probability of adverse outcomes.',
-    effects: ['Complete dissociation', 'Overwhelming hallucinations', 'Near-anesthetic state', 'Total immobility', 'Amnesia', 'High risk of psychosis', 'Ego death'],
-    duration: '5 – 10 hours',
-  },
-]
-
-// ─── OTC Product Conversions ─────────────────────────────────────────────────
-
-const otcProducts: OTCProduct[] = [
-  {
-    name: 'Robocough Freebase tablets',
-    dxmPerUnit: 40.92,
-    unitLabel: 'tablets',
-  },
-  {
-    name: 'Delsym (polisterix)',
-    dxmPerUnit: 3,
-    unitLabel: 'ml',
-    warning:
-      'Delsym contains DXM polistirex (extended-release). Effects last 8–12 hours but feel weaker per mg. Do NOT double-dose to compensate — wait the full duration before redosing.',
-  },
-  {
-    name: 'Cough Gels (15mg)',
-    dxmPerUnit: 15,
-    unitLabel: 'gels',
-  },
-  {
-    name: 'Robocough HBR tablets',
-    dxmPerUnit: 30,
-    unitLabel: 'tablets',
-  },
-  {
-    name: 'Delsym tablets',
-    dxmPerUnit: 15,
-    unitLabel: 'tablets',
-  },
-]
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getPlateauSpectrumPercent(p: Plateau): number {
-  return ((p.rangeMax - p.rangeMin) / MAX_PLATEAU_MGKG) * 100
-}
-
-function getPlateauStartPercent(p: Plateau): number {
-  return (p.rangeMin / MAX_PLATEAU_MGKG) * 100
-}
-
-function getPlateauSpectrumColor(p: Plateau): string {
-  // More opaque, saturated colors for the spectrum bar so text is readable
-  switch (p.name) {
-    case 'First Plateau': return 'bg-green-500/50'
-    case 'Second Plateau': return 'bg-cyan-500/50'
-    case 'Third Plateau': return 'bg-purple-500/50'
-    case 'Fourth Plateau': return 'bg-red-500/50'
-    default: return 'bg-base-300'
-  }
-}
+import {
+  plateaus,
+  otcProducts,
+  MAX_PLATEAU_MGKG,
+  MIN_PLATEAU_MGKG,
+  getPlateauSpectrumPercent,
+  getPlateauStartPercent,
+  getPlateauSpectrumColor,
+  formatGrams,
+  type Plateau,
+  type OTCProduct,
+  type CalculatedPlateau,
+  type OTCConversion,
+  type DxmSettings,
+} from './dxm-calculator-logic'
 
 // ─── Reusable Collapsible Section Component ─────────────────────────────────
 
@@ -249,6 +116,7 @@ function DXMCalculatorContent() {
   const addDose = useDoseStore(s => s.addDose)
 
   // ─── Inputs ──────────────────────────────────────────────────────────────
+
   // B1 — Persist calculator inputs across sessions.
   // Priority on first load: URL param (shared links win) → localStorage
   // (last-used values) → default. After that, every change writes back
@@ -260,7 +128,7 @@ function DXMCalculatorContent() {
   function loadDxmSettings(): DxmSettings {
     if (typeof window === 'undefined') return {}
     try {
-      const raw = localStorage.getItem(DXM_SETTINGS_KEY)
+      const raw = localStorage.getItem('drugucopia-dxm-settings')
       if (!raw) return {}
       const parsed = JSON.parse(raw)
       if (parsed && typeof parsed === 'object') return parsed as DxmSettings
@@ -305,7 +173,7 @@ function DXMCalculatorContent() {
   useEffect(() => {
     try {
       localStorage.setItem(
-        DXM_SETTINGS_KEY,
+        'drugucopia-dxm-settings',
         JSON.stringify({ weight, unit, plateau: selectedPlateauIdx }),
       )
     } catch {
@@ -336,6 +204,7 @@ function DXMCalculatorContent() {
   }, [weight, unit, selectedPlateauIdx])
 
   // ─── Derived values ──────────────────────────────────────────────────────
+
   const weightKg = useMemo(() => {
     const w = parseFloat(weight)
     if (isNaN(w) || w <= 0) return 0
@@ -443,7 +312,7 @@ function DXMCalculatorContent() {
       updatedAt: now,
     }
 
-    addDose(newLog)
+    useDoseStore.getState().addDose(newLog)
     toast({
       title: 'Dose logged',
       description: `${midpointDose} mg DXM (${activePlateau.name}) logged.`,
@@ -665,7 +534,7 @@ function DXMCalculatorContent() {
               <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400 flex items-start gap-2">
                 <Skull className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
-                  Above Fourth Plateau (&gt;{overdoseThresholdMg} mg / &gt;{MAX_PLATEAU_MGKG} mg/kg) carries
+                  Above Fourth Plateau ({'>'}{overdoseThresholdMg} mg / {'>'}{MAX_PLATEAU_MGKG} mg/kg) carries
                   severe risk of psychosis, seizures, serotonin syndrome, respiratory depression, and
                   potentially fatal outcomes. This territory provides no redeeming recreational value.
                 </span>
@@ -744,11 +613,11 @@ function DXMCalculatorContent() {
                     ? `${p.borderColor} ${p.bgColor} ${p.color}`
                     : 'border-base-300 bg-base-200/50 text-neutral-content hover:bg-base-300'
                     }`}
-                >
-                  <p.icon className="h-3.5 w-3.5" />
-                  {p.name.replace(' Plateau', '')}
-                </button>
-              ))}
+              >
+                <p.icon className="h-3.5 w-3.5" />
+                {p.name.replace(' Plateau', '')}
+              </button>
+            ))}
             </div>
 
             {/* Active plateau detail card */}
@@ -774,7 +643,7 @@ function DXMCalculatorContent() {
                           {activePlateau.subtitle}
                         </Badge>
                       </div>
-                      <p className="text-sm text-neutral-content mb-2 leading-relaxed">{activePlateau.description}</p>
+                      <p className="text-sm text-neutral-content leading-relaxed">{activePlateau.description}</p>
                     </div>
                     <div className="text-right shrink-0 bg-base-200/40 rounded-xl p-3 border border-base-300/30">
                       <div className={`text-2xl font-bold font-mono ${activePlateau.color}`}>
@@ -875,15 +744,14 @@ function DXMCalculatorContent() {
                       }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`font-semibold text-sm ${p.color} flex items-center gap-1.5`}>
-                        <p.icon className="h-3.5 w-3.5" />
-                        {p.name.replace(' Plateau', '')}
+                      <span className={`font-semibold text-sm ${p.color}`}>
+                        {p.emoji} {p.name.replace(' Plateau', '')}
                       </span>
                       <span className="text-xs text-neutral-content">{p.rangeMin}–{p.rangeMax} mg/kg</span>
                     </div>
                     <div className="text-xs text-neutral-content mb-2">{p.subtitle}</div>
-                    <div className={`text-xs font-mono ${p.color}`}>
-                      {p.minDose}–{p.maxDose} mg DXM
+                    <div className="text-xs font-mono text-base-content">
+                      {formatGrams(p.minDose)}–{formatGrams(p.maxDose)} mg DXM
                     </div>
                   </button>
                 )
@@ -894,42 +762,15 @@ function DXMCalculatorContent() {
                     <Skull className="h-3.5 w-3.5" />
                     Overdose
                   </span>
-                  <span className="text-xs text-neutral-content">&gt;{MAX_PLATEAU_MGKG} mg/kg</span>
+                  <span className="text-xs text-neutral-content">{MAX_PLATEAU_MGKG} mg/kg</span>
                 </div>
                 <div className="text-xs text-red-400">Dangerous / Potentially Fatal</div>
                 <div className="text-xs font-mono text-base-content mt-1">
-                  &gt;{overdoseThresholdMg} mg
+                  {'>'}{formatGrams(MAX_PLATEAU_MGKG * weightKg)} mg DXM
                 </div>
               </div>
             </div>
           </motion.section>
-        )}
-      </AnimatePresence>
-
-      {/* ─── Empty State ──────────────────────────────────────────────────── */}
-      <AnimatePresence initial={false}>
-        {!hasValidWeight && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="card card-transparent mb-8"
-          >
-            <div className="card-body flex flex-col items-center py-12 text-center">
-              <Scale className="h-12 w-12 text-neutral-content/30 mb-4" />
-              <h3 className="text-lg font-semibold text-neutral-content mb-1">Enter your weight to begin</h3>
-              <p className="text-sm text-neutral-content/70 max-w-sm mb-4">
-                The calculator will display personalized dose ranges for each of the four DXM plateaus
-                based on your body weight, along with OTC product conversions.
-              </p>
-              <button
-                onClick={() => { setUnit('lbs'); setWeight('150') }}
-                className="rounded-lg border border-cyan-500 bg-cyan-500/10 text-cyan-400 px-4 py-2 text-sm font-medium transition-colors hover:bg-cyan-500/20"
-              >
-                Start with 150 lbs example
-              </button>
-            </div>
-          </motion.div>
         )}
       </AnimatePresence>
 
@@ -941,61 +782,56 @@ function DXMCalculatorContent() {
         onToggle={() => toggleSection('pharmacology')}
       >
         <div className="space-y-3 text-sm text-neutral-content leading-relaxed">
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-medium text-amber-400 mb-1">CYP2D6 Poor Metabolizers</p>
-              <p className="text-xs leading-relaxed">
-                Approximately 5–10% of the population carry genetic variants that make them CYP2D6
-                poor metabolizers, meaning DXM is broken down far more slowly by the liver. For these
-                individuals, effects can be dramatically stronger and last significantly longer at any
-                given dose. Without confirmatory pharmacogenetic testing, you should assume you may be
-                sensitive and always start at the lower end of a plateau range.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20">
-            <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-medium text-red-400 mb-1">Serotonin Syndrome Risk</p>
-              <p className="text-xs leading-relaxed">
-                DXM acts as a serotonin reuptake inhibitor (SRI). Combining it with SSRIs, SNRIs,
-                MAOIs, tramadol, lithium, or other serotonergic substances can precipitate serotonin
-                syndrome — a potentially life-threatening condition characterized by agitation, confusion,
-                rapid heart rate, high blood pressure, muscle rigidity, tremors, hyperthermia, and in
-                severe cases, seizures and coma. If you are taking any psychiatric medication, consult
-                a medical professional before considering DXM.
-              </p>
-            </div>
-          </div>
-
           <div className="flex items-start gap-3 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/20">
-            <Info className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
+            <Info className="h-4 w-4 text-cyan-400 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-cyan-400 mb-1">HBr vs. Polistirex</p>
+              <p className="font-medium text-cyan-400 mb-1">DXM vs. Dextrorphan Metabolism</p>
               <p className="text-xs leading-relaxed">
-                DXM hydrobromide (HBr) is the standard immediate-release form found in Robitussin and
-                most cough gels — onset occurs in 20–60 minutes, with peak effects at 2–3 hours. DXM
-                polistirex (found in Delsym) is an extended-release formulation with onset of 1–2 hours,
-                peak at 6–8 hours, and total duration of 8–12 hours — roughly double the HBr duration
-                but roughly half the peak intensity per milligram. Do not treat them as equivalent.
-                Polistirex doses require different expectations and more patience with onset.
+                DXM is metabolized by CYP2D6 into dextrorphan (DXO), which has much higher affinity for NMDA
+                receptors. ~5&ndash;10% of Caucasians are CYP2D6 poor metabolizers &mdash; they convert less DXM to DXO,
+                experiencing less dissociation but more serotonin effects. Ultra-rapid metabolizers may experience
+                unexpectedly intense dissociation. Consider starting at the lowest dose if metabolism is unknown.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+            <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium text-amber-400 mb-1">Serotonin Syndrome Risk</p>
+              <p className="text-xs leading-relaxed">
+                DXM is a serotonin reuptake inhibitor. Combining with SSRIs, SNRIs, MAOIs, tricyclics,
+                tramadol, or other serotonergic drugs can cause serotonin syndrome — a potentially fatal
+                condition with symptoms including hyperthermia, rigidity, confusion, and autonomic instability.
+                Never combine DXM with antidepressants or other serotonergic drugs.
               </p>
             </div>
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
-            <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+            <AlertTriangle className="h-4 w-4 text-orange-400 mt-0.5 shrink-0" />
             <div>
-              <p className="font-medium text-orange-400 mb-1">Avoid Multi-Ingredient Products</p>
+              <p className="font-medium text-orange-400 mb-1">Plateau Dosage Individual Variability</p>
               <p className="text-xs leading-relaxed">
-                Many OTC cold medications contain additional active ingredients alongside DXM — such as
-                acetaminophen (paracetamol), chlorpheniramine, guaifenesin, or phenylephrine. At
-                recreational DXM doses, these co-ingredients can cause severe and potentially fatal
-                harm: acetaminophen causes acute liver failure, chlorpheniramine causes dangerous
-                anticholinergic delirium, and phenylephrine causes dangerous cardiovascular effects.
-                <strong> Only use products where DXM is the sole active ingredient.</strong>
+                The mg/kg ranges are population averages. Individual sensitivity varies enormously due to
+                CYP2D6 genotype, body composition, tolerance, and stomach contents. Some users report
+                Third Plateau effects at Second Plateau doses, and vice versa. Always treat calculated
+                ranges as rough guides, not guarantees. Start significantly lower than calculated when
+                trying a new batch or if you have limited experience.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20">
+            <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium text-red-400 mb-1">Delsym / Polistirex Warning</p>
+              <p className="text-xs leading-relaxed">
+                Delsym (and generic equivalents) contains DXM polistirex, an extended-release formulation.
+                Effects last 8–12 hours but feel weaker per mg. Do NOT redose early or double-dose to
+                compensate — the delayed peak can lead to accidental overdose. Wait the full duration
+                before considering redosing. The calculator treats all products as immediate-release HBr
+                unless you specifically select a polistirex product.
               </p>
             </div>
           </div>
@@ -1011,32 +847,30 @@ function DXMCalculatorContent() {
       >
         <ul className="space-y-3">
           {[
-            'Always verify the active ingredients list — use only products containing DXM as the sole active ingredient. Check every time, even with familiar brands, as formulations can change.',
-            'Start with a low dose to assess your individual sensitivity, especially if you are unsure of your CYP2D6 metabolism status. A first-time user should never exceed the first plateau.',
-            'Never mix DXM with alcohol, MAOIs, SSRIs, SNRIs, tramadol, lithium, or other serotonergic drugs. The risk of serotonin syndrome is real and can be fatal.',
-            'Have a trusted, sober trip sitter present, especially for second plateau and above. They should know what substance you took, how much, and when.',
-            'Stay hydrated with water or electrolyte drinks, but do not over-hydrate. DXM can cause SIADH (fluid retention), and excessive water intake can lead to hyponatremia.',
-            'Avoid operating vehicles, machinery, or making important decisions for at least 24 hours after dosing. Residual cognitive impairment can persist well after subjective effects fade.',
-            'Wait at least 3–4 weeks between DXM experiences to allow tolerance to fully reset. Frequent use leads to rapidly escalating tolerance, diminished effects, and increased risk of neurotoxicity.',
-            'If you or someone else experiences signs of serotonin syndrome (agitation, fever above 101°F/38°C, muscle rigidity, rapid heartbeat, confusion, sweating), seek emergency medical care immediately.',
-            'Do not use DXM if you have a history of psychosis, schizophrenia, or bipolar disorder. Dissociatives can trigger manic episodes, psychotic breaks, and prolonged depersonalization.',
-            'Set and setting matter enormously. Use in a safe, comfortable environment with no obligations. Remove access to vehicles and dangerous objects before dosing.',
+            'Always start with a dose well below the calculated equivalent when trying a new DXM product. Individual sensitivity varies enormously, and the margin of safety narrows at higher plateaus. A test dose of 25–50% of the calculated amount is recommended.',
+            'Never mix DXM (especially higher plateaus) with other CNS depressants including alcohol, benzodiazepines, opioids, or gabapentinoids. The combination significantly increases the risk of respiratory depression, which can be fatal.',
+            'If using DXM regularly, track your usage carefully. Tolerance builds rapidly, and the margin of safety narrows as doses increase. Consider setting a maximum weekly total and enforcing breaks of at least 2–4 weeks between uses.',
+            'Stay hydrated and maintain adequate nutrition. DXM suppresses appetite and can contribute to dehydration, especially at higher plateaus. These effects compound with extended use.',
+            'Store DXM products securely and clearly labeled. Because recreational doses are much smaller by weight than therapeutic doses, accidental overdose is easier. A digital milligram scale (0.001g precision) is strongly recommended for powder/gelcap products.',
+            'Be aware of the legal status of DXM in your jurisdiction. DXM is regulated or restricted in several countries and US states. Possession of large quantities may carry additional legal risk.',
+            'If you experience signs of excessive NMDA antagonism — extreme dissociation, inability to move, slow or shallow breathing, confusion, or loss of consciousness — seek emergency medical care immediately. Naloxone is NOT effective for DXM overdose as it does not act on opioid receptors.',
+            'Plan for withdrawal if using regularly. Tapering gradually over 2–4 weeks is preferred over abrupt cessation. Consider consulting a medical professional for a tapering schedule, especially if using high doses or polistirex formulations.',
           ].map((tip, i) => (
             <li
               key={i}
               className="flex items-start gap-3 p-3 rounded-xl bg-orange-500/5 border border-orange-500/20"
             >
-              <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-orange-400 mt-0.5 shrink-0" />
               <span className="text-sm leading-relaxed">{tip}</span>
             </li>
           ))}
         </ul>
       </SectionToggle>
 
-      {/* ─── Collapsible Quick Reference Table ─────────────────────────────── */}
+      {/* ─── Collapsible OTC Product Reference Table ─────────────────────── */}
       <SectionToggle
-        title="Quick Reference (mg/kg)"
-        icon={Calculator}
+        title="OTC Product Equivalents"
+        icon={Syringe}
         isOpen={expandedSections.otcRef}
         onToggle={() => toggleSection('otcRef')}
       >
@@ -1044,65 +878,54 @@ function DXMCalculatorContent() {
           <table className="table table-sm">
             <thead>
               <tr>
-                <th>Plateau</th>
-                <th>Range (mg/kg)</th>
-                <th>Character</th>
-                <th>Duration</th>
+                <th>Product</th>
+                <th>DXM per Unit</th>
+                <th>Plateau 1<br />{calculatedDoses?.[0].minDose}–{calculatedDoses?.[0].maxDose} mg</th>
+                <th>Plateau 2<br />{calculatedDoses?.[1].minDose}–{calculatedDoses?.[1].maxDose} mg</th>
+                <th>Plateau 3<br />{calculatedDoses?.[2].minDose}–{calculatedDoses?.[2].maxDose} mg</th>
+                <th>Plateau 4<br />{calculatedDoses?.[3].minDose}–{calculatedDoses?.[3].maxDose} mg</th>
               </tr>
             </thead>
             <tbody>
-              {plateaus.map((p, i) => (
+              {otcProducts.map((product, i) => (
                 <tr key={i}>
                   <td>
-                    <span className={`font-semibold ${p.color}`}>
-                      <p.icon className={`h-4 w-4 inline mr-1 ${p.color}`} aria-hidden="true" />
-                      {p.name}
-                    </span>
+                    <span className="font-medium">{product.name}</span>
+                    {product.warning && (
+                      <span className="ml-2 inline-flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                        <span className="text-[10px] text-yellow-400">⚠</span>
+                      </span>
+                    )}
                   </td>
-                  <td className="font-mono">
-                    {p.rangeMin} – {p.rangeMax}
-                  </td>
-                  <td className="text-xs text-neutral-content">{p.subtitle}</td>
-                  <td className="text-xs text-neutral-content">{p.duration}</td>
+                  <td className="font-mono">{product.dxmPerUnit} mg/{product.unitLabel}</td>
+                  {calculatedDoses?.map((p, pi) => (
+                    <td key={pi} className="font-mono text-xs">
+                      {Math.ceil(p.minDose / product.dxmPerUnit)}–{Math.ceil(p.maxDose / product.dxmPerUnit)} {product.unitLabel}
+                    </td>
+                  ))}
                 </tr>
               ))}
               <tr className="text-red-400">
                 <td className="font-semibold">
-                  <Skull className="h-3 w-3 inline mr-1" />
+                  <Skull className="inline h-3 w-3 mr-1" />
                   Overdose
                 </td>
-                <td className="font-mono">&gt; {MAX_PLATEAU_MGKG}</td>
-                <td className="text-xs">Dangerous / Potentially Fatal</td>
-                <td className="text-xs">Unpredictable</td>
+                <td className="font-mono">{'>'}{MAX_PLATEAU_MGKG} mg/kg</td>
+                {calculatedDoses?.map((p, pi) => (
+                  <td key={pi} className="font-mono text-xs">
+                    {'>'}{Math.ceil(MAX_PLATEAU_MGKG * weightKg / otcProducts[pi]?.dxmPerUnit || 0)} {otcProducts[pi]?.unitLabel}
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>
         </div>
-        {hasValidWeight && (
-          <p className="text-xs text-neutral-content mt-3">
-            For your weight ({weightKg.toFixed(1)} kg), the overdose threshold is approximately{' '}
-            <span className="font-mono font-semibold text-base-content">{overdoseThresholdMg} mg</span> DXM.
-          </p>
-        )}
+        <p className="text-xs text-neutral-content mt-3">
+          Table assumes {unit === 'lbs' ? `${weight} lbs (${weightKg.toFixed(1)} kg)` : `${weight} kg`} body weight. Doses rounded up to nearest whole unit.
+          {'\n'}⚠ = product-specific warning (see below).
+        </p>
       </SectionToggle>
-
-      {/* ─── Coricidin Warning (always visible - critical safety) ────────── */}
-      <div className="alert pulse-danger border border-red-500/30 bg-red-500/5 mb-6">
-        <Skull className="h-5 w-5 shrink-0 text-red-400" />
-        <div>
-          <p className="font-semibold text-sm text-red-400">
-            Coricidin HBP (&quot;Triple C&quot;) — DO NOT USE
-          </p>
-          <p className="text-xs text-red-300/80 mt-1 leading-relaxed">
-            Coricidin HBP Cough &amp; Cold tablets contain <strong>chlorpheniramine maleate</strong> — an
-            anticholinergic antihistamine — in addition to DXM. At recreational DXM doses, the
-            chlorpheniramine reaches toxic levels and can cause dangerous anticholinergic delirium,
-            hyperthermia, tachycardia, seizures, rhabdomyolysis, and potentially fatal respiratory
-            depression. Coricidin has been directly linked to numerous hospitalizations and deaths.
-            <strong> Never use Coricidin or any multi-ingredient product recreationally.</strong>
-          </p>
-        </div>
-      </div>
 
       {/* ─── Collapsible Emergency Resources ──────────────────────────────── */}
       <SectionToggle
@@ -1134,21 +957,21 @@ function DXMCalculatorContent() {
         baseUnit="mg"
         route="oral"
         duration={dxm.routeData?.oral?.duration ?? null}
-        notes={`Calculated via DXM Dose Calculator. Body weight: ${unit === 'lbs' ? `${weight} lbs` : `${weight} kg`} (${weightKg.toFixed(1)} kg). Plateau: ${activePlateau?.name ?? 'n/a'} (${activePlateau?.rangeMin ?? 0}–${activePlateau?.rangeMax ?? 0} mg/kg). Computed range: ${activePlateau?.minDose ?? 0}–${activePlateau?.maxDose ?? 0} mg.`}
+        notes={`Calculated via DXM Dose Calculator. Body weight: ${unit === 'lbs' ? `${weight} lbs` : `${weight} kg`} (${weightKg.toFixed(1)} kg). Plateau: ${activePlateau?.name} (${activePlateau?.rangeMin}–${activePlateau?.rangeMax} mg/kg).`}
         logInitialDose={true}
       />
 
-      {/* ─── Footer ───────────────────────────────────────────────────────── */}
       <footer className="text-center py-6 text-xs text-neutral-content/50 space-y-1">
         <p>
           Information sourced from{' '}
           <a href="https://psychonautwiki.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-content">
             PsychonautWiki
-          </a>{' '}
-          and{' '}
+          </a>
+          ,{' '}
           <a href="https://erowid.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-neutral-content">
             Erowid
-          </a>.
+          </a>
+          , and peer-reviewed pharmacological literature.
         </p>
         <p>This tool is intended for harm reduction and educational purposes only. It is not medical advice.</p>
       </footer>
