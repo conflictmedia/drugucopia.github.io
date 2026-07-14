@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2] - 2026-07-13
+
+### Fixed
+- Custom Substances are now visible in the logger modal
+- Medications are now visible in the logger modal
+
+
+## [0.3.1] - 2026-07-13
+
+### Fixed
+- Recent substances in the dose logger modal now correctly update.
+
 ## [0.3.0] - 2026-07-13
 
 ### Added
@@ -7,7 +19,7 @@
 - Custom Substances Enhancement
 - Medication Checker
 - Benzodiazapine Equivalence Calculator
-- Onboarding Tou
+- Onboarding Tour
 
 ## [0.2.5] - 2026-07-12
 
