@@ -20,6 +20,7 @@ import {
   CornerDownLeft,
   ChevronUp,
   ChevronDown,
+  Wine,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -154,6 +155,14 @@ export function CommandPalette() {
         subtitle: 'Convert leaf ↔ extract',
         icon: Pill,
         href: '/kratom-calculator/',
+      },
+      {
+        id: 'action-alcohol',
+        kind: 'action',
+        title: 'Alcohol calculator',
+        subtitle: 'Convert shots ↔ grams of ethanol',
+        icon: Wine,
+        href: '/calculators/alcohol/',
       },
       {
         id: 'action-harm-reduction',
