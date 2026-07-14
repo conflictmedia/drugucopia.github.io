@@ -5,7 +5,7 @@ Substance library, interaction checker, and dose logger for harm reduction. Buil
 ## Features
 
 ### Substance Library
-- **277 substances** across 10 categories: stimulants, depressants, hallucinogens, dissociatives, empathogens, opioids, cannabinoids, deliriants, nootropics, and others
+- **304 substances** across 10 categories: stimulants, depressants, hallucinogens, dissociatives, empathogens, opioids, cannabinoids, deliriants, nootropics, and others
 - Detailed pages per substance: effects, dosage ranges (per route), duration, onset/peak/offset, harm reduction tips, dangerous interactions, chemical class, common names
 - Category filtering, fuzzy search (name, aliases, class, description), deep linking via `?substance=<id>`
 
