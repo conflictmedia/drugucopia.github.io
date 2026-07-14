@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4] - 2026-07-14
+
+### Added
+- Alcohol Calculator standalone
+- Alcohol Calculator in the dose logger modal (drinks -> grams)
+
+
 ## [0.3.3] - 2026-07-14
 
 ### Added
