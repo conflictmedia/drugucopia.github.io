@@ -6,6 +6,7 @@ import type { Substance } from '@/lib/types'
 import { categories } from '@/lib/categories'
 import {
   categoryColors,
+  categoryColorVar,
   riskLevelColors,
 } from '../home-constants'
 import {
@@ -14,6 +15,8 @@ import {
   getSubstanceCategories,
 } from '../home-utils'
 import { cn } from '@/lib/utils'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 interface SubstanceCardProps {
   substance: Substance
@@ -47,23 +50,39 @@ export const SubstanceCard = memo(function SubstanceCard({
   const cats = getSubstanceCategories(substance)
   const hasRouteData = substance.routeData && Object.keys(substance.routeData).length > 1
 
-return (
-    <button
-      type="button"
-      onClick={() => onSelect(substance)}
+  // Map risk levels to semantic badge variants per DESIGN.md severity ladder
+  const getRiskBadgeVariant = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'very-high':
+      case 'high':
+        return 'error' as const
+      case 'moderate':
+        return 'warning' as const
+      case 'low':
+        return 'success' as const
+      default:
+        return 'outline' as const
+    }
+  }
+
+  // Get semantic color CSS variable for category icon background
+  const getCategoryColor = (cat: string) => categoryColorVar[cat as keyof typeof categoryColorVar] ?? 'var(--color-neutral)'
+
+  return (
+    <Card
+      variant="default"
       className={cn(
-        // Standardized Card surface (Phase 2)
-        'card bg-base-100/80 text-base-content border border-base-300/70 shadow-sm backdrop-blur-sm',
-        // Lift on hover, but only on devices that actually have hover
-        'transition-all duration-150 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md',
+        // GPU-only lift on hover (transform only, no layout animation)
+        'transition-transform duration-150 hover:-translate-y-0.5',
         // Make the whole card a button
         'cursor-pointer text-left',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
         // Mobile: content-visibility for offscreen cards
         'content-visibility-auto',
       )}
+      onClick={() => onSelect(substance)}
     >
-      <div className="card-body gap-3 p-4 md:p-5">
+      <CardContent className="gap-3 p-4 md:p-5">
         {/* Header: icon + name/class + chevron */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-3">
@@ -71,10 +90,11 @@ return (
               <div
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-                  categoryColors[primary],
+                  // Use semantic CSS variable for category color
+                  `bg-[${getCategoryColor(primary)}]`
                 )}
               >
-                <CategoryIcon substance={substance} className="h-4 w-4" />
+                <CategoryIcon substance={substance} className="h-4 w-4 text-white" />
               </div>
             )}
             <div className="min-w-0">
@@ -95,42 +115,40 @@ return (
           <div className="flex flex-wrap gap-1">
             {cats.slice(0, 2).map((cat) => {
               const info = categories.find((c) => c.id === cat)
+              const colorVar = categoryColorVar[cat as keyof typeof categoryColorVar] ?? 'var(--color-neutral)'
               return (
-                <span
+                <Badge
                   key={cat}
-                  className={cn(
-                    'badge badge-outline badge-sm text-xs',
-                    categoryColors[cat] ?? '',
-                  )}
+                  variant="outline"
+                  size="sm"
+                  className={cn(`bg-[${colorVar}]/10 border-[${colorVar}]/20 text-[${colorVar}]`)}
                 >
                   {info?.name ?? cat}
-                </span>
+                </Badge>
               )
             })}
             {cats.length > 2 && (
-              <span className="badge badge-outline badge-sm text-xs text-neutral-content">
+              <Badge variant="outline" size="sm" className="text-neutral-content">
                 +{cats.length - 2}
-              </span>
+              </Badge>
             )}
           </div>
 
           <div className="flex items-center gap-1">
             {hasRouteData && (
-              <span className="badge badge-outline badge-sm border-primary/30 text-xs text-primary/80">
+              <Badge variant="outline" size="sm" className="border-primary/30 text-primary">
                 {Object.keys(substance.routeData!).length} routes
-              </span>
+              </Badge>
             )}
-            <span
-              className={cn(
-                'badge badge-outline badge-sm text-xs capitalize',
-                riskLevelColors[substance.riskLevel],
-              )}
+            <Badge
+              variant={getRiskBadgeVariant(substance.riskLevel)}
+              size="sm"
             >
               {substance.riskLevel.replace('-', ' ')}
-            </span>
+            </Badge>
           </div>
         </div>
-      </div>
-    </button>
+      </CardContent>
+    </Card>
   )
 })

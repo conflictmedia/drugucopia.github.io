@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { format, subDays, isAfter } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { Activity, TrendingUp, Calendar, Clock } from 'lucide-react'
 import { useDoseStore } from '@/store/dose-store'
 
@@ -11,8 +12,8 @@ import { useDoseStore } from '@/store/dose-store'
  *
  * Phase 4 redesign: rebuilt around the daisyUI `stats` primitive with semantic
  * tokens (no hard-coded Tailwind palette colors). The "Most logged" and
- * "Categories" blocks use `card` + `badge` so the breakdown stays scannable
- * without competing with the KPI row.
+ * "Categories" blocks use `Card` + `Badge` primitives so the breakdown stays
+ * scannable without competing with the KPI row.
  *
  * Reads directly from the Zustand store, which handles localStorage sync and
  * cross-tab updates via storage events — no props needed.
@@ -130,13 +131,13 @@ export function DoseStats() {
         </div>
       </div>
 
-      {/* Breakdown cards — `badge` chips keep category/substance identity
+      {/* Breakdown cards — `Badge` chips keep category/substance identity
           without adding competing mini-panels. */}
       <div className="grid gap-4 sm:grid-cols-2">
         {stats.topSubstances.length > 0 && (
-          <div className="card border border-base-300 bg-base-100 shadow-sm">
-            <div className="card-body gap-2 p-4 md:p-5">
-              <h3 className="card-title text-sm font-semibold">Most Logged</h3>
+          <Card variant="outline">
+            <CardContent className="gap-2 p-4 md:p-5">
+              <CardTitle className="text-sm font-semibold">Most Logged</CardTitle>
               <div className="flex flex-wrap gap-2">
                 {stats.topSubstances.map(([name, count], i) => (
                   <Badge key={name} variant={i === 0 ? 'primary' : 'outline'}>
@@ -144,14 +145,14 @@ export function DoseStats() {
                   </Badge>
                 ))}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {stats.sortedCategories.length > 0 && (
-          <div className="card border border-base-300 bg-base-100 shadow-sm">
-            <div className="card-body gap-2 p-4 md:p-5">
-              <h3 className="card-title text-sm font-semibold">Categories</h3>
+          <Card variant="outline">
+            <CardContent className="gap-2 p-4 md:p-5">
+              <CardTitle className="text-sm font-semibold">Categories</CardTitle>
               <div className="flex flex-wrap gap-2">
                 {stats.sortedCategories.map(([cat, count]) => (
                   <Badge key={cat} variant="outline" className="capitalize">
@@ -159,8 +160,8 @@ export function DoseStats() {
                   </Badge>
                 ))}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

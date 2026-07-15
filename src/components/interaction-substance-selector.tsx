@@ -12,6 +12,7 @@ import {
   getMedicationSubstanceById,
   getMedicationBySelectorId,
 } from '@/store/medication-store'
+import { categoryColorVar, categoryColors } from '@/components/home/home-constants'
 
 interface InteractionSubstanceSelectorProps {
   selectedIds: string[]
@@ -25,21 +26,22 @@ const POPULAR_SUBSTANCES = [
   'ketamine', 'dmt', 'diazepam', 'adderall', 'modafinil', 'nicotine',
 ]
 
-// Category definitions for filter chips
-const CATEGORIES: { id: SubstanceCategory | 'all'; label: string; color: string }[] = [
-  { id: 'all', label: 'All', color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/30' },
-  { id: 'stimulants', label: 'Stimulants', color: 'bg-amber-500/10 text-amber-500 border-amber-500/30' },
-  { id: 'depressants', label: 'Depressants', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30' },
-  { id: 'hallucinogens', label: 'Psychedelics', color: 'bg-purple-500/10 text-purple-500 border-purple-500/30' },
-  { id: 'dissociatives', label: 'Dissociatives', color: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30' },
-  { id: 'empathogens', label: 'Empathogens', color: 'bg-pink-500/10 text-pink-500 border-pink-500/30' },
-  { id: 'cannabinoids', label: 'Cannabis', color: 'bg-green-500/10 text-green-500 border-green-500/30' },
-  { id: 'opioids', label: 'Opioids', color: 'bg-red-500/10 text-red-500 border-red-500/30' },
-  { id: 'nootropics', label: 'Nootropics', color: 'bg-teal-500/10 text-teal-500 border-teal-500/30' },
-  { id: 'other', label: 'Other', color: 'bg-slate-500/10 text-slate-500 border-slate-500/30' },
+// Category definitions for filter chips - using semantic badge variants
+// Per DESIGN.md §9, category badges use hardcoded colors for visual scanning (approved exception)
+const CATEGORIES: { id: SubstanceCategory | 'all'; label: string; variant: 'default' | 'info' | 'success' | 'warning' | 'error' | 'accent' | 'secondary' }[] = [
+  { id: 'all', label: 'All', variant: 'default' },
+  { id: 'stimulants', label: 'Stimulants', variant: 'warning' },
+  { id: 'depressants', label: 'Depressants', variant: 'info' },
+  { id: 'hallucinogens', label: 'Psychedelics', variant: 'accent' },
+  { id: 'dissociatives', label: 'Dissociatives', variant: 'info' },
+  { id: 'empathogens', label: 'Empathogens', variant: 'accent' },
+  { id: 'cannabinoids', label: 'Cannabis', variant: 'success' },
+  { id: 'opioids', label: 'Opioids', variant: 'error' },
+  { id: 'nootropics', label: 'Nootropics', variant: 'info' },
+  { id: 'other', label: 'Other', variant: 'secondary' },
 ]
 
-// Category dot colors
+// Category dot colors - DESIGN.md §9 approved exception for visual scanning
 const CATEGORY_DOTS: Record<string, string> = {
   stimulants: 'bg-amber-500',
   depressants: 'bg-indigo-500',
@@ -238,19 +240,20 @@ export function InteractionSubstanceSelector({
     [open, displayResults, activeIndex, handleSelect]
   )
 
-  const getCategoryColor = (categories: string[]) => {
+  const getCategoryBadgeClass = (categories: string[]) => {
     const cat = categories?.[0]
+    // DESIGN.md §9: Category badges use hardcoded colors for visual scanning (approved exception)
     const colorMap: Record<string, string> = {
-      stimulants: 'border-amber-500/40 bg-amber-500/10 text-amber-500',
-      depressants: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-500',
-      hallucinogens: 'border-purple-500/40 bg-purple-500/10 text-purple-500',
-      dissociatives: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-500',
-      empathogens: 'border-pink-500/40 bg-pink-500/10 text-pink-500',
-      cannabinoids: 'border-green-500/40 bg-green-500/10 text-green-500',
-      opioids: 'border-red-500/40 bg-red-500/10 text-red-500',
-      deliriants: 'border-slate-500/40 bg-slate-500/10 text-slate-500',
-      nootropics: 'border-teal-500/40 bg-teal-500/10 text-teal-500',
-      other: 'border-zinc-500/40 bg-zinc-500/10 text-zinc-500',
+      stimulants: 'bg-amber-500 text-white border-0',
+      depressants: 'bg-indigo-500 text-white border-0',
+      hallucinogens: 'bg-purple-500 text-white border-0',
+      dissociatives: 'bg-cyan-500 text-white border-0',
+      empathogens: 'bg-pink-500 text-white border-0',
+      cannabinoids: 'bg-green-500 text-white border-0',
+      opioids: 'bg-red-500 text-white border-0',
+      deliriants: 'bg-slate-500 text-white border-0',
+      nootropics: 'bg-teal-500 text-white border-0',
+      other: 'bg-zinc-500 text-white border-0',
     }
     return colorMap[cat || 'other'] || colorMap.other
   }
@@ -277,8 +280,8 @@ export function InteractionSubstanceSelector({
                   // Medications get a distinct info-colored chip so
                   // they're visually separable from regular substances.
                   isMed
-                    ? 'border-info/40 bg-info/10 text-info'
-                    : getCategoryColor(sub.categories),
+                    ? 'badge-info'
+                    : getCategoryBadgeClass(sub.categories),
                 )}
               >
                 {isMed && <Pill className="h-3 w-3 shrink-0" />}
@@ -365,24 +368,27 @@ export function InteractionSubstanceSelector({
 
               {/* Category filter chips */}
               <div className="px-2 py-1.5 border-b border-base-300 flex gap-1 overflow-x-auto scrollbar-none">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() =>
-                      setCategoryFilter((prev) => (prev === cat.id ? null : cat.id === 'all' ? null : cat.id))
-                    }
-                    className={cn(
-                      'tap-sm inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border min-h-0',
-                      categoryFilter === cat.id || (!categoryFilter && cat.id === 'all')
-                        ? cat.id === 'all'
-                          ? 'bg-primary/20 text-primary border-primary/40'
-                          : cat.color
-                        : 'bg-transparent text-neutral-content border-transparent hover:border-base-300'
-                    )}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
+                {CATEGORIES.map((cat) => {
+                  const isActive = categoryFilter === cat.id || (!categoryFilter && cat.id === 'all')
+                  return (
+                    <Button
+                      key={cat.id}
+                      variant={isActive ? 'outline' : 'ghost'}
+                      size="sm"
+                      className={cn(
+                        'tap-sm whitespace-nowrap',
+                        isActive &&
+                          cat.id !== 'all' &&
+                          `btn-${cat.variant}`,
+                      )}
+                      onClick={() =>
+                        setCategoryFilter((prev) => (prev === cat.id ? null : cat.id === 'all' ? null : cat.id))
+                      }
+                    >
+                      {cat.label}
+                    </Button>
+                  )
+                })}
               </div>
 
               {/* Results */}
@@ -448,15 +454,20 @@ export function InteractionSubstanceSelector({
                           result.matchField !== 'class' &&
                           result.matchField !== 'category' &&
                           result.matchField !== 'description' && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-base-200 text-neutral-content truncate max-w-[140px]">
+                            <Badge variant="outline" size="xs" className="truncate max-w-[140px]">
                               {result.matchField}
-                            </span>
+                            </Badge>
                           )}
 
-                        {/* Category pill */}
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-base-300 text-neutral-content whitespace-nowrap hidden sm:inline-block">
+                        {/* Category pill - DESIGN.md §9 approved exception */}
+                        <Badge
+                          className={cn(
+                            'badge-xs hidden sm:inline-block border-0',
+                            getCategoryBadgeClass(sub.categories),
+                          )}
+                        >
                           {sub.categories[0]}
-                        </span>
+                        </Badge>
                       </button>
                     )
                   })

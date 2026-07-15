@@ -28,54 +28,112 @@ export const categoryIcons: Record<SubstanceCategory, React.ElementType> = {
   medications: Shield,
 }
 
+/**
+ * Category semantic color mapping per DESIGN.md §1.3 Severity Ladder.
+ * 
+ * These are DAISYUI SEMANTIC TOKENS, not hardcoded colors.
+ * Category badges use outline variant with semantic color tokens.
+ * The actual color rendering depends on the active theme (13 themes in DESIGN.md §1.2).
+ * 
+ * Mapping follows DESIGN.md severity ladder:
+ * - info (neutral/educational): stimulants, nootropics, other
+ * - success (safe/confirmed): cannabinoids, medications  
+ * - warning (caution): empathogens, dissociatives, hallucinogens
+ * - error (dangerous): opioids, depressants, deliriants
+ * 
+ * This is the SINGLE SOURCE OF TRUTH for category colors — no hardcoded colors in components.
+ */
 export const categoryColors: Record<SubstanceCategory, string> = {
-  stimulants: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
-  depressants: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
-  hallucinogens: 'text-purple-500 bg-purple-500/10 border-purple-500/20',
-  dissociatives: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
-  empathogens: 'text-pink-500 bg-pink-500/10 border-pink-500/20',
-  cannabinoids: 'text-green-500 bg-green-500/10 border-green-500/20',
-  opioids: 'text-red-500 bg-red-500/10 border-red-500/20',
-  deliriants: 'text-slate-500 bg-slate-500/10 border-slate-500/20',
-  nootropics: 'text-teal-500 bg-teal-500/10 border-teal-500/20',
-  other: 'text-zinc-500 bg-zinc-500/10 border-zinc-500/20',
-  medications: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+  // info - neutral educational
+  stimulants: 'badge-info',
+  nootropics: 'badge-info',
+  other: 'badge-info',
+  
+  // success - safe/confirmed
+  cannabinoids: 'badge-success',
+  medications: 'badge-success',
+  
+  // warning - caution/attention
+  empathogens: 'badge-warning',
+  dissociatives: 'badge-warning',
+  hallucinogens: 'badge-warning',
+  
+  // error - dangerous/destructive
+  opioids: 'badge-error',
+  depressants: 'badge-error',
+  deliriants: 'badge-error',
 }
 
+/**
+ * CSS variable names for category colors (for icon backgrounds, etc.)
+ * These reference the DESIGN.md §1.4 semantic color tokens.
+ */
+export const categoryColorVar: Record<SubstanceCategory, string> = {
+  stimulants: 'var(--color-category-stimulants)',
+  depressants: 'var(--color-category-depressants)',
+  hallucinogens: 'var(--color-category-hallucinogens)',
+  dissociatives: 'var(--color-category-dissociatives)',
+  empathogens: 'var(--color-category-empathogens)',
+  cannabinoids: 'var(--color-category-cannabinoids)',
+  opioids: 'var(--color-category-opioids)',
+  deliriants: 'var(--color-category-deliriants)',
+  nootropics: 'var(--color-category-nootropics)',
+  other: 'var(--color-category-other)',
+  medications: 'var(--color-category-medications)',
+}
+
+/**
+ * Dot colors for category filter pills — use semantic badge color tokens.
+ * These are used as inline style or className on a span.
+ */
 export const categoryDotColors: Record<SubstanceCategory, string> = {
-  stimulants: 'bg-amber-500',
-  depressants: 'bg-indigo-500',
-  hallucinogens: 'bg-purple-500',
-  dissociatives: 'bg-cyan-500',
-  empathogens: 'bg-pink-500',
-  cannabinoids: 'bg-green-500',
-  opioids: 'bg-red-500',
-  deliriants: 'bg-slate-500',
-  nootropics: 'bg-teal-500',
-  other: 'bg-zinc-500',
-  medications: 'bg-emerald-500',
+  stimulants: 'badge-info',
+  depressants: 'badge-error',
+  hallucinogens: 'badge-warning',
+  dissociatives: 'badge-warning',
+  empathogens: 'badge-warning',
+  cannabinoids: 'badge-success',
+  opioids: 'badge-error',
+  deliriants: 'badge-error',
+  nootropics: 'badge-info',
+  other: 'badge-info',
+  medications: 'badge-success',
 }
 
+/**
+ * DEPRECATED: glow classes use hardcoded colors.
+ * Per DESIGN.md §6: "NO animation on non-interactive elements" and "NO layout animation".
+ * These are kept for reference but should NOT be used in new code.
+ * Use GPU-only transform/opacity transitions instead.
+ */
 export const categoryGlowClasses: Record<SubstanceCategory, string> = {
-  stimulants: 'hover:glow-amber',
-  depressants: 'hover:glow-indigo',
-  hallucinogens: 'hover:glow-purple',
-  dissociatives: 'hover:glow-cyan',
-  empathogens: 'hover:glow-pink',
-  cannabinoids: 'hover:glow-green',
-  opioids: 'hover:glow-red',
-  deliriants: 'hover:glow-slate',
-  nootropics: 'hover:glow-teal-cat',
-  other: 'hover:glow-zinc',
-  medications: 'hover:glow-green',
+  stimulants: '',
+  depressants: '',
+  hallucinogens: '',
+  dissociatives: '',
+  empathogens: '',
+  cannabinoids: '',
+  opioids: '',
+  deliriants: '',
+  nootropics: '',
+  other: '',
+  medications: '',
 }
 
+/**
+ * Risk level mapping to DESIGN.md severity ladder (§1.3):
+ * - none → neutral (default)
+ * - low → success (safe)
+ * - moderate → warning (caution)
+ * - high → warning (caution)
+ * - very-high → error (dangerous)
+ */
 export const riskLevelColors: Record<'none' | 'low' | 'moderate' | 'high' | 'very-high', string> = {
-  none: 'bg-base-300 text-base-content/60 border-base-300',
-  low: 'bg-green-500/20 text-green-400 border-green-500/30',
-  moderate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  'very-high': 'bg-red-500/20 text-red-400 border-red-500/30',
+  none: 'badge badge-outline',
+  low: 'badge-success',
+  moderate: 'badge-warning',
+  high: 'badge-warning',
+  'very-high': 'badge-error',
 }
 
 export const routeIconMap: Record<string, string> = {

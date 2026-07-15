@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 import { useDoseStore } from '@/store/dose-store'
 import { useReminderStore } from '@/store/reminder-store'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 // Lazy-load heavy client-only components so the page's initial bundle stays
 // small. These all pull in zustand stores, the substances DB, and (for the
@@ -75,12 +78,14 @@ function TrackHero() {
   )
 
   return (
-    <section className="hero rounded-box border border-base-300 bg-base-200/60 shadow-sm">
-      <div className="hero-content w-full flex-col items-start gap-4 p-4 md:p-6 lg:flex-row lg:items-center lg:justify-between">
+    <Card variant="elevated" className="p-4 md:p-6">
+      <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between w-full">
         <div className="max-w-2xl space-y-2">
-          <span className="badge badge-outline badge-sm">Track workspace</span>
+          <Badge variant="outline" size="sm">
+            Track workspace
+          </Badge>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Dose log, reminders &amp; session view
+            Dose log, reminders & session view
           </h1>
           <p className="text-sm text-neutral-content md:text-base">
             Review active reminders, follow your current session timeline, and keep your dose
@@ -89,7 +94,7 @@ function TrackHero() {
         </div>
 
         {/* Glanceable stats — semantic daisyUI tokens, no hard-coded palette. */}
-        <div className="stats stats-vertical border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal">
+        <div className="stats stats-vertical w-full border border-base-300 bg-base-100 shadow-sm sm:stats-horizontal">
           <div className="stat">
             <div className="stat-title">Total logs</div>
             <div className="stat-value text-2xl">{doses.length}</div>
@@ -112,7 +117,7 @@ function TrackHero() {
           </div>
         </div>
       </div>
-    </section>
+    </Card>
   )
 }
 
@@ -149,20 +154,20 @@ function ActiveSessionTab() {
     <div className="space-y-6">
       <ActiveReminders />
 
-      <section className="card border border-base-300 bg-base-100 shadow-sm">
-        <div className="card-body gap-1.5 p-4 pb-0 md:p-5 md:pb-0">
-          <h2 className="card-title text-base font-semibold">
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             Intensity Timeline
-          </h2>
-          <p className="text-sm text-neutral-content">
+          </CardTitle>
+          <CardDescription>
             Live view of active doses and their estimated intensity over time.
-          </p>
-        </div>
-        <div className="card-body p-4 pt-4 md:p-5 md:pt-4">
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <IntensityTimelineChart />
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -174,20 +179,20 @@ function RemindersTab() {
     <div className="space-y-6">
       <ActiveReminders />
 
-      <section className="card border border-base-300 bg-base-100 shadow-sm">
-        <div className="card-body gap-1.5 p-4 pb-0 md:p-5 md:pb-0">
-          <h2 className="card-title text-base font-semibold">
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
             <Clock className="h-5 w-5 text-primary" />
             Reminder Settings
-          </h2>
-          <p className="text-sm text-neutral-content">
+          </CardTitle>
+          <CardDescription>
             Adjust auto-start behavior, notification permissions, sounds, and recurring schedules.
-          </p>
-        </div>
-        <div className="card-body p-4 pt-4 md:p-5 md:pt-4">
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <ReminderSettings />
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -217,24 +222,29 @@ function DoseLogPageContent() {
         <SyncConflicts />
 
         {/* Tab bar — single source of truth for navigation within Track. */}
-        <div
-          role="tablist"
-          aria-label="Track sections"
-          className="tabs tabs-boxed w-full justify-center overflow-x-auto border border-base-300 bg-base-200/60"
-        >
-          {TABS.map((t) => (
-            <TabButton key={t.id} tab={t} active={tab === t.id} onClick={() => setTab(t.id)} />
-          ))}
-        </div>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as TrackTab)} variant="box">
+          <TabsList className="w-full justify-center overflow-x-auto">
+            {TABS.map((t) => (
+              <TabsTrigger key={t.id} value={t.id}>
+                <t.icon className="h-4 w-4 mr-1.5" />
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        <div role="tabpanel">
-          {tab === 'session' && <ActiveSessionTab />}
-          {tab === 'history' && (
+          <TabsContent value="session">
+            <ActiveSessionTab />
+          </TabsContent>
+          <TabsContent value="history">
             <DoseHistory />
-          )}
-          {tab === 'reminders' && <RemindersTab />}
-          {tab === 'insights' && <InsightsTab />}
-        </div>
+          </TabsContent>
+          <TabsContent value="reminders">
+            <RemindersTab />
+          </TabsContent>
+          <TabsContent value="insights">
+            <InsightsTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

@@ -11,9 +11,9 @@ function svgSafeId(str: string): string {
 const INVARIANT_UNITS = ['mg', 'g', 'μg', 'ml', 'mL']
 
 const PLURAL_RULES: Record<string, string> = {
-  'drop': 'drops', 'puff': 'puffs', 'tab': 'tabs', 'capsule': 'capsules',
-  'hit': 'hits', 'line': 'lines', 'drink': 'drinks', 'shot': 'shots',
-  'joint': 'joints', 'blunt': 'blunts', 'bowl': 'bowls', 'blinker': 'blinkers',
+  drop: 'drops', puff: 'puffs', tab: 'tabs', capsule: 'capsules',
+  hit: 'hits', line: 'lines', drink: 'drinks', shot: 'shots',
+  joint: 'joints', blunt: 'blunts', bowl: 'bowls', blinker: 'blinkers',
 }
 
 const SINGULAR_RULES: Record<string, string> = Object.fromEntries(
@@ -38,7 +38,7 @@ import { format, addMinutes } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
-  Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers, Clock,
+  Activity, Timer, Loader2, ChevronDown, ChevronUp, Layers, Clock, Sparkles,
 } from 'lucide-react'
 import { categoryColors } from '@/lib/categories'
 import type { SubstanceCategory } from '@/lib/substances/types'
@@ -206,7 +206,7 @@ function PhaseSparkline({
       <path
         d={points.join(' ')}
         fill="none"
-        stroke={isActive ? '#a855f7' : '#71717a'}
+        stroke={isActive ? 'var(--color-accent)' : 'var(--color-neutral-content)'}
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -547,7 +547,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
       <Card className="hidden md:block">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-purple-500" />
+            <Activity className="h-5 w-5 text-accent" />
             Active Timeline
           </CardTitle>
           <CardDescription>No active doses to display</CardDescription>
@@ -569,7 +569,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
       {/* ── Mobile view ── */}
       <div className="md:hidden space-y-3">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-purple-500" />
+          <Activity className="h-4 w-4 text-accent" />
           <h3 className="text-sm font-semibold">Active doses</h3>
         </div>
         {groups.map(g => (
@@ -581,7 +581,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
       <Card className="hidden md:block py-3 gap-2">
         <CardHeader className="pb-1">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-purple-500" />
+            <Activity className="h-5 w-5 text-accent" />
             Active Timeline
           </CardTitle>
           <CardDescription>
@@ -800,7 +800,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                     {/* #3 — Combined intensity display in header */}
                     {allActive && currentCombinedIntensity !== null && (
                       <Badge variant="outline" className="text-xs font-mono">
-                        <Activity className="h-3 w-3 mr-1 text-purple-400" />
+                        <Activity className="h-3 w-3 mr-1 text-accent" />
                         {currentCombinedIntensity}%
                       </Badge>
                     )}
@@ -884,7 +884,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                           key={`${rg.route}-${doseId}`}
                           onClick={() => handleDoseChipClick(group.key, doseId)}
                           className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${isIsolated
-                              ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
+                              ? 'ring-2 ring-accent/50 border-accent/50 bg-accent/10'
                               : isDoseEnded
                                 ? 'border-base-300/50 opacity-50'
                                 : 'border-base-300 hover:border-base-300/80'
@@ -1262,14 +1262,14 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                             y2={PT + GH}
                             stroke="#9ca3af44"
                             strokeWidth="1"
-                            strokeDasharray="4,4"
+                            strokeDasharray="3,3"
                           />
                           <circle
                             cx={hx}
                             cy={hy}
                             r="5"
                             fill="#b0b0c0"
-                            stroke="#a855f7"
+                            stroke={markerHex[tooltip.phase as keyof typeof markerHex] ?? '#a855f7'}
                             strokeWidth="2"
                           />
                         </g>
@@ -1320,7 +1320,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       }}
                     >
                       <div
-                        className="rounded-lg border border-neutral-500/25 bg-black/70 backdrop-blur-xl px-3 py-2.5 shadow-2xl min-w-[200px] max-w-[280px]"
+                        className="rounded-lg border border-base-300 bg-base-100/95 backdrop-blur-sm px-3 py-2.5 shadow-xl min-w-[200px] max-w-[280px]"
                         role="tooltip"
                       >
                         {/* Header: phase name + time + optional NOW badge */}
@@ -1328,7 +1328,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                           <span
                             className="text-xs font-semibold"
                             style={{
-                              color: markerHex[tooltip.phase as keyof typeof markerHex] ?? '#a855f7',
+                              color: markerHex[tooltip.phase as keyof typeof markerHex] ?? 'var(--color-accent)',
                             }}
                           >
                             {formatPhaseName(tooltip.phase)}
@@ -1339,13 +1339,13 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                               const isNearNow = Math.abs(tooltip.progress - nowProgress) < 3
                               if (!isNearNow) return null
                               return (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] font-bold bg-rose-500/30 text-rose-300">
-                                  <span className="w-1 h-1 rounded-full bg-rose-400 animate-pulse" />
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] font-bold bg-warning/20 text-warning-content">
+                                  <span className="w-1 h-1 rounded-full bg-warning animate-pulse" />
                                   NOW
                                 </span>
                               )
                             })()}
-                            <span className="text-[10px] text-neutral-300/70">
+                            <span className="text-[10px] text-neutral-content/70">
                               {format(tooltip.absoluteTime, 'h:mm a')}
                             </span>
                           </div>
@@ -1353,16 +1353,16 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
                         {/* #4 — Combined intensity bar (highlighted) */}
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-[10px] font-semibold text-neutral-300/60 w-20 shrink-0">
+                          <span className="text-[10px] font-semibold text-neutral-content/60 w-20 shrink-0">
                             Combined
                           </span>
-                          <div className="flex-1 h-2 bg-neutral-500/15 rounded-full overflow-hidden">
+                          <div className="flex-1 h-2 bg-base-200/50 rounded-full overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all"
+                              className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all"
                               style={{ width: `${Math.round(tooltip.intensity)}%` }}
                             />
                           </div>
-                          <span className="text-xs font-bold w-10 text-right text-purple-300">
+                          <span className="text-xs font-bold w-10 text-right text-primary">
                             {Math.round(tooltip.intensity)}%
                           </span>
                         </div>
@@ -1374,10 +1374,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                               const palette = ROUTE_PALETTE[ri.paletteIndex % ROUTE_PALETTE.length]
                               return (
                                 <div key={`${ri.route}-${idx}`} className="flex items-center gap-2">
-                                  <span className="text-[10px] font-medium text-neutral-300/60 w-20 shrink-0 truncate capitalize">
+                                  <span className="text-[10px] font-medium text-neutral-content/60 w-20 shrink-0 truncate capitalize">
                                     {ri.route}
                                   </span>
-                                  <div className="flex-1 h-1.5 bg-neutral-500/15 rounded-full overflow-hidden">
+                                  <div className="flex-1 h-1.5 bg-base-200/50 rounded-full overflow-hidden">
                                     <div
                                       className="h-full rounded-full transition-all"
                                       style={{
@@ -1386,7 +1386,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                       }}
                                     />
                                   </div>
-                                  <span className="text-[10px] w-10 text-right text-neutral-300/80">
+                                  <span className="text-[10px] w-10 text-right text-neutral-content/80">
                                     {Math.round(ri.intensity)}%
                                   </span>
                                 </div>
@@ -1396,21 +1396,21 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                         )}
 
                         {/* Bottom: intensity + time-in summary */}
-                        <div className="mt-2 pt-1.5 border-t border-neutral-500/20 flex items-baseline gap-2">
-                          <span className="text-base font-bold text-neutral-200">
+                        <div className="mt-2 pt-1.5 border-t border-base-300/50 flex items-baseline gap-2">
+                          <span className="text-base font-bold text-base-content">
                             {Math.round(tooltip.intensity)}%
                           </span>
-                          <span className="text-[10px] text-neutral-300/60">
+                          <span className="text-[10px] text-neutral-content/60">
                             intensity · {tooltip.phaseTime} in
                           </span>
                         </div>
 
-                        {/* Minutes remaining until phase change */}
+                        {/* Minutes until phase change */}
                         {tooltip.minutesUntilPhaseChange > 0 && (
                           <div className="mt-1 flex items-center gap-1.5">
-                            <Timer className="h-3 w-3 text-neutral-300/50" />
-                            <span className="text-[10px] text-neutral-300/70">
-                              <span className="font-medium text-neutral-300">{formatMinutes(tooltip.minutesUntilPhaseChange)}</span> until {(() => {
+                            <Timer className="h-3 w-3 text-neutral-content/50" />
+                            <span className="text-[10px] text-neutral-content/70">
+                              <span className="font-medium text-neutral-content">{formatMinutes(tooltip.minutesUntilPhaseChange)}</span> until {(() => {
                                 const phaseOrder: PhaseName[] = ['onset', 'comeup', 'peak', 'offset']
                                 const idx = phaseOrder.indexOf(tooltip.phase)
                                 const nextPhase = idx < phaseOrder.length - 1 ? phaseOrder[idx + 1] : null
@@ -1450,7 +1450,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
                 {/* #6 — Enhanced expanded phase details */}
                 {isExpanded && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-3 space-y-3 pt-3 border-t border-base-300/50">
                     {visibleRoutes.map(rg => {
                       const palette = ROUTE_PALETTE[rg.paletteIndex % ROUTE_PALETTE.length]
                       return (
@@ -1493,12 +1493,12 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                             const afterglowDuration = d.timings.afterglowDuration ?? (d.timings.afterglowEnd > d.timings.offsetEnd ? d.timings.afterglowEnd - d.timings.offsetEnd : 0)
                             const hasAfterglow = afterglowDuration > 0
 
-                            const phases: { key: string; end: number }[] = [
+                            const phases = [
                               { key: 'onset', end: d.timings.onsetEnd },
                               { key: 'comeup', end: d.timings.comeupEnd },
                               { key: 'peak', end: d.timings.peakEnd },
                               { key: 'offset', end: d.timings.offsetEnd },
-                            ]
+                            ] as const
 
                             const phaseOrder = ['onset', 'comeup', 'peak', 'offset']
 
@@ -1518,8 +1518,9 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                   </span>
                                   {/* Afterglow badge */}
                                   {hasAfterglow && (
-                                    <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                                      ✨ {formatMinutes(afterglowDuration)} afterglow
+                                    <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] bg-warning/20 text-warning-content">
+                                      <Sparkles className="h-2.5 w-2.5" />
+                                      {formatMinutes(afterglowDuration)} afterglow
                                     </span>
                                   )}
                                 </div>
@@ -1542,7 +1543,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                     <div
                                       key={p.key}
                                       className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive
-                                          ? 'ring-1 ring-purple-500/30 bg-purple-500/5'
+                                          ? 'ring-1 ring-accent/30 bg-accent/5'
                                           : isPast
                                             ? 'opacity-50'
                                             : 'opacity-30'
@@ -1594,7 +1595,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
 
                                       {/* Pulsing dot for current phase (#6 highlight) */}
                                       {isActive && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                                       )}
                                     </div>
                                   )

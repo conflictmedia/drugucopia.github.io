@@ -45,13 +45,13 @@ export function ActiveReminders() {
   if (activeReminders.length === 0) return null
 
   return (
-    <Card className="py-3 gap-2">
+    <Card variant="default" className="py-3 gap-2">
       <CardHeader className="pb-1">
         <CardTitle className="text-lg flex items-center gap-2">
-          <BellRing className="h-5 w-5 text-amber-500" />
+          <BellRing className="h-5 w-5 text-warning" />
           Dose Reminders
           {fired.length > 0 && (
-            <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">
+            <Badge variant="warning" className="text-xs">
               {fired.length} due
             </Badge>
           )}
@@ -72,12 +72,12 @@ export function ActiveReminders() {
                 initial={{ opacity: 0, scale: 0.95, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3"
+                className="rounded-lg border border-warning/40 bg-warning/10 p-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <AlarmClock className="h-4 w-4 text-amber-500 shrink-0" />
+                      <AlarmClock className="h-4 w-4 text-warning shrink-0" />
                       <span className="font-medium text-sm">{r.substanceName}</span>
                     </div>
                     <p className="text-xs text-neutral-content mt-1">
@@ -150,14 +150,14 @@ export function ActiveReminders() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <Clock
-                      className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-amber-500' : 'text-blue-500'}`}
+                      className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-warning' : 'text-info'}`}
                     />
                     <span className="font-medium text-sm truncate">
                       {r.substanceName}
                     </span>
                   </div>
                   <span
-                    className={`text-sm font-mono tabular-nums shrink-0 ${isUrgent ? 'text-amber-500 font-bold' : 'text-neutral-content'}`}
+                    className={`text-sm font-mono tabular-nums shrink-0 ${isUrgent ? 'text-warning font-bold' : 'text-neutral-content'}`}
                   >
                     {formatRemainingTime(remaining)}
                   </span>
@@ -165,7 +165,7 @@ export function ActiveReminders() {
                 {/* Progress bar */}
                 <div className="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? 'bg-warning' : 'bg-info'}`}
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -202,22 +202,19 @@ export function ActiveReminders() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3"
+                className="rounded-lg border border-accent/30 bg-accent/5 p-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Coffee className="h-4 w-4 text-purple-500 shrink-0" />
+                    <Coffee className="h-4 w-4 text-accent shrink-0" />
                     <span className="font-medium text-sm truncate">
                       {r.substanceName}
                     </span>
-                    <Badge
-                      variant="outline"
-                      className="text-xs border-purple-500/30 text-purple-400"
-                    >
+                    <Badge variant="accent" className="text-xs">
                       Snoozed
                     </Badge>
                   </div>
-                  <span className="text-sm font-mono tabular-nums text-purple-400 shrink-0">
+                  <span className="text-sm font-mono tabular-nums text-accent shrink-0">
                     {formatRemainingTime(remaining)}
                   </span>
                 </div>
@@ -284,10 +281,10 @@ export function MobileActiveReminders() {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <BellRing className="h-4 w-4 text-amber-500" />
+        <BellRing className="h-4 w-4 text-warning" />
         <h3 className="text-sm font-semibold">Reminders</h3>
         {fired.length > 0 && (
-          <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-500">
+          <Badge variant="warning" className="text-xs">
             {fired.length} due
           </Badge>
         )}
@@ -298,11 +295,11 @@ export function MobileActiveReminders() {
         {fired.map((r) => (
           <div
             key={r.id}
-            className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3"
+            className="rounded-lg border border-warning/40 bg-warning/10 p-3"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <AlarmClock className="h-4 w-4 text-amber-500 shrink-0" />
+                <AlarmClock className="h-4 w-4 text-warning shrink-0" />
                 <span className="font-medium text-sm truncate">{r.substanceName}</span>
               </div>
               <Button
@@ -360,17 +357,17 @@ export function MobileActiveReminders() {
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Clock className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-amber-500' : 'text-blue-500'}`} />
+                  <Clock className={`h-4 w-4 shrink-0 ${isUrgent ? 'text-warning' : 'text-info'}`} />
                   <span className="font-medium text-sm truncate">{r.substanceName}</span>
                 </div>
-                <span className={`text-sm font-mono tabular-nums shrink-0 ${isUrgent ? 'text-amber-500 font-bold' : 'text-neutral-content'}`}>
+                <span className={`text-sm font-mono tabular-nums shrink-0 ${isUrgent ? 'text-warning font-bold' : 'text-neutral-content'}`}>
                   {formatRemainingTime(remaining)}
                 </span>
               </div>
               {/* Progress bar */}
               <div className="mt-2 h-1.5 rounded-full bg-base-200 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? 'bg-amber-500' : 'bg-blue-500'}`}
+                  className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? 'bg-warning' : 'bg-info'}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -404,20 +401,17 @@ export function MobileActiveReminders() {
           return (
             <div
               key={r.id}
-              className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3"
+              className="rounded-lg border border-accent/30 bg-accent/5 p-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Coffee className="h-4 w-4 text-purple-500 shrink-0" />
+                  <Coffee className="h-4 w-4 text-accent shrink-0" />
                   <span className="font-medium text-sm truncate">{r.substanceName}</span>
-                  <Badge
-                    variant="outline"
-                    className="text-xs border-purple-500/30 text-purple-400"
-                  >
+                  <Badge variant="accent" className="text-xs">
                     Snoozed
                   </Badge>
                 </div>
-                <span className="text-sm font-mono tabular-nums text-purple-400 shrink-0">
+                <span className="text-sm font-mono tabular-nums text-accent shrink-0">
                   {formatRemainingTime(remaining)}
                 </span>
               </div>

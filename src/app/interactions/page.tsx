@@ -24,6 +24,9 @@ import {
   toMedicationSelectorId,
   getMedicationBySelectorId,
 } from '@/store/medication-store'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 // ─── MAIN PAGE ───────────────────────────────────────────────────────────────
 
@@ -158,9 +161,9 @@ function InteractionsPageInner() {
         {/* Hero */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
-              <Shuffle className="h-8 w-8 text-primary" />
-            </div>
+            <Card variant="ghost" className="p-3">
+              <Shuffle className="h-8 w-8 text-primary mx-auto" />
+            </Card>
             <div>
               <h2 className="text-3xl font-bold tracking-tight gradient-text">Interaction Checker</h2>
               <p className="text-neutral-content mt-1">
@@ -178,7 +181,7 @@ function InteractionsPageInner() {
         <div className="grid grid-cols-12 gap-6">
           {/* Left: Selector */}
           <div className="col-span-4">
-            <div className="sticky top-20 card card-transparent p-4">
+            <Card variant="ghost" className="sticky top-20 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="h-4 w-4 text-primary" />
                 <h3 className="font-semibold text-base-content">Substances</h3>
@@ -195,28 +198,29 @@ function InteractionsPageInner() {
                     From your medication profile
                   </p>
                   {selectedMedications.map(({ id, med }) => (
-                    <div
+                    <Badge
                       key={id}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-info/10 border border-info/30 text-xs"
+                      variant="info"
+                      className="gap-1.5 px-2 py-1 text-xs"
                     >
-                      <Pill className="w-3 h-3 text-info shrink-0" />
+                      <Pill className="w-3 h-3 shrink-0" />
                       <span className="truncate flex-1 font-medium">
                         {med.name}
                         {med.dosage && <span className="opacity-70"> · {med.dosage}</span>}
                       </span>
                       {med.medicationType && (
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-info/20 text-info shrink-0">
+                        <Badge variant="info" size="xs" className="shrink-0">
                           {med.medicationType}
-                        </span>
+                        </Badge>
                       )}
                       <button
                         onClick={() => removeMedication(id)}
                         aria-label={`Remove ${med.name}`}
-                        className="p-0.5 rounded hover:bg-info/20"
+                        className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
-                    </div>
+                    </Badge>
                   ))}
                 </div>
               )}
@@ -241,18 +245,16 @@ function InteractionsPageInner() {
                       const selId = toMedicationSelectorId(m.id)
                       const isSelected = selectedIds.includes(selId)
                       return (
-                        <button
+                        <Button
                           key={m.id}
+                          variant={isSelected ? 'soft' : 'ghost'}
+                          size="sm"
+                          className="gap-1 text-xs border"
                           onClick={() =>
                             isSelected
                               ? removeMedication(selId)
                               : handleSelectionChange([...selectedIds, selId])
                           }
-                          className={`btn btn-sm gap-1 text-xs border ${
-                            isSelected
-                              ? 'btn-info border-info/40'
-                              : 'btn-ghost border-white/10 hover:border-info/30'
-                          }`}
                           title={m.dosage ? `${m.name} · ${m.dosage}` : m.name}
                         >
                           <Pill className="h-3 w-3" />
@@ -260,17 +262,19 @@ function InteractionsPageInner() {
                           {m.medicationType && (
                             <span className="text-[10px] opacity-70">({m.medicationType})</span>
                           )}
-                        </button>
+                        </Button>
                       )
                     })}
                     {activeMedications.length > 1 && (
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-xs border border-primary/30 text-primary hover:bg-primary/10"
                         onClick={addAllMedications}
-                        className="btn btn-sm btn-ghost border border-primary/30 gap-1 text-xs text-primary hover:bg-primary/10"
                       >
                         <Zap className="h-3 w-3" />
                         Add all
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -307,7 +311,7 @@ function InteractionsPageInner() {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* Right: Results */}
@@ -325,9 +329,9 @@ function InteractionsPageInner() {
         {/* Hero */}
         <div className="px-4 pt-4 pb-3 border-b border-white/8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10">
-              <Shuffle className="h-6 w-6 text-primary" />
-            </div>
+            <Card variant="ghost" className="p-2.5">
+              <Shuffle className="h-6 w-6 text-primary mx-auto" />
+            </Card>
             <div>
               <h2 className="text-xl font-bold gradient-text">Interaction Checker</h2>
               <p className="text-xs text-neutral-content mt-0.5">
@@ -351,25 +355,26 @@ function InteractionsPageInner() {
                 From your medication profile
               </p>
               {selectedMedications.map(({ id, med }) => (
-                <div
+                <Badge
                   key={id}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-info/10 border border-info/30 text-xs"
+                  variant="info"
+                  className="gap-1.5 px-2 py-1 text-xs"
                 >
-                  <Pill className="w-3 h-3 text-info shrink-0" />
+                  <Pill className="w-3 h-3 shrink-0" />
                   <span className="truncate flex-1 font-medium">{med.name}</span>
                   {med.medicationType && (
-                    <span className="text-[10px] px-1 py-0.5 rounded bg-info/20 text-info shrink-0">
+                    <Badge variant="info" size="xs" className="shrink-0">
                       {med.medicationType}
-                    </span>
+                    </Badge>
                   )}
                   <button
                     onClick={() => removeMedication(id)}
                     aria-label={`Remove ${med.name}`}
-                    className="p-0.5 rounded hover:bg-info/20"
+                    className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
-                </div>
+                </Badge>
               ))}
             </div>
           )}
@@ -391,33 +396,33 @@ function InteractionsPageInner() {
                   const selId = toMedicationSelectorId(m.id)
                   const isSelected = selectedIds.includes(selId)
                   return (
-                    <button
+                    <Button
                       key={m.id}
+                      variant={isSelected ? 'soft' : 'ghost'}
+                      size="sm"
+                      className="gap-1 text-xs border"
                       onClick={() =>
                         isSelected
                           ? removeMedication(selId)
                           : handleSelectionChange([...selectedIds, selId])
                       }
-                      className={`btn btn-sm gap-1 text-xs border ${
-                        isSelected
-                          ? 'btn-info border-info/40'
-                          : 'btn-ghost border-white/10 hover:border-info/30'
-                      }`}
                       title={m.dosage ? `${m.name} · ${m.dosage}` : m.name}
                     >
                       <Pill className="h-3 w-3" />
                       {m.name}
-                    </button>
+                    </Button>
                   )
                 })}
                 {activeMedications.length > 1 && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1 text-xs border border-primary/30 text-primary hover:bg-primary/10"
                     onClick={addAllMedications}
-                    className="btn btn-sm btn-ghost border border-primary/30 gap-1 text-xs text-primary hover:bg-primary/10"
                   >
                     <Zap className="h-3 w-3" />
                     Add all
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -470,12 +475,14 @@ function QuickCombo({
   onClick: (ids: string[]) => void
 }) {
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
+      className="gap-1 text-xs border border-base-300 hover:border-primary/30 text-neutral-content hover:text-base-content"
       onClick={() => onClick(ids)}
-      className="btn btn-sm btn-ghost border border-white/10 hover:border-primary/30 gap-1 text-xs text-neutral-content hover:text-base-content card-lift"
     >
       <Zap className="h-3 w-3" />
       {label}
-    </button>
+    </Button>
   )
 }
