@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.5] - 2026-07-14
+
+### Fixed
+- No more flicker when browsing substance pages from Library
+
 ## [0.3.4] - 2026-07-14
 
 ### Added
