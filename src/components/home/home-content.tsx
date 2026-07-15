@@ -65,18 +65,29 @@ export function HomeContent() {
     }
   }, [searchParams, selectedSubstance])
 
+  // Use history.pushState instead of router.push for same-page URL updates
+  // to avoid triggering Next.js client-side navigation and Suspense fallback flicker
+  const pushUrl = useCallback(
+    (url: string) => {
+      window.history.pushState(null, '', url)
+    },
+    [],
+  )
+
   const handleBackFromDetail = useCallback(() => {
-    router.push(pathname)
-  }, [router, pathname])
+    pushUrl(pathname)
+    setSelectedSubstance(null)
+    lastProcessedSubstanceRef.current = null
+  }, [pushUrl, pathname])
 
   const handleCategoryClickFromDetail = useCallback(
     (category: SubstanceCategory) => {
       setSelectedSubstance(null)
       lastProcessedSubstanceRef.current = null
       setSelectedCategory(category)
-      router.push(pathname)
+      pushUrl(pathname)
     },
-    [router, pathname],
+    [pushUrl, pathname],
   )
 
   const [visibleCount, setVisibleCount] = useState(() => {
@@ -112,17 +123,17 @@ export function HomeContent() {
     (substance: Substance) => {
       setSelectedSubstance(substance)
       lastProcessedSubstanceRef.current = substance.id
-      router.push(`${pathname}?substance=${substance.id}`)
+      pushUrl(`${pathname}?substance=${substance.id}`)
     },
-    [router, pathname],
+    [pushUrl, pathname],
   )
 
   const handleCategoryChange = useCallback(
     (cat: SubstanceCategory | 'all') => {
       setSelectedCategory(cat)
-      if (searchParams.toString()) router.push(pathname)
+      if (searchParams.toString()) pushUrl(pathname)
     },
-    [searchParams, router, pathname],
+    [searchParams, pushUrl, pathname],
   )
 
   useEffect(() => {

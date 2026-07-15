@@ -29,19 +29,6 @@ function formatUnit(unit: string, amount: number): string {
   return unit
 }
 
-function hasIncompletePhases(
-  duration: { onset?: string; comeup?: string; peak?: string; offset?: string; total?: string } | null | undefined,
-): boolean {
-  if (!duration) return false
-  const hasOnset = duration.onset && duration.onset.trim() !== '' && duration.onset !== '—'
-  const hasTotal = duration.total && duration.total.trim() !== '' && duration.total !== '—'
-  const hasComeup = duration.comeup && duration.comeup.trim() !== '' && duration.comeup !== '—'
-  const hasPeak = duration.peak && duration.peak.trim() !== '' && duration.peak !== '—'
-  const hasOffset = duration.offset && duration.offset.trim() !== '' && duration.offset !== '—'
-  if (hasOnset && hasTotal && (!hasComeup || !hasPeak || !hasOffset)) return true
-  return false
-}
-
 /* ================================================================== */
 /*  Imports                                                            */
 /* ================================================================== */
@@ -805,8 +792,8 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       )
                     })()}
 
-                    {/* Estimated duration badge (when phases are incomplete) */}
-                    {hasIncompletePhases(primaryDose.duration) && (
+                    {/* Estimated duration badge (when duration was interpolated from another route) */}
+                    {primaryDose.durationIsEstimated && (
                       <EstimatedDurationBadge />
                     )}
 
