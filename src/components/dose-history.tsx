@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Trash2, Calendar, Clock, Droplets, Activity, Loader2, Download, Upload, Cloud, CloudOff, Lock, CheckCircle2, RotateCcw, Pencil, FileJson, FileText, ChevronDown, AlertTriangle, Plus, Search, X, CalendarDays } from 'lucide-react'
-import Link from 'next/link'
 import { categoryColors, categories } from '@/lib/categories'
 import { substances } from '@/lib/substances/index'
 import { toast } from '@/hooks/use-toast'
@@ -35,8 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import Link from 'next/link'
 
 type ImportResult =
   | { ok: true; doses: DoseLog[] }
@@ -134,6 +132,36 @@ function validateDose(raw: Record<string, unknown>, index: number): DoseLog {
   }
 }
 
+function parseJSON(text: string): ImportResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { ok: false, error: 'File is not valid JSON.' }
+  }
+
+  const rawDoses: unknown[] = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as Record<string, unknown>)?.doses)
+      ? ((parsed as Record<string, unknown>).doses as unknown[])
+      : []
+
+  if (rawDoses.length === 0) {
+    return { ok: false, error: 'No dose entries found in the JSON file.' }
+  }
+
+  const doses: DoseLog[] = []
+  for (let i = 0; i < rawDoses.length; i++) {
+    try {
+      doses.push(validateDose(rawDoses[i] as Record<string, unknown>, i))
+    } catch (err) {
+      return { ok: false, error: (err as Error).message }
+    }
+  }
+
+  return { ok: true, doses }
+}
+
 function parseCSVLine(line: string): string[] {
   const fields: string[] = []
   let current = ''
@@ -217,36 +245,6 @@ function parseCSV(text: string): ImportResult {
 
   if (doses.length === 0) {
     return { ok: false, error: 'No valid dose rows found in the CSV file.' }
-  }
-
-  return { ok: true, doses }
-}
-
-function parseJSON(text: string): ImportResult {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text)
-  } catch {
-    return { ok: false, error: 'File is not valid JSON.' }
-  }
-
-  const rawDoses: unknown[] = Array.isArray(parsed)
-    ? parsed
-    : Array.isArray((parsed as Record<string, unknown>)?.doses)
-      ? ((parsed as Record<string, unknown>).doses as unknown[])
-      : []
-
-  if (rawDoses.length === 0) {
-    return { ok: false, error: 'No dose entries found in the JSON file.' }
-  }
-
-  const doses: DoseLog[] = []
-  for (let i = 0; i < rawDoses.length; i++) {
-    try {
-      doses.push(validateDose(rawDoses[i] as Record<string, unknown>, i))
-    } catch (err) {
-      return { ok: false, error: (err as Error).message }
-    }
   }
 
   return { ok: true, doses }
@@ -935,7 +933,7 @@ export function DoseHistory() {
 
   const getCategoryColor = (category: string) =>
     categoryColors[category as keyof typeof categoryColors] ||
-    'text-neutral-content bg-neutral/10 border-neutral/20'
+    'text-gray-500 bg-gray-500/10 border-gray-500/20'
 
   // A6 — inline notes editing handlers. The inline editor saves on
   // blur, on Cmd/Ctrl+Enter, or on explicit Save click. Escape cancels.
@@ -999,6 +997,7 @@ export function DoseHistory() {
               variant={syncStatus === 'synced' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setShowSyncPanel(!showSyncPanel)}
+              className={syncStatus === 'synced' ? 'bg-green-600 hover:bg-green-700' : ''}
             >
               {syncStatus === 'synced'
                 ? <Cloud className="mr-2 h-4 w-4" />
@@ -1063,10 +1062,11 @@ export function DoseHistory() {
 
             {/* Delete All button */}
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
               onClick={openDeleteAllDialog}
               disabled={doses.length === 0}
+              className="text-error hover:text-error hover:bg-error/10 border-error/30"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete All
@@ -1106,38 +1106,39 @@ export function DoseHistory() {
 
         {/* Sync panel */}
         {showSyncPanel && (
-          <Alert variant="info" className="mx-6 mb-4">
-            <Lock className="h-4 w-4" />
-            <AlertTitle>End-to-End Encrypted Sync</AlertTitle>
-            <AlertDescription>
+          <div className="px-6 pb-4">
+            <div className="bg-base-200 p-4 rounded-lg border">
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="h-4 w-4 text-neutral-content" />
+                <h4 className="text-sm font-semibold">End-to-End Encrypted Sync</h4>
+              </div>
               {syncStatus === 'synced' ? (
-                <>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                      <span className="text-sm font-medium">Connected to Room: {roomId}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => pushToSync()}>Force Sync</Button>
-                      <Button size="sm" variant="ghost" onClick={disconnectSync}>Disconnect</Button>
-                    </div>
+                <div className="flex items-center justify-between bg-green-500/10 text-green-700 dark:text-green-400 p-3 rounded-md border border-green-500/20">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">Connected to Room: {roomId}</span>
                   </div>
-                </>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => pushToSync()}>Force Sync</Button>
+                    <Button size="sm" variant="ghost" onClick={disconnectSync}>Disconnect</Button>
+                  </div>
+                </div>
               ) : (
-                <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} />
-                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input placeholder="Room Name" value={roomId} onChange={(e) => setRoomId(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
+                  <Input type="password" placeholder="Secret Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && roomId && password && syncStatus !== 'connecting') connectToSync() }} className="bg-base-100" />
                   <Button
                     onClick={() => connectToSync()}
                     disabled={syncStatus === 'connecting' || !roomId || !password}
+                    className="shrink-0"
                   >
                     {syncStatus === 'connecting' && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Connect
                   </Button>
                 </div>
               )}
-            </AlertDescription>
-          </Alert>
+            </div>
+          </div>
         )}
 
         <CardContent>
@@ -1280,7 +1281,7 @@ export function DoseHistory() {
                           const knownSubstance = substances.find(s => s.id === dose.substanceId || s.name.toLowerCase() === dose.substanceName.toLowerCase())
 
                           return (
-                            <Card key={dose.id} variant="outline" className="p-3 hover:bg-base-200/50 transition-colors">
+                            <div key={dose.id} className="rounded-lg border p-3 hover:bg-base-200/50 transition-colors">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1323,8 +1324,10 @@ export function DoseHistory() {
                               </div>
 
                               {/* A6 — Inline notes editor.
-                                  Read mode: shows the note text + a small "edit" pencil.
-                                  Edit mode: shows a textarea + Save/Cancel buttons. */}
+                                Read mode: shows the note text + a small "edit" pencil.
+                                Edit mode: shows a textarea + Save/Cancel buttons.
+                                If the dose has no notes, show a subtle "Add note" link
+                                instead so the user knows the field exists. */}
                               {inlineEditingId === dose.id ? (
                                 <div className="mt-3 grid gap-1.5">
                                   <Textarea
@@ -1401,7 +1404,7 @@ export function DoseHistory() {
                                   Add note
                                 </button>
                               )}
-                            </Card>
+                            </div>
                           )
                         })}
                       </div>
@@ -1412,164 +1415,168 @@ export function DoseHistory() {
             </div>
           )}
         </CardContent>
+      </Card>
 
-        {/* Edit modal */}
-        {editingDose && (
-          <EditDoseModal
-            dose={editingDose}
-            open={!!editingDose}
-            onOpenChange={(open) => !open && setEditingDose(null)}
-          />
-        )}
+      {/* Edit modal */}
+      {editingDose && (
+        <EditDoseModal
+          dose={editingDose}
+          open={!!editingDose}
+          onOpenChange={(open) => !open && setEditingDose(null)}
+        />
+      )}
 
-        <Dialog open={!!importPreview} onOpenChange={(open) => !open && setImportPreview(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Import Preview
-              </DialogTitle>
-              <DialogDescription className="truncate">
-                {importPreview?.fileName}
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={!!importPreview} onOpenChange={(open) => !open && setImportPreview(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Import Preview
+            </DialogTitle>
+            <DialogDescription className="truncate">
+              {importPreview?.fileName}
+            </DialogDescription>
+          </DialogHeader>
 
-            {importPreview && (
-              <div className="space-y-4 py-2">
-                {/* Summary counts */}
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <Card variant="flat" className="p-3">
-                    <p className="text-2xl font-bold">{importPreview.doses.length}</p>
-                    <p className="text-xs text-neutral-content mt-1">Total</p>
-                  </Card>
-                  <Card variant="flat" className="p-3 bg-success/10 border-success/20">
-                    <p className="text-2xl font-bold text-success">{importPreview.newCount}</p>
-                    <p className="text-xs text-neutral-content mt-1">New</p>
-                  </Card>
-                  <Card
-                    variant="flat"
-                    className={`p-3 ${importPreview.duplicateCount > 0 ? 'bg-warning/10 border-warning/20' : ''}`}
-                  >
-                    <p
-                      className={`text-2xl font-bold ${importPreview.duplicateCount > 0 ? 'text-warning' : ''}`}
-                    >
-                      {importPreview.duplicateCount}
-                    </p>
-                    <p className="text-xs text-neutral-content mt-1">Duplicates</p>
-                  </Card>
+          {importPreview && (
+            <div className="space-y-4 py-2">
+              {/* Summary counts */}
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="rounded-lg border bg-base-200/40 p-3">
+                  <p className="text-2xl font-bold">{importPreview.doses.length}</p>
+                  <p className="text-xs text-neutral-content mt-1">Total</p>
                 </div>
-
-                {importPreview.duplicateCount > 0 && (
-                  <Alert variant="warning">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      {importPreview.duplicateCount} dose{importPreview.duplicateCount > 1 ? 's' : ''} already exist in your history.
-                      Choose how to handle them below.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-3">
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {importPreview.newCount}
+                  </p>
+                  <p className="text-xs text-neutral-content mt-1">New</p>
+                </div>
+                <div className={`rounded-lg border p-3 ${importPreview.duplicateCount > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-base-200/40'}`}>
+                  <p className={`text-2xl font-bold ${importPreview.duplicateCount > 0 ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                    {importPreview.duplicateCount}
+                  </p>
+                  <p className="text-xs text-neutral-content mt-1">Duplicates</p>
+                </div>
               </div>
-            )}
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
+              {importPreview.duplicateCount > 0 && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    {importPreview.duplicateCount} dose{importPreview.duplicateCount > 1 ? 's' : ''} already exist in your history.
+                    Choose how to handle them below.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="sm:mr-auto"
+              onClick={() => setImportPreview(null)}
+              disabled={isImporting}
+            >
+              Cancel
+            </Button>
+
+            {/* Only show overwrite option when there are actual duplicates */}
+            {(importPreview?.duplicateCount ?? 0) > 0 && (
               <Button
                 variant="outline"
-                className="sm:mr-auto"
-                onClick={() => setImportPreview(null)}
+                onClick={() => confirmImport('overwrite')}
                 disabled={isImporting}
+                className="border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
               >
-                Cancel
-              </Button>
-
-              {/* Only show overwrite option when there are actual duplicates */}
-              {(importPreview?.duplicateCount ?? 0) > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => confirmImport('overwrite')}
-                  disabled={isImporting}
-                  className="border-warning/50 text-warning hover:bg-warning/10"
-                >
-                  {isImporting
-                    ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    : <AlertTriangle className="h-4 w-4 mr-2" />}
-                  Overwrite duplicates
-                </Button>
-              )}
-
-              <Button onClick={() => confirmImport('skip')} disabled={isImporting}>
                 {isImporting
                   ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  : <Upload className="h-4 w-4 mr-2" />}
-                {(importPreview?.duplicateCount ?? 0) > 0 ? 'Import & skip duplicates' : 'Import'}
+                  : <AlertTriangle className="h-4 w-4 mr-2" />}
+                Overwrite duplicates
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            )}
 
-        <Dialog open={showDeleteAllDialog} onOpenChange={(open) => !open && setShowDeleteAllDialog(false)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-error">
-                <AlertTriangle className="h-5 w-5" />
-                Delete All Doses
-              </DialogTitle>
-              <DialogDescription>
-                This action cannot be undone. All {doses.length} dose{doses.length !== 1 ? 's' : ''} will be permanently deleted.
-              </DialogDescription>
-            </DialogHeader>
+            <Button onClick={() => confirmImport('skip')} disabled={isImporting}>
+              {isImporting
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <Upload className="h-4 w-4 mr-2" />}
+              {(importPreview?.duplicateCount ?? 0) > 0 ? 'Import & skip duplicates' : 'Import'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div className="space-y-4 py-2">
-              {/* Warning box */}
-              <Alert variant="error">
-                <AlertTitle>You are about to delete all your dose history</AlertTitle>
-                <AlertDescription>
-                  This will permanently remove {doses.length} dose log{doses.length !== 1 ? 's' : ''} from your history.
-                  Consider exporting your data first if you want to keep a backup.
-                </AlertDescription>
-              </Alert>
+      <Dialog open={showDeleteAllDialog} onOpenChange={(open) => !open && setShowDeleteAllDialog(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-error">
+              <AlertTriangle className="h-5 w-5" />
+              Delete All Doses
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. All {doses.length} dose{doses.length !== 1 ? 's' : ''} will be permanently deleted.
+            </DialogDescription>
+          </DialogHeader>
 
-              {/* Confirmation input */}
-              <div className="space-y-2">
-                <label htmlFor="delete-confirm" className="text-sm font-medium">
-                  Type <span className="font-mono font-bold text-error">DELETE</span> to confirm
-                </label>
-                <Input
-                  id="delete-confirm"
-                  placeholder="DELETE"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  className="font-mono"
-                  autoComplete="off"
-                />
+          <div className="space-y-4 py-2">
+            {/* Warning box */}
+            <div className="rounded-lg border border-error/30 bg-error/10 p-4">
+              <div className="flex gap-3">
+                <Trash2 className="h-5 w-5 text-error shrink-0 mt-0.5" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-error">
+                    You are about to delete all your dose history
+                  </p>
+                  <p className="text-sm text-neutral-content">
+                    This will permanently remove {doses.length} dose log{doses.length !== 1 ? 's' : ''} from your history.
+                    Consider exporting your data first if you want to keep a backup.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <DialogFooter className="flex-col sm:flex-row gap-2">
-              <Button
-                variant="outline"
-                className="sm:mr-auto"
-                onClick={() => setShowDeleteAllDialog(false)}
-                disabled={isDeletingAll}
-              >
-                Cancel
-              </Button>
+            {/* Confirmation input */}
+            <div className="space-y-2">
+              <label htmlFor="delete-confirm" className="text-sm font-medium">
+                Type <span className="font-mono font-bold text-error">DELETE</span> to confirm
+              </label>
+              <Input
+                id="delete-confirm"
+                placeholder="DELETE"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="font-mono"
+                autoComplete="off"
+              />
+            </div>
+          </div>
 
-              <Button
-                variant="destructive"
-                onClick={handleDeleteAll}
-                disabled={isDeletingAll || deleteConfirmText !== 'DELETE'}
-              >
-                {isDeletingAll ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Trash2 className="h-4 w-4 mr-2" />
-                )}
-                Delete All {doses.length} Doses
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </>
-    )
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="sm:mr-auto"
+              onClick={() => setShowDeleteAllDialog(false)}
+              disabled={isDeletingAll}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll || deleteConfirmText !== 'DELETE'}
+            >
+              {isDeletingAll ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete All {doses.length} Doses
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

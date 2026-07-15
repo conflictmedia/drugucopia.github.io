@@ -12,67 +12,56 @@ import { PhaseStatus, PhaseBand } from "./dose-timeline-types";
 /* ================================================================== */
 /*  Phase UI Metadata                                                  */
 /* ================================================================== */
-/*
- * Phase colors use daisyUI semantic tokens so they theme correctly
- * and pass the token audit (no hardcoded Tailwind palette utilities).
- * Mapping:
- *   not_started → neutral
- *   onset       → info (blue)
- *   comeup      → warning (amber)
- *   peak        → accent (purple)
- *   offset      → info (cyan → closest semantic is info)
- *   afterglow   → primary (indigo → primary)
- *   ended       → neutral (gray)
- */
+
 export const phaseColors = {
   not_started: {
-    bg: "bg-neutral",
-    text: "text-neutral-content",
-    fill: "bg-neutral/20",
-    border: "border-neutral/30",
-    bar: "bg-neutral-content",
+    bg: "bg-slate-500",
+    text: "text-slate-400",
+    fill: "bg-slate-500/20",
+    border: "border-slate-500/30",
+    bar: "bg-slate-400",
   },
   onset: {
-    bg: "bg-info",
-    text: "text-info-content",
-    fill: "bg-info/20",
-    border: "border-info/30",
-    bar: "bg-info",
+    bg: "bg-blue-500",
+    text: "text-blue-400",
+    fill: "bg-blue-500/20",
+    border: "border-blue-500/30",
+    bar: "bg-blue-500",
   },
   comeup: {
-    bg: "bg-warning",
-    text: "text-warning-content",
-    fill: "bg-warning/20",
-    border: "border-warning/30",
-    bar: "bg-warning",
+    bg: "bg-amber-500",
+    text: "text-amber-400",
+    fill: "bg-amber-500/20",
+    border: "border-amber-500/30",
+    bar: "bg-amber-500",
   },
   peak: {
-    bg: "bg-accent",
-    text: "text-accent-content",
-    fill: "bg-accent/20",
-    border: "border-accent/30",
-    bar: "bg-accent",
+    bg: "bg-purple-500",
+    text: "text-purple-400",
+    fill: "bg-purple-500/20",
+    border: "border-purple-500/30",
+    bar: "bg-purple-500",
   },
   offset: {
-    bg: "bg-info",
-    text: "text-info-content",
-    fill: "bg-info/20",
-    border: "border-info/30",
-    bar: "bg-info",
+    bg: "bg-cyan-500",
+    text: "text-cyan-400",
+    fill: "bg-cyan-500/20",
+    border: "border-cyan-500/30",
+    bar: "bg-cyan-500",
   },
   afterglow: {
-    bg: "bg-primary",
-    text: "text-primary-content",
-    fill: "bg-primary/20",
-    border: "border-primary/30",
-    bar: "bg-primary-content",
+    bg: "bg-indigo-500",
+    text: "text-indigo-400",
+    fill: "bg-indigo-500/20",
+    border: "border-indigo-500/30",
+    bar: "bg-indigo-400",
   },
   ended: {
-    bg: "bg-neutral",
-    text: "text-neutral-content",
-    fill: "bg-neutral/20",
-    border: "border-neutral/30",
-    bar: "bg-neutral-content",
+    bg: "bg-gray-500",
+    text: "text-gray-400",
+    fill: "bg-gray-500/20",
+    border: "border-gray-500/30",
+    bar: "bg-gray-400",
   },
 } as const;
 

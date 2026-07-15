@@ -3,7 +3,6 @@
 import { Shield } from 'lucide-react'
 import type { SubstanceCategory } from '@/lib/types'
 import type { categories as categoriesType } from '@/lib/categories'
-import { Badge } from '@/components/ui/badge'
 
 interface LibraryHeroProps {
   selectedCategory: SubstanceCategory | 'all'
@@ -37,13 +36,13 @@ export function LibraryHero({ selectedCategory, categories, totalCount }: Librar
 
   return (
     <section className="mb-6">
-      <div className="hero rounded-box border border-base-300 bg-base-100 shadow-sm">
+      <div className="hero rounded-box border border-base-300/70 bg-base-100/70 backdrop-blur-sm shadow-sm">
         <div className="hero-content w-full flex-col items-start gap-4 p-5 md:p-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-2">
-            <Badge variant="outline" className="gap-1 text-xs">
+            <div className="badge badge-outline gap-1 text-xs">
               <Shield className="h-3 w-3" />
               Harm reduction reference
-            </Badge>
+            </div>
             <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{title}</h1>
             <p className="text-sm text-neutral-content leading-relaxed md:text-base">
               {description}
@@ -51,7 +50,7 @@ export function LibraryHero({ selectedCategory, categories, totalCount }: Librar
           </div>
 
           {typeof totalCount === 'number' && (
-            <div className="stats stats-horizontal border border-base-300 bg-base-200 shadow-sm">
+            <div className="stats stats-horizontal border border-base-300/70 bg-base-200/60 shadow-sm">
               <div className="stat">
                 <div className="stat-title text-xs">
                   {activeCategoryInfo ? 'In category' : 'Substances'}

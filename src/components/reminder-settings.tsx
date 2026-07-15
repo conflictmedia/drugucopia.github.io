@@ -21,7 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Bell, BellOff, Plus, Trash2, Pencil, Clock, ShieldCheck, ShieldAlert, Search, X, Volume2, VolumeX, Play } from 'lucide-react'
 import { useReminderStore } from '@/store/reminder-store'
 import { askNotificationPermission } from '@/lib/reminder-engine'
@@ -32,31 +31,19 @@ import { ReminderSchedule } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Select } from '@/components/ui/select'
-import { Fieldset, FieldsetLegend, FieldsetDescription } from '@/components/ui/fieldset'
-import { categories } from '@/lib/categories'
-import type { SubstanceCategory } from '@/lib/substances/types'
 
-// ─── Category color helpers ────────────────────────────────────────────────────
-// Per DESIGN.md §9, category indicators use stable identity colors.
-// These hex values match the Tailwind 500 shades used in the category system.
-
-const CATEGORY_HEX: Record<string, string> = {
-  stimulants: '#f59e0b',      // amber-500
-  depressants: '#6366f1',     // indigo-500
-  hallucinogens: '#a855f7',   // purple-500
-  dissociatives: '#06b6d4',   // cyan-500
-  empathogens: '#ec4899',     // pink-500
-  cannabinoids: '#22c55e',    // green-500
-  opioids: '#ef4444',         // red-500
-  deliriants: '#64748b',      // slate-500
-  nootropics: '#14b8a6',      // teal-500
-  medications: '#3b82f6',     // blue-500
-  other: '#71717a',           // zinc-500
-}
-
-function categoryHex(category: string): string {
-  return CATEGORY_HEX[category] ?? '#71717a'
+// ─── Category dots (matches Header & dose-logger-modal) ─────────────────────
+const CATEGORY_DOTS: Record<string, string> = {
+  stimulants: 'bg-amber-500',
+  depressants: 'bg-indigo-500',
+  hallucinogens: 'bg-purple-500',
+  dissociatives: 'bg-cyan-500',
+  empathogens: 'bg-pink-500',
+  cannabinoids: 'bg-green-500',
+  opioids: 'bg-red-500',
+  deliriants: 'bg-slate-500',
+  nootropics: 'bg-teal-500',
+  other: 'bg-zinc-500',
 }
 
 function highlightMatch(text: string, query: string) {
@@ -247,8 +234,8 @@ function ScheduleEditor({
 
   return (
     <div className="space-y-4 py-2">
-      <Field>
-        <FieldLabel>Substance</FieldLabel>
+      <div className="space-y-2">
+        <Label>Substance</Label>
         <div ref={searchRef} className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-content pointer-events-none" />
           <Input
@@ -308,9 +295,8 @@ function ScheduleEditor({
                         <div
                           className={cn(
                             'w-2 h-2 rounded-full shrink-0',
-                            categoryHex(sub.categories[0]),
+                            CATEGORY_DOTS[sub.categories[0]] || 'bg-zinc-500',
                           )}
-                          style={{ backgroundColor: categoryHex(sub.categories[0]) }}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="truncate">
@@ -349,10 +335,10 @@ function ScheduleEditor({
             )}
           </AnimatePresence>
         </div>
-      </Field>
+      </div>
 
-      <Field>
-        <FieldLabel>Interval between doses</FieldLabel>
+      <div className="space-y-2">
+        <Label>Interval between doses</Label>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <Input
@@ -396,14 +382,14 @@ function ScheduleEditor({
           </div>
         </div>
         {totalMinutes > 0 && (
-          <FieldDescription>
+          <p className="text-xs text-neutral-content">
             Timer will fire every {formatIntervalMinutes(totalMinutes)}
-          </FieldDescription>
+          </p>
         )}
-      </Field>
+      </div>
 
-      <Field>
-        <FieldLabel>Max doses per day</FieldLabel>
+      <div className="space-y-2">
+        <Label>Max doses per day</Label>
         <div className="flex items-center gap-2">
           <Input
             type="number"
@@ -419,22 +405,23 @@ function ScheduleEditor({
             {maxDosesPerDay === 0 ? '(unlimited)' : `dose${maxDosesPerDay !== 1 ? 's' : ''}`}
           </span>
         </div>
-        <FieldDescription>Set to 0 for unlimited reminders per day</FieldDescription>
-      </Field>
+        <p className="text-xs text-neutral-content">
+          Set to 0 for unlimited reminders per day
+        </p>
+      </div>
 
-      <Field>
-        <FieldLabel>
+      <div className="space-y-2">
+        <Label>
           Custom message <span className="text-neutral-content">(optional)</span>
-        </FieldLabel>
+        </Label>
         <Input
           value={customMessage}
           onChange={(e) => setCustomMessage(e.target.value)}
           placeholder={`Time for your next dose of ${substanceName || '...'}`}
         />
-      </Field>
+      </div>
 
-      <Field>
-        <FieldLabel>Enabled</FieldLabel>
+      <div className="flex items-center gap-2">
         <Button
           type="button"
           variant={enabled ? 'default' : 'outline'}
@@ -445,7 +432,7 @@ function ScheduleEditor({
           {enabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
           {enabled ? 'Enabled' : 'Disabled'}
         </Button>
-      </Field>
+      </div>
 
       <DialogFooter>
         <Button variant="outline" onClick={onCancel}>
@@ -533,7 +520,7 @@ export function ReminderSettings() {
     <Card className="py-3 gap-2">
       <CardHeader className="pb-1">
         <CardTitle className="text-lg flex items-center gap-2">
-          <Bell className="h-5 w-5 text-warning" />
+          <Bell className="h-5 w-5 text-amber-500" />
           Reminder Settings
         </CardTitle>
         <CardDescription>
@@ -543,85 +530,97 @@ export function ReminderSettings() {
 
       <CardContent className="space-y-4">
         {/* ── Global settings ── */}
-        <Fieldset>
-          <FieldsetLegend>Global Settings</FieldsetLegend>
-          <div className="space-y-3">
-            {/* Auto-start toggle */}
-            <Field>
-              <FieldLabel>Auto-start reminders</FieldLabel>
-              <FieldDescription>Start a timer automatically when you log a dose</FieldDescription>
-              <Button
-                variant={autoStartEnabled ? 'default' : 'outline'}
-                size="sm"
-                className="gap-1 shrink-0"
-                onClick={() => setAutoStartEnabled(!autoStartEnabled)}
-              >
-                {autoStartEnabled ? (
-                  <Bell className="h-3.5 w-3.5" />
-                ) : (
-                  <BellOff className="h-3.5 w-3.5" />
-                )}
-                {autoStartEnabled ? 'On' : 'Off'}
-              </Button>
-            </Field>
+        <div className="space-y-3">
+          {/* Auto-start toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Auto-start reminders</p>
+              <p className="text-xs text-neutral-content">
+                Start a timer automatically when you log a dose
+              </p>
+            </div>
+            <Button
+              variant={autoStartEnabled ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1 shrink-0"
+              onClick={() => setAutoStartEnabled(!autoStartEnabled)}
+            >
+              {autoStartEnabled ? (
+                <Bell className="h-3.5 w-3.5" />
+              ) : (
+                <BellOff className="h-3.5 w-3.5" />
+              )}
+              {autoStartEnabled ? 'On' : 'Off'}
+            </Button>
+          </div>
 
-            {/* Notification permission */}
-            <Field>
-              <FieldLabel>Browser notifications</FieldLabel>
-              <FieldDescription>
+          {/* Notification permission */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Browser notifications</p>
+              <p className="text-xs text-neutral-content">
                 {notificationPermission === 'granted'
                   ? 'Notifications are enabled'
                   : 'Required for reminders when the tab is in the background'}
-              </FieldDescription>
-              {notificationPermission === 'granted' ? (
-                <Badge variant="success" className="gap-1">
-                  <ShieldCheck className="h-3 w-3" />
-                  Enabled
-                </Badge>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 shrink-0"
-                  onClick={handleRequestPermission}
-                >
-                  <ShieldAlert className="h-3.5 w-3.5" />
-                  Enable
-                </Button>
-              )}
-            </Field>
-
-            {/* Notification sound toggle */}
-            <Field>
-              <FieldLabel>Notification sound</FieldLabel>
-              <FieldDescription>Play a chime when a reminder fires</FieldDescription>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={previewReminderSound}
-                  title="Preview sound"
-                >
-                  <Play className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={soundEnabled ? 'default' : 'outline'}
-                  size="sm"
-                  className="gap-1"
-                  onClick={() => setSoundEnabled(!soundEnabled)}
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <VolumeX className="h-3.5 w-3.5" />
-                  )}
-                  {soundEnabled ? 'On' : 'Off'}
-                </Button>
-              </div>
-            </Field>
+              </p>
+            </div>
+            {notificationPermission === 'granted' ? (
+              <Badge
+                variant="outline"
+                className="border-green-500/30 text-green-500 gap-1"
+              >
+                <ShieldCheck className="h-3 w-3" />
+                Enabled
+              </Badge>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 shrink-0"
+                onClick={handleRequestPermission}
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Enable
+              </Button>
+            )}
           </div>
-        </Fieldset>
+
+          {/* Notification sound toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Notification sound</p>
+              <p className="text-xs text-neutral-content">
+                Play a chime when a reminder fires
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={previewReminderSound}
+                title="Preview sound"
+              >
+                <Play className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant={soundEnabled ? 'default' : 'outline'}
+                size="sm"
+                className="gap-1"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-3.5 w-3.5" />
+                ) : (
+                  <VolumeX className="h-3.5 w-3.5" />
+                )}
+                {soundEnabled ? 'On' : 'Off'}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="divider my-1" />
 
         {/* ── Existing schedules ── */}
         {schedules.length > 0 && (
@@ -660,11 +659,10 @@ export function ReminderSettings() {
               {schedules.map((s) => (
                 <div
                   key={s.id}
-                  className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${
-                    s.enabled
+                  className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${s.enabled
                       ? 'border-base-300'
                       : 'border-base-300/50 opacity-60'
-                  }`}
+                    }`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -673,7 +671,10 @@ export function ReminderSettings() {
                         {s.substanceName}
                       </span>
                       {!s.enabled && (
-                        <Badge variant="outline" className="text-[10px]">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-neutral-content/30 text-neutral-content"
+                        >
                           Disabled
                         </Badge>
                       )}

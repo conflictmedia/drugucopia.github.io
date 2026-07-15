@@ -80,8 +80,9 @@ import type {
 
 // ─── Category → hex color map ──────────────────────────────────────────────
 // The Tailwind `categoryColors` from `@/lib/categories` returns class strings
-// with hardcoded color utilities that can't be used as inline style values.
-// This hex map provides actual color values for header dots and toggle chips.
+// (e.g. "text-amber-500 bg-amber-500/10 border-amber-500/20") which can't be
+// used as inline `style={{ backgroundColor }}` values. This hex map is used
+// wherever we need a real color value (header dots, substance toggle chips).
 
 const CATEGORY_HEX_COLORS: Record<string, string> = {
   stimulants: '#f59e0b', // amber-500
@@ -521,7 +522,7 @@ export function IntensityTimelineChart() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-accent" />
+            <Activity className="h-5 w-5 text-purple-500" />
             Active Timeline
           </CardTitle>
           <CardDescription>No active doses to display</CardDescription>
@@ -823,14 +824,14 @@ function GroupCard({
             )}
             {allActive && currentCombinedIntensity !== null && (
               <Badge variant="outline" className="text-xs font-mono">
-                <Activity className="h-3 w-3 mr-1 text-accent" />
+                <Activity className="h-3 w-3 mr-1 text-purple-400" />
                 {currentCombinedIntensity}%
               </Badge>
             )}
             {/* 2.3: Cumulative dose counter for today — e.g. "120mg today · 3" */}
             {todayCumulative && (
               <Badge variant="outline" className="text-[10px] font-mono">
-                <Pill className="h-3 w-3 mr-0.5 text-primary" />
+                <Pill className="h-3 w-3 mr-0.5 text-blue-400" />
                 {todayCumulative.totalAmount !== null
                   ? `${todayCumulative.totalAmount}${todayCumulative.unit} · ${todayCumulative.count} today`
                   : `${todayCumulative.count} today`}
@@ -897,11 +898,11 @@ function GroupCard({
                   key={`${rg.route}-${doseId}`}
                   onClick={() => onDoseClick(doseId)}
                   className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all overflow-hidden ${isIsolated
-                    ? 'ring-2 ring-accent/50 border-accent/50 bg-accent/10'
+                    ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
                     : isDoseEnded
                       ? 'border-base-300/50 opacity-50'
                       : 'border-base-300 hover:border-base-300/80'
-                  }`}
+                    }`}
                   style={{ color: palette.stroke }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: palette.fill, opacity: isDoseActive ? 1 : 0.4 }} />
@@ -1173,12 +1174,16 @@ function GroupCard({
                     label={{ value: 'Intensity', angle: -90, position: 'insideLeft', fontSize: 9, fill: 'currentColor', opacity: 0.6, dy: 20 }}
                   />
                   <Tooltip
-                    content={<TooltipContent series={config.series} windowStartMs={config.windowStartMs} nowTs={nowTs} />}
+                    content={<ChartTooltip series={config.series} windowStartMs={config.windowStartMs} nowTs={nowTs} />}
                     cursor={{ stroke: 'rgba(255,255,255,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }}
                   />
 
                   {/* Now indicator — position comes from nowTs prop, NOT from
-                  config (which is memoized and stable across ticks). */}
+                  config (which is memoized and stable across ticks).
+                  The pulsing dot is rendered as a custom SVG label inside
+                  the ReferenceLine so it's in the same coordinate space as
+                  the dashed line (guarantees perfect horizontal alignment).
+                  Uses SVG <animate> instead of CSS (4.2). */}
                   {nowTs >= config.windowStartMs && nowTs <= config.windowEndMs && (
                     <ReferenceLine
                       x={nowTs}
@@ -1354,7 +1359,7 @@ function GroupCard({
                           </span>
                           {/* 1.5: Afterglow badge */}
                           {afterglowMins > 0 && (
-                            <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] bg-warning/20 text-warning-content">
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0 rounded text-[9px] bg-amber-500/20 text-amber-600 dark:text-amber-400">
                               <Sparkles className="h-2.5 w-2.5" />
                               {formatMinutes(afterglowMins)} afterglow
                             </span>
@@ -1374,7 +1379,7 @@ function GroupCard({
                           return (
                             <div
                               key={p.key}
-                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive ? 'ring-1 ring-accent/30 bg-accent/5' : isPast ? 'opacity-50' : 'opacity-30'
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive ? 'ring-1 ring-purple-500/30 bg-purple-500/5' : isPast ? 'opacity-50' : 'opacity-30'
                                 }`}
                             >
                               <PIcon className={`h-3.5 w-3.5 shrink-0 ${pc.text}`} />
@@ -1386,7 +1391,7 @@ function GroupCard({
                                 <div className="h-full rounded-full transition-all" style={{ width: `${Math.round(phasePeakIntensity)}%`, backgroundColor: palette.fill, opacity: isActive ? 0.8 : 0.3 }} />
                               </div>
                               <span className="text-[10px] font-mono text-neutral-content w-8 text-right">{Math.round(phasePeakIntensity)}%</span>
-                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />}
+                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />}
                             </div>
                           )
                         })}
@@ -1485,67 +1490,39 @@ function MobilePhaseStrip({ group, nowTs, windowStartMs, windowEndMs }: MobilePh
           className="absolute top-0 bottom-0 w-0.5 bg-white shadow-sm pointer-events-none"
           style={{ left: `${Math.min(100, Math.max(0, nowPct))}%`, transform: 'translateX(-50%)' }}
         >
-          <div
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white shadow"
-          />
+          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white shadow" />
         </div>
       </div>
     </div>
   )
 }
 
-// ─── ChartTooltip ──────────────────────────────────────────────────────────
+// ─── Custom Tooltip ────────────────────────────────────────────────────────
 
 interface ChartTooltipProps {
-  series: DoseSeries[]
-  windowStartMs: number
-  nowTs: number
-}
-
-/**
- * Custom Recharts Tooltip content.
- * Shows: phase name, absolute time, combined intensity, per-dose breakdown,
- * minutes-until-phase-change.
- */
-function ChartTooltip({ series, windowStartMs, nowTs }: ChartTooltipProps) {
-  // This component receives the active tooltip payload from Recharts.
-  // We compute the tooltip content based on the payload's `t` (timestamp) value.
-  // Since Recharts doesn't give us direct access to the payload in this pattern,
-  // we use a different approach: the tooltip is rendered by Recharts with
-  // the payload as `this.props`. But we can't easily access that here.
-  //
-  // Instead, we render a wrapper that uses the Tooltip's built-in formatter
-  // and we compute the detailed content in the parent GroupCard.
-  //
-  // For now, return null and let the parent handle tooltip via a custom
-  // implementation. Actually, Recharts Tooltip's `content` prop receives
-  // the active payload. Let me use that pattern.
-
-  return null // The actual tooltip is rendered via the Tooltip's content render prop in GroupCard
-}
-
-/** Actual tooltip content component used by Recharts */
-interface TooltipContentProps {
-  series: DoseSeries[]
-  windowStartMs: number
-  nowTs: number
   active?: boolean
-  payload?: Array<{ dataKey: string; value: number; color: string; payload: ChartDataPoint }>
-  label?: string | number
+  payload?: Array<{ dataKey: string; value: number; color: string }>
+  label?: number
+  series: DoseSeries[]
+  windowStartMs: number
+  /** Current time in ms — used for the "NOW" badge (1.3) when hovering
+   *  within ~3% of the current time. */
+  nowTs: number
 }
 
-function TooltipContent({ series, windowStartMs, nowTs, active, payload, label }: TooltipContentProps) {
-  if (!active || !payload || !payload.length || label === undefined) return null
+function ChartTooltip({ active, payload, label, series, windowStartMs, nowTs }: ChartTooltipProps) {
+  if (!active || !payload || !label) return null
+  const t = label
 
-  // The label is the timestamp (t value from the data point)
-  const t = typeof label === 'string' ? parseInt(label, 10) : label
-  if (isNaN(t)) return null
+  // 1.3: "NOW" badge — shown when the hovered timestamp is within 3 minutes
+  // of the current time. Uses absolute time diff (not percentage) so it works
+  // correctly regardless of the chart window width.
+  const isNearNow = Math.abs(t - nowTs) < 3 * 60 * 1000
 
-  // Find active doses at this timestamp
-  const activeDoses: Array<{ route: string; intensity: number; phase: string; color: string; minutesUntilPhaseChange: number }> = []
-  let maxIntensity = 0
-  let peakPhase = 'onset'
-
+  // Find active doses at this timestamp.
+  // p.value is the dose-height-scaled intensity from the chart data (Fix 1.2
+  // — already applied during sampling in buildChartConfig).
+  const activeDoses: Array<{ series: DoseSeries; intensity: number; phase: PhaseName; minutesUntilPhaseChange: number }> = []
   for (const p of payload) {
     if (p.value <= 0) continue
     const s = series.find(s => s.dataKey === p.dataKey)
@@ -1555,45 +1532,52 @@ function TooltipContent({ series, windowStartMs, nowTs, active, payload, label }
     const phase = phaseNameAt(progress, s.dose.timings)
     const pEnd = phaseEnd(phase, s.dose.timings)
     const minutesUntilPhaseChange = Math.max(0, pEnd - elapsedMins)
-    activeDoses.push({ route: s.route.route, intensity: p.value, phase, color: s.palette.stroke, minutesUntilPhaseChange })
-    if (p.value > maxIntensity) {
-      maxIntensity = p.value
-      peakPhase = phase
-    }
+    activeDoses.push({ series: s, intensity: p.value, phase, minutesUntilPhaseChange })
   }
 
   if (activeDoses.length === 0) return null
 
-  // Combined intensity with soft log dampening
+  // Fix 1.1: combined intensity uses soft log-dampening above 100% so
+  // redosing visually stacks (not peak-hold). Can return up to 200.
   const combinedIntensity = combinedIntensityAt(activeDoses.map(d => d.intensity))
-  const combinedDisplay = Math.min(100, Math.round(combinedIntensity))
+  // The peak dose (highest single-dose intensity) drives the phase label
+  // and the "minutes until phase change" display.
+  const maxIntensity = Math.max(...activeDoses.map(d => d.intensity))
+  const peakDose = activeDoses.find(d => d.intensity === maxIntensity)!
 
   // Group by route for per-route breakdown
-  const byRoute = new Map<string, { intensity: number; phase: string; color: string }>()
+  const byRoute = new Map<string, { intensity: number; phase: PhaseName; palette: { stroke: string; fill: string } }>()
   for (const ad of activeDoses) {
-    const existing = byRoute.get(ad.route)
+    const existing = byRoute.get(ad.series.route.route)
     if (!existing || existing.intensity < ad.intensity) {
-      byRoute.set(ad.route, { intensity: ad.intensity, phase: ad.phase, color: ad.color })
+      byRoute.set(ad.series.route.route, {
+        intensity: ad.intensity,
+        phase: ad.phase,
+        palette: ad.series.palette,
+      })
     }
   }
 
-  const absoluteDate = new Date(t)
+  // Display is clamped to 100% — the combinedIntensityAt model can produce
+  // values >100 when doses stack, but we don't surface that to the user to
+  // avoid confusion (the chart curves themselves also cap at 100).
+  const combinedDisplay = Math.min(100, Math.round(combinedIntensity))
 
   return (
     <div className="rounded-lg border border-neutral-500/25 bg-black/80 backdrop-blur-xl px-3 py-2.5 shadow-2xl min-w-[200px] max-w-[280px]" role="tooltip">
-      {/* Header: phase + time + NOW badge */}
+      {/* Header: phase + time + NOW badge (1.3) */}
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold" style={{ color: markerHex[peakPhase as keyof typeof markerHex] ?? 'var(--color-accent)' }}>
-          {formatPhaseName(peakPhase as PhaseName)}
+        <span className="text-xs font-semibold" style={{ color: markerHex[peakDose.phase] ?? '#a855f7' }}>
+          {formatPhaseName(peakDose.phase)}
         </span>
         <div className="flex items-center gap-1.5">
-          {Math.abs(t - nowTs) < 3 * 60 * 1000 && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] font-bold bg-warning/30 text-warning">
-              <span className="w-1 h-1 rounded-full bg-warning animate-pulse" />
+          {isNearNow && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] font-bold bg-rose-500/30 text-rose-300">
+              <span className="w-1 h-1 rounded-full bg-rose-400 animate-pulse" />
               NOW
             </span>
           )}
-          <span className="text-[10px] text-neutral-300/70">{format(absoluteDate, 'h:mm a')}</span>
+          <span className="text-[10px] text-neutral-300/70">{format(new Date(t), 'h:mm a')}</span>
         </div>
       </div>
 
@@ -1601,9 +1585,9 @@ function TooltipContent({ series, windowStartMs, nowTs, active, payload, label }
       <div className="flex items-center gap-2 mb-2">
         <span className="text-[10px] font-semibold text-neutral-300/60 w-20 shrink-0">Combined</span>
         <div className="flex-1 h-2 bg-neutral-500/15 rounded-full overflow-hidden relative">
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${combinedDisplay}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${combinedDisplay}%` }} />
         </div>
-        <span className="text-xs font-bold w-10 text-right text-primary">{combinedDisplay}%</span>
+        <span className="text-xs font-bold w-10 text-right text-purple-300">{combinedDisplay}%</span>
       </div>
 
       {/* Per-route breakdown */}
@@ -1613,7 +1597,7 @@ function TooltipContent({ series, windowStartMs, nowTs, active, payload, label }
             <div key={route} className="flex items-center gap-2">
               <span className="text-[10px] font-medium text-neutral-300/60 w-20 shrink-0 truncate capitalize">{route}</span>
               <div className="flex-1 h-1.5 bg-neutral-500/15 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(info.intensity))}%`, backgroundColor: info.color }} />
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.round(info.intensity))}%`, backgroundColor: info.palette.stroke }} />
               </div>
               <span className="text-[10px] w-10 text-right text-neutral-300/80">{Math.round(info.intensity)}%</span>
             </div>
@@ -1628,14 +1612,14 @@ function TooltipContent({ series, windowStartMs, nowTs, active, payload, label }
       </div>
 
       {/* Minutes until phase change */}
-      {activeDoses.length > 0 && activeDoses[0].minutesUntilPhaseChange > 0 && (
+      {peakDose.minutesUntilPhaseChange > 0 && (
         <div className="mt-1 flex items-center gap-1.5">
           <Timer className="h-3 w-3 text-neutral-300/50" />
           <span className="text-[10px] text-neutral-300/70">
-            <span className="font-medium text-neutral-300">{formatMinutes(activeDoses[0].minutesUntilPhaseChange)}</span> until{' '}
+            <span className="font-medium text-neutral-300">{formatMinutes(peakDose.minutesUntilPhaseChange)}</span> until{' '}
             {(() => {
               const order: PhaseName[] = ['onset', 'comeup', 'peak', 'offset']
-              const idx = order.indexOf(peakPhase as PhaseName)
+              const idx = order.indexOf(peakDose.phase)
               const next = idx < order.length - 1 ? order[idx + 1] : null
               return next ? formatPhaseName(next) : 'end'
             })()}

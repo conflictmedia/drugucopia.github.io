@@ -3,8 +3,6 @@
 import { AlertTriangle, HelpCircle, ShieldAlert, ThumbsDown, ThumbsUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { InteractionResult } from '@/lib/interaction-checker'
-import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 interface InteractionPairCardProps {
   result: InteractionResult
@@ -13,37 +11,41 @@ interface InteractionPairCardProps {
 const severityConfig = {
   dangerous: {
     icon: ShieldAlert,
-    badgeVariant: 'error' as const,
-    iconBgVariant: 'error' as const,
-    borderVariant: 'error' as const,
+    borderColor: 'border-red-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-red-500/10',
+    badgeColor: 'bg-red-500/25 text-red-200 border-red-500/45',
     badgeLabel: 'DANGEROUS',
-    iconColor: 'text-error',
+    iconColor: 'text-red-400',
   },
   unsafe: {
     icon: AlertTriangle,
-    badgeVariant: 'warning' as const,
-    iconBgVariant: 'warning' as const,
-    borderVariant: 'warning' as const,
+    borderColor: 'border-orange-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-orange-500/10',
+    badgeColor: 'bg-orange-500/25 text-orange-200 border-orange-500/45',
     badgeLabel: 'UNSAFE',
-    iconColor: 'text-warning',
+    iconColor: 'text-orange-400',
   },
   caution: {
     icon: HelpCircle,
-    badgeVariant: 'warning' as const,
-    iconBgVariant: 'warning' as const,
-    borderVariant: 'warning' as const,
+    borderColor: 'border-amber-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-amber-500/10',
+    badgeColor: 'bg-amber-500/25 text-amber-200 border-amber-500/45',
     badgeLabel: 'CAUTION',
-    iconColor: 'text-warning',
+    iconColor: 'text-amber-400',
   },
   'low-risk': {
     icon: ThumbsUp,
-    badgeVariant: 'success' as const,
-    iconBgVariant: 'success' as const,
-    borderVariant: 'success' as const,
+    borderColor: 'border-emerald-500/30',
+    bgColor: 'bg-base-100',
+    iconBgColor: 'bg-emerald-500/10',
+    badgeColor: 'bg-emerald-500/25 text-emerald-200 border-emerald-500/45',
     badgeLabel: 'LOW RISK',
-    iconColor: 'text-success',
+    iconColor: 'text-emerald-400',
   },
-} as const
+}
 
 const tripsitStatusLabel: Record<string, string> = {
   'Low Risk & Synergy': 'SYNERGY',
@@ -62,11 +64,17 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
     : null
 
   return (
-    <Card variant="outline" className={cn('border-transition', `border-${config.borderVariant}/30`, 'hover:shadow-md')}>
+    <div
+      className={cn(
+        'card border transition-all hover:shadow-md',
+        config.borderColor,
+        config.bgColor
+      )}
+    >
       <div className="card-body p-4">
         <div className="flex items-start gap-3">
           {/* Icon */}
-          <Badge variant={config.iconBgVariant} className="p-1.5 rounded-lg shrink-0">
+          <div className={cn('p-1.5 rounded-lg shrink-0', config.iconBgColor)}>
             {result.tripsitStatus === 'Low Risk & Decrease' ? (
               <TrendingDown className={cn('h-4 w-4', config.iconColor)} />
             ) : result.tripsitStatus === 'Low Risk & No Synergy' ? (
@@ -74,19 +82,19 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
             ) : (
               <Icon className={cn('h-4 w-4', config.iconColor)} />
             )}
-          </Badge>
+          </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Substance pair */}
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
-              <Badge variant="outline" className="font-medium text-sm">
+              <span className="badge badge-outline font-medium text-sm">
                 {result.substanceA}
-              </Badge>
+              </span>
               <span className="text-neutral-content font-bold text-xs">&times;</span>
-              <Badge variant="outline" className="font-medium text-sm">
+              <span className="badge badge-outline font-medium text-sm">
                 {result.substanceB}
-              </Badge>
+              </span>
             </div>
 
             {/* Description */}
@@ -101,9 +109,9 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
               <div className="flex flex-wrap items-center gap-1.5 mb-2">
                 <span className="text-xs text-neutral-content">Matched:</span>
                 {result.matchedTerms.map((term, i) => (
-                  <Badge key={i} variant="outline" size="xs">
+                  <span key={i} className="badge badge-outline text-xs">
                     {term}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             )}
@@ -133,23 +141,27 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
 
             {/* Metadata row */}
             <div className="flex items-center gap-2">
-              <Badge variant={config.badgeVariant} size="xs" className="font-bold">
+              <span
+                className={cn('badge text-[10px] font-bold', config.badgeColor)}
+              >
                 {config.badgeLabel}
-              </Badge>
+              </span>
               {subLabel && (
-                <Badge variant={config.badgeVariant} size="xs" className="font-bold">
+                <span
+                  className={cn('badge text-[10px] font-bold', config.badgeColor)}
+                >
                   {subLabel}
-                </Badge>
+                </span>
               )}
               {isTripsit && (
-                <Badge variant="info" size="xs" className="font-bold">
+                <span className="badge text-[10px] text-blue-200 border-blue-500/45 bg-blue-500/25">
                   TRIPSIT
-                </Badge>
+                </span>
               )}
             </div>
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   )
 }

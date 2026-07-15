@@ -3,9 +3,6 @@
 import { Search } from 'lucide-react'
 import type { Substance } from '@/lib/types'
 import { SubstanceCard } from './SubstanceCard'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 
 interface SubstanceGridProps {
   substances: Substance[]
@@ -39,15 +36,15 @@ export function SubstanceGrid({
 
   if (totalCount === 0) {
     return (
-      <Card variant="default">
-        <CardContent className="items-center text-center py-12">
+      <div className="card border border-base-300/70 bg-base-100/70 backdrop-blur-sm">
+        <div className="card-body items-center text-center py-12">
           <Search className="h-10 w-10 text-neutral-content opacity-50" />
           <h3 className="text-lg font-medium">No substances found</h3>
           <p className="text-sm text-neutral-content">
             Try adjusting your search or filter criteria.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
@@ -65,12 +62,16 @@ export function SubstanceGrid({
 
       {remaining > 0 && (
         <div className="flex justify-center">
-          <Button variant="outline" onClick={onShowMore} className="gap-2">
+          <button
+            type="button"
+            onClick={onShowMore}
+            className="btn btn-outline gap-2"
+          >
             Show more
-            <Badge variant="outline" size="sm">
+            <span className="badge badge-sm badge-outline">
               {remaining} remaining
-            </Badge>
-          </Button>
+            </span>
+          </button>
         </div>
       )}
     </div>
