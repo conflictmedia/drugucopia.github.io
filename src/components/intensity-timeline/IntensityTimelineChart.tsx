@@ -58,7 +58,6 @@ import type {
 } from '@/components/dose-timeline/dose-timeline-types'
 import {
   safeDate,
-  hasIncompletePhases,
   afterglowDurationMins,
   exportChartPng,
   PhaseSparkline,
@@ -339,9 +338,8 @@ function GroupCard({
   const isMultiRoute = group.routes.length > 1
   const totalDoses = group.routes.reduce((s, rg) => s + rg.doses.length, 0)
 
-  // 1.4: check if the primary dose's duration data is incomplete (curve was
-  // inferred from partial data — show an "Est. timeline" badge).
-  const primaryHasIncompletePhases = hasIncompletePhases(primaryDose.duration)
+  // 1.4: check if the primary dose's duration was estimated (interpolated from another route — show an "Est. timeline" badge).
+  const primaryHasIncompletePhases = primaryDose.durationIsEstimated
 
   // 2.3: cumulative dose counter — total amount + count for today.
   // Only shown when there's more than one dose (single-dose is redundant

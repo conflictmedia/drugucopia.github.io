@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.6] - 2026-07-15
+
+### Fixed
+- Fix estimated duration badge on custom substances with duration data
+
 ## [0.3.5] - 2026-07-14
 
 ### Fixed

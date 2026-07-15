@@ -184,22 +184,6 @@ function safeDate(s: string): Date {
   return isNaN(d.getTime()) ? new Date(0) : d
 }
 
-/** Check if a dose's duration data is incomplete (has onset + total but is
- *  missing comeup/peak/offset). When true, the timeline curve was inferred
- *  from partial data and an "Est. timeline" badge is shown. (1.4) */
-function hasIncompletePhases(
-  duration: { onset?: string; comeup?: string; peak?: string; offset?: string; total?: string } | null | undefined,
-): boolean {
-  if (!duration) return false
-  const hasOnset = duration.onset && duration.onset.trim() !== '' && duration.onset !== '—'
-  const hasTotal = duration.total && duration.total.trim() !== '' && duration.total !== '—'
-  const hasComeup = duration.comeup && duration.comeup.trim() !== '' && duration.comeup !== '—'
-  const hasPeak = duration.peak && duration.peak.trim() !== '' && duration.peak !== '—'
-  const hasOffset = duration.offset && duration.offset.trim() !== '' && duration.offset !== '—'
-  if (hasOnset && hasTotal && (!hasComeup || !hasPeak || !hasOffset)) return true
-  return false
-}
-
 /** Compute afterglow duration in minutes for a dose (1.5). Returns 0 if no
  *  afterglow phase exists. */
 function afterglowDurationMins(d: EnrichedDose): number {
@@ -739,9 +723,9 @@ function GroupCard({
   const isMultiRoute = group.routes.length > 1
   const totalDoses = group.routes.reduce((s, rg) => s + rg.doses.length, 0)
 
-  // 1.4: check if the primary dose's duration data is incomplete (curve was
-  // inferred from partial data — show an "Est. timeline" badge).
-  const primaryHasIncompletePhases = hasIncompletePhases(primaryDose.duration)
+  // 1.4: check if the primary dose's duration was estimated (interpolated from
+  // another route — show an "Est. timeline" badge).
+  const primaryHasIncompletePhases = primaryDose.durationIsEstimated
 
   // 2.3: cumulative dose counter — total amount + count for today.
   // Only shown when there's more than one dose (single-dose is redundant

@@ -104,22 +104,6 @@ export function safeDate(s: string): Date {
   return isNaN(d.getTime()) ? new Date(0) : d
 }
 
-/** Check if a dose's duration data is incomplete (has onset + total but is
- *  missing comeup/peak/offset). When true, the timeline curve was inferred
- *  from partial data and an "Est. timeline" badge is shown. (1.4) */
-export function hasIncompletePhases(
-  duration: { onset?: string; comeup?: string; peak?: string; offset?: string; total?: string } | null | undefined,
-): boolean {
-  if (!duration) return false
-  const hasOnset = duration.onset && duration.onset.trim() !== '' && duration.onset !== '—'
-  const hasTotal = duration.total && duration.total.trim() !== '' && duration.total !== '—'
-  const hasComeup = duration.comeup && duration.comeup.trim() !== '' && duration.comeup !== '—'
-  const hasPeak = duration.peak && duration.peak.trim() !== '' && duration.peak !== '—'
-  const hasOffset = duration.offset && duration.offset.trim() !== '' && duration.offset !== '—'
-  if (hasOnset && hasTotal && (!hasComeup || !hasPeak || !hasOffset)) return true
-  return false
-}
-
 /** Compute afterglow duration in minutes for a dose (1.5). Returns 0 if no
  *  afterglow phase exists. */
 export function afterglowDurationMins(d: EnrichedDose): number {
