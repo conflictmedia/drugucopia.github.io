@@ -22,9 +22,10 @@
 
 // Bump this when changing the precache list or fetch strategy.
 // The activate handler drops any cache with a different version.
-const CACHE_VERSION = 'drugucopia-v7'
+const CACHE_VERSION = 'drugucopia-v8'
 const PRECACHE_NAME = `${CACHE_VERSION}-precache`
 const RUNTIME_NAME = `${CACHE_VERSION}-runtime`
+const IS_LOCALHOST = ['localhost', '127.0.0.1', '[::1]'].includes(self.location.hostname)
 
 const PRECACHE_URLS = [
   '/',
@@ -38,6 +39,13 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
+      // Local development uses short-lived Turbopack chunks. Never precache
+      // or intercept them; activate once so this worker can remove itself.
+      if (IS_LOCALHOST) {
+        await self.skipWaiting()
+        return
+      }
+
       // NUKE: drop ALL caches on install, regardless of version. The
       // previous versioning scheme wasn't aggressive enough — users were
       // still seeing stale JS chunks from old SW versions. Wiping
@@ -65,6 +73,15 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
+      if (IS_LOCALHOST) {
+        const keys = await caches.keys()
+        await Promise.all(keys.filter((key) => key.startsWith('drugucopia-')).map((key) => caches.delete(key)))
+        await self.registration.unregister()
+        const clients = await self.clients.matchAll({ type: 'window' })
+        clients.forEach((client) => client.navigate(client.url).catch(() => { }))
+        return
+      }
+
       // Drop ALL caches that don't match the current version.
       const keys = await caches.keys()
       await Promise.all(
@@ -87,6 +104,9 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  // Do not intercept Next.js/Turbopack development traffic.
+  if (IS_LOCALHOST) return
+
   const req = event.request
 
   // Only handle GET; let everything else (POST/PUT/DELETE) hit the network.
