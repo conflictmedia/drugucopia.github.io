@@ -3,11 +3,9 @@
 import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 
-import {
-  substances,
-  type Substance,
-  type SubstanceCategory,
-} from '@/lib/substances/index'
+import type { Substance, SubstanceCategory } from '@/lib/substances/types'
+import { loadSubstanceDetail, type SubstanceSummary } from '@/lib/substance-repository'
+import { useSubstanceIndex } from '@/hooks/use-substance-index'
 import { categories } from '@/lib/categories'
 
 import { LibraryHero, CategoryFilterBar, SubstanceGrid } from './library'
@@ -21,9 +19,29 @@ export function HomeContent() {
   const queryParam = searchParams.get('q') ?? ''
   const [selectedCategory, setSelectedCategory] = useState<SubstanceCategory | 'all'>('all')
   const [selectedSubstance, setSelectedSubstance] = useState<Substance | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const { substances, loading: catalogueLoading, error: catalogueError } = useSubstanceIndex()
   const [searchQuery, setSearchQuery] = useState(queryParam)
   const lastProcessedSubstanceRef = useRef<string | null>(null)
   const deferredQuery = useDeferredValue(searchQuery)
+
+  const loadDetail = useCallback(async (summary: SubstanceSummary) => {
+    setDetailLoading(true)
+    setDetailError(null)
+    try {
+      const detail = summary.source === 'custom'
+        ? (await import('@/lib/substances/index')).getSubstanceByIdAll(summary.id)
+        : await loadSubstanceDetail(summary.id)
+      if (!detail) throw new Error('Substance detail was not found')
+      setSelectedSubstance(detail)
+      lastProcessedSubstanceRef.current = detail.id
+    } catch (error) {
+      setDetailError(error instanceof Error ? error.message : 'Unable to load substance detail')
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
 
   // Backwards-compat redirect: the Track workspace used to live at
   // /?view=dose-log (inline in this component). It now lives at /dose-log.
@@ -54,16 +72,13 @@ export function HomeContent() {
     if (substanceId) {
       if (substanceId !== lastProcessedSubstanceRef.current) {
         const found = substances.find((s) => s.id === substanceId)
-        if (found) {
-          setSelectedSubstance(found)
-          lastProcessedSubstanceRef.current = substanceId
-        }
+        if (found) void loadDetail(found)
       }
     } else {
       if (selectedSubstance) setSelectedSubstance(null)
       lastProcessedSubstanceRef.current = null
     }
-  }, [searchParams, selectedSubstance])
+  }, [searchParams, selectedSubstance, substances, loadDetail])
 
   // Use history.pushState instead of router.push for same-page URL updates
   // to avoid triggering Next.js client-side navigation and Suspense fallback flicker
@@ -115,17 +130,16 @@ export function HomeContent() {
       )
     }
     return result
-  }, [selectedCategory, deferredQuery])
+  }, [substances, selectedCategory, deferredQuery])
 
   const handleDoseLogged = useCallback(() => { }, [])
 
   const handleSelectSubstance = useCallback(
-    (substance: Substance) => {
-      setSelectedSubstance(substance)
-      lastProcessedSubstanceRef.current = substance.id
+    (substance: SubstanceSummary) => {
       pushUrl(`${pathname}?substance=${substance.id}`)
+      void loadDetail(substance)
     },
-    [pushUrl, pathname],
+    [pushUrl, pathname, loadDetail],
   )
 
   const handleCategoryChange = useCallback(
@@ -139,6 +153,21 @@ export function HomeContent() {
   useEffect(() => {
     if (selectedSubstance) window.scrollTo(0, 0)
   }, [selectedSubstance])
+
+  if (detailLoading || catalogueLoading) {
+    return <div className="flex min-h-[50vh] items-center justify-center"><div className="loading loading-spinner loading-lg text-primary" /></div>
+  }
+
+  if (detailError || catalogueError) {
+    return (
+      <div className="container mx-auto px-4 py-10">
+        <div role="alert" className="alert alert-error">
+          <span>{detailError ?? catalogueError?.message ?? 'The substance catalogue could not load.'}</span>
+          <button type="button" className="btn btn-sm" onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      </div>
+    )
+  }
 
   // ── Substance detail ──
   if (selectedSubstance) {

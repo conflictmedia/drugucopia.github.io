@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import { ChevronRight } from 'lucide-react'
-import type { Substance } from '@/lib/types'
+import type { SubstanceSummary } from '@/lib/substance-repository'
 import { categories } from '@/lib/categories'
 import {
   categoryColors,
@@ -16,8 +16,8 @@ import {
 import { cn } from '@/lib/utils'
 
 interface SubstanceCardProps {
-  substance: Substance
-  onSelect: (s: Substance) => void
+  substance: SubstanceSummary
+  onSelect: (s: SubstanceSummary) => void
 }
 
 /**
@@ -45,7 +45,7 @@ export const SubstanceCard = memo(function SubstanceCard({
 }: SubstanceCardProps) {
   const primary = getPrimaryCategory(substance)
   const cats = getSubstanceCategories(substance)
-  const hasRouteData = substance.routeData && Object.keys(substance.routeData).length > 1
+  const hasRouteData = substance.routes.length > 1
 
 return (
     <button
@@ -117,7 +117,7 @@ return (
           <div className="flex items-center gap-1">
             {hasRouteData && (
               <span className="badge badge-outline badge-sm border-primary/30 text-xs text-primary/80">
-                {Object.keys(substance.routeData!).length} routes
+                {substance.routes.length} routes
               </span>
             )}
             <span

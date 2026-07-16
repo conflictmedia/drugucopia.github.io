@@ -10,6 +10,7 @@ import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical, Pill } from 'lucide-react'
 import { substances, searchSubstancesRanked, getAllSubstances, searchSubstancesRankedAll } from '@/lib/substances/index'
+import { useSubstanceIndex } from '@/hooks/use-substance-index'
 import { toast } from '@/hooks/use-toast'
 import { useDoseStore } from '@/store/dose-store'
 import { DoseLog, Duration } from '@/types'
@@ -702,6 +703,7 @@ export function DoseLoggerModal({
   }, [handleClose])
 
   const [loading, setLoading] = useState(false)
+  const { substances: substanceSummaries } = useSubstanceIndex()
   const doses = useDoseStore(s => open ? s.doses : EMPTY_DOSES)
   const addDose = useDoseStore(s => s.addDose)
 
@@ -1137,14 +1139,11 @@ export function DoseLoggerModal({
    */
   const substanceOptions: ComboboxOption[] = useMemo(() => {
     // Built-in + custom substances (getAllSubstances already merges them).
-    const all = getAllSubstances()
-    // Custom substance IDs live in localStorage; we identify them by
-    // checking that they're NOT in the built-in substances array.
-    const builtinIds = new Set(substances.map(s => s.id))
-    const customIds = new Set(all.filter(s => !builtinIds.has(s.id)).map(s => s.id))
+    const all = substanceSummaries
+    const builtinIds = new Set(all.filter((substance) => substance.source !== 'custom').map((substance) => substance.id))
 
     const opts: ComboboxOption[] = all.map(s => {
-      const isCustom = customIds.has(s.id)
+      const isCustom = s.source === 'custom'
       return {
         value: s.id,
         label: isCustom ? `[Custom] ${s.name}` : s.name,
@@ -1173,7 +1172,7 @@ export function DoseLoggerModal({
     }
 
     return opts.sort((a, b) => a.label.localeCompare(b.label))
-  }, [activeMedications])
+  }, [activeMedications, substanceSummaries])
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value

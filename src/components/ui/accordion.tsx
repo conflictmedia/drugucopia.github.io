@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils"
  * Type:     single (default) | multiple
  *
  * The trigger is a real <button> with proper aria-expanded/aria-controls for
- * AT support; the daisyUI checkbox hack is not used (it doesn't carry
- * semantics).
+ * AT support; we also render a hidden checkbox that daisyUI's CSS uses for
+ * the collapse animation.
  */
 
 type AccordionVariant = "arrow" | "plus" | "none"
@@ -37,7 +37,8 @@ const AccordionItemContext = React.createContext<{
   value: string
   triggerId: string
   contentId: string
-}>({ value: "", triggerId: "", contentId: "" })
+  checkboxId: string
+}>({ value: "", triggerId: "", contentId: "", checkboxId: "" })
 
 function Accordion({
   type = "single",
@@ -72,7 +73,7 @@ function Accordion({
         return next
       })
     },
-    [type]
+    [type],
   )
 
   return (
@@ -80,7 +81,7 @@ function Accordion({
       <div
         className={cn(
           "join join-vertical bg-transparent border border-base-300 rounded-box divide-y divide-base-300",
-          className
+          className,
         )}
         data-variant={variant}
         {...props}
@@ -111,19 +112,32 @@ function AccordionItem({
   const reactId = React.useId()
   const triggerId = `acc-trigger-${reactId}`
   const contentId = `acc-content-${reactId}`
-  const isOpen = React.useContext(AccordionContext).openItems.has(value)
+  const checkboxId = `acc-checkbox-${reactId}`
+  const { openItems, toggleItem } = React.useContext(AccordionContext)
+  const isOpen = openItems.has(value)
 
   return (
-    <AccordionItemContext.Provider value={{ value, triggerId, contentId }}>
+    <AccordionItemContext.Provider value={{ value, triggerId, contentId, checkboxId }}>
       <div
         data-state={isOpen ? "open" : "closed"}
         className={cn(
           "collapse join-item",
           variantClass[variant],
-          className
+          className,
         )}
         {...props}
       >
+        {/* Hidden checkbox that daisyUI's CSS uses for the collapse animation.
+            We control its checked state via React so the open/close state
+            stays in sync with our context. */}
+        <input
+          type="checkbox"
+          id={checkboxId}
+          checked={isOpen}
+          onChange={() => toggleItem(value)}
+          className="peer hidden"
+          aria-hidden="true"
+        />
         {children}
       </div>
     </AccordionItemContext.Provider>
@@ -136,7 +150,7 @@ function AccordionTrigger({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const { openItems, toggleItem } = React.useContext(AccordionContext)
-  const { value, triggerId, contentId } = React.useContext(AccordionItemContext)
+  const { value, triggerId, contentId, checkboxId } = React.useContext(AccordionItemContext)
   const isOpen = openItems.has(value)
 
   return (
@@ -147,8 +161,8 @@ function AccordionTrigger({
       aria-expanded={isOpen}
       aria-controls={contentId}
       className={cn(
-        "collapse-title text-left text-sm font-medium min-h-0 py-3.5 px-4 cursor-pointer",
-        className
+        "collapse-title text-left text-sm font-medium min-h-0 py-3.5 px-4 cursor-pointer peer-checked:rotate-180",
+        className,
       )}
       {...props}
     >

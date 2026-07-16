@@ -15,7 +15,7 @@ import {
   MEDICATION_TYPES,
   SUBSTANCE_CLASS_TO_MEDICATION_TYPE,
 } from '@/store/medication-store';
-import { getSubstancesByCategory } from '@/lib/substances/index';
+import { useSubstanceIndex } from '@/hooks/use-substance-index';
 
 interface MedicationFormProps {
   initialData?: UserMedication;
@@ -64,12 +64,17 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [medicationType, setMedicationType] = useState<MedicationType | ''>(initialData?.medicationType || '');
   const [linkedSubstanceId, setLinkedSubstanceId] = useState<string | undefined>(initialData?.linkedSubstanceId);
+  const { substances } = useSubstanceIndex();
+  const medicationSubstances = useMemo(
+    () => substances.filter((substance) => substance.categories.includes('medications')),
+    [substances],
+  );
 
   // Build a Combobox option list from all substances in the "medications"
   // category (built-in psychiatric medication data: sertraline, fluoxetine,
   // aripiprazole, etc.). Sorted alphabetically by display name.
   const medicationSubstanceOptions: ComboboxOption[] = useMemo(() => {
-    return getSubstancesByCategory('medications')
+    return medicationSubstances
       .map((s) => ({
         value: s.id,
         label: s.name,
@@ -80,14 +85,14 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
         ].filter(Boolean) as string[],
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, []);
+  }, [medicationSubstances]);
 
   // Look up the linked substance on demand for the "linked" badge.
   const linkedSubstance = useMemo(
     () => linkedSubstanceId
-      ? getSubstancesByCategory('medications').find(s => s.id === linkedSubstanceId)
+      ? medicationSubstances.find(s => s.id === linkedSubstanceId)
       : undefined,
-    [linkedSubstanceId],
+    [linkedSubstanceId, medicationSubstances],
   );
 
   /**
@@ -105,7 +110,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
       setLinkedSubstanceId(undefined);
       return;
     }
-    const sub = getSubstancesByCategory('medications').find(s => s.id === value);
+    const sub = medicationSubstances.find(s => s.id === value);
     if (!sub) {
       setLinkedSubstanceId(value);
       return;
@@ -115,7 +120,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
     // linked substance's name (i.e. the user hasn't manually edited it).
     setName(prev => {
       const prevLinked = linkedSubstanceId
-        ? getSubstancesByCategory('medications').find(s => s.id === linkedSubstanceId)
+        ? medicationSubstances.find(s => s.id === linkedSubstanceId)
         : undefined;
       if (!prev || prev === prevLinked?.name) return sub.name;
       return prev;
@@ -160,7 +165,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
       <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-base-100 z-10">
           <h2 className="text-xl font-semibold">{initialData ? 'Edit Medication' : 'Add Medication'}</h2>
-          <Button intent="ghost" size="sm" iconOnly onClick={onClose}><X className="w-5 h-5" /></Button>
+          <Button intent="ghost" size="sm" iconOnly type="button" onClick={onClose}><X className="w-5 h-5" /></Button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Substance link picker — lets the user pick a built-in
@@ -273,7 +278,7 @@ export function MedicationForm({ initialData, onClose, onSubmit }: MedicationFor
             <Label htmlFor="isActive" className="cursor-pointer">Active medication</Label>
           </div>
           <div className="flex gap-3 pt-2 sticky bottom-0 bg-base-100 -mx-4 px-4 py-3 border-t">
-            <Button intent="ghost" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button intent="ghost" className="flex-1" type="button" onClick={onClose}>Cancel</Button>
             <Button intent="primary" type="submit" className="flex-1">{initialData ? 'Save Changes' : 'Add Medication'}</Button>
           </div>
         </form>

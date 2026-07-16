@@ -5,7 +5,8 @@ import { Search, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Input } from '@/components/ui/input'
-import { searchSubstancesRankedAll, type SearchResult } from '@/lib/substances/index'
+import { searchSubstanceSummaries, type SubstanceSummarySearchResult } from '@/lib/substance-repository'
+import { useSubstanceIndex } from '@/hooks/use-substance-index'
 import { cn } from '@/lib/utils'
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -66,6 +67,7 @@ export function SubstanceSearch({
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const { substances: substanceSummaries } = useSubstanceIndex()
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -94,8 +96,8 @@ export function SubstanceSearch({
 
   const searchResults = useMemo(() => {
     if (!debouncedQuery.trim()) return []
-    return searchSubstancesRankedAll(debouncedQuery, { limit: 8 })
-  }, [debouncedQuery])
+    return searchSubstanceSummaries(substanceSummaries, debouncedQuery, 8)
+  }, [debouncedQuery, substanceSummaries])
 
   const navigateToSubstance = useCallback(
     (substanceId: string) => {
@@ -242,14 +244,14 @@ export function SubstanceSearch({
             className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-xl"
           >
             <div className="max-h-80 overflow-y-auto p-1.5">
-              {searchResults.map((result: SearchResult, index: number) => {
+              {searchResults.map((result: SubstanceSummarySearchResult, index: number) => {
                 const substance = result.substance
                 const isActive = index === activeIndex
                 const matchedAlias =
                   result.matchField !== 'name' &&
-                  result.matchField !== 'class' &&
-                  result.matchField !== 'category' &&
-                  result.matchField !== 'description'
+                    result.matchField !== 'class' &&
+                    result.matchField !== 'category' &&
+                    result.matchField !== 'description'
                     ? result.matchField
                     : null
 
