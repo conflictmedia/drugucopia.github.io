@@ -11,7 +11,9 @@
     "test:watch": "bun test src --watch",
     "typecheck": "bun --bun tsc --noEmit",
     "test:e2e": "playwright test",
-    "validate:data": "bun run scripts/validate-data.ts"
+    "validate:data": "bun run scripts/validate-data.ts",
+    "generate:data": "bun run scripts/generate-substance-data.ts",
+    "check:performance": "bun run scripts/check-performance-budgets.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
