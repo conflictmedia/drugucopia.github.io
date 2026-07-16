@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+
 /**
  * Drugucopia service worker.
  *
@@ -25,7 +25,6 @@
 const CACHE_VERSION = 'drugucopia-v8'
 const PRECACHE_NAME = `${CACHE_VERSION}-precache`
 const RUNTIME_NAME = `${CACHE_VERSION}-runtime`
-const IS_LOCALHOST = ['localhost', '127.0.0.1', '[::1]'].includes(self.location.hostname)
 
 const PRECACHE_URLS = [
   '/',
@@ -39,13 +38,6 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // Local development uses short-lived Turbopack chunks. Never precache
-      // or intercept them; activate once so this worker can remove itself.
-      if (IS_LOCALHOST) {
-        await self.skipWaiting()
-        return
-      }
-
       // Populate the new version alongside the active version. Deleting the
       // active cache during install can break open tabs before this worker is
       // ready; stale versions are removed atomically during activation.
@@ -59,8 +51,7 @@ self.addEventListener('install', (event) => {
           }
         }),
       )
-      // Take over from the previous SW immediately.
-      self.skipWaiting()
+      // Remain waiting until the user accepts the in-app update prompt.
     })(),
   )
 })
@@ -68,15 +59,6 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      if (IS_LOCALHOST) {
-        const keys = await caches.keys()
-        await Promise.all(keys.filter((key) => key.startsWith('drugucopia-')).map((key) => caches.delete(key)))
-        await self.registration.unregister()
-        const clients = await self.clients.matchAll({ type: 'window' })
-        clients.forEach((client) => client.navigate(client.url).catch(() => { }))
-        return
-      }
-
       // Drop ALL caches that don't match the current version.
       const keys = await caches.keys()
       await Promise.all(
@@ -92,9 +74,6 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
-  // Do not intercept Next.js/Turbopack development traffic.
-  if (IS_LOCALHOST) return
-
   const req = event.request
 
   // Only handle GET; let everything else (POST/PUT/DELETE) hit the network.

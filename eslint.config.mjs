@@ -19,10 +19,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     // React rules
     "react-hooks/exhaustive-deps": "off",
     "react-hooks/purity": "off",
-    // Temporary P0 migration baseline. These remain visible in CI while each
-    // occurrence is refactored; promote both to "error" when the backlog is zero.
-    "react-hooks/set-state-in-effect": "warn",
-    "react-hooks/static-components": "warn",
+    "react-hooks/set-state-in-effect": "error",
+    "react-hooks/static-components": "error",
     "react/no-unescaped-entities": "off",
     "react/display-name": "off",
     "react/prop-types": "off",

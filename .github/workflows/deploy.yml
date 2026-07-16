@@ -56,6 +56,12 @@ jobs:
       - name: Build with Next.js on Bun
         run: bun run build
 
+      - name: Install Playwright browser
+        run: bunx playwright install --with-deps chromium
+
+      - name: Test production PWA
+        run: bun run test:e2e
+
       # Only upload the special Pages artifact when we intend to deploy
       - name: Upload Pages artifact (release pushes only)
         if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/release' }}
