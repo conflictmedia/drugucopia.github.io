@@ -7,10 +7,9 @@ import { TopBar } from './TopBar'
 import { Toaster } from '@/components/ui/toaster'
 import { VisualizerControls } from '@/components/visualizer-controls'
 import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
-import { SyncProvider } from '@/contexts/sync-context'
+import dynamic from 'next/dynamic'
 import { ReminderProvider } from '@/components/reminder-provider'
 import { CommandPalette } from '@/components/command-palette'
-import { DoseLoggerModal } from '@/components/dose-logger-modal'
 import { OnboardingTour } from '@/components/onboarding-tour'
 import { useUIStore } from '@/store/ui-store'
 
@@ -19,6 +18,17 @@ interface LayoutClientProps {
 }
 
 const DRAWER_ID = 'app-shell-drawer'
+
+// Keep Firebase/Firestore out of the main application shell chunk. The
+// provider loads on the client and preserves the same children contract.
+const SyncProvider = dynamic(
+  () => import('@/contexts/sync-context').then((module) => module.SyncProvider),
+  { ssr: false },
+)
+const DoseLoggerModal = dynamic(
+  () => import('@/components/dose-logger-modal').then((module) => module.DoseLoggerModal),
+  { ssr: false },
+)
 
 export function LayoutClient({ children }: LayoutClientProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -153,14 +163,16 @@ export function LayoutClient({ children }: LayoutClientProps) {
             </div>
           )}
 
-          <DoseLoggerModal
-            open={doseLoggerOpen}
-            onOpenChange={(open) => !open && closeDoseLogger()}
-            preselectedSubstanceId={doseLoggerPreselect?.substanceId}
-            preselectedSubstanceName={doseLoggerPreselect?.substanceName}
-            preselectedCategory={doseLoggerPreselect?.category}
-            preselectedRoute={doseLoggerPreselect?.route}
-          />
+          {doseLoggerOpen && (
+            <DoseLoggerModal
+              open
+              onOpenChange={(open) => !open && closeDoseLogger()}
+              preselectedSubstanceId={doseLoggerPreselect?.substanceId}
+              preselectedSubstanceName={doseLoggerPreselect?.substanceName}
+              preselectedCategory={doseLoggerPreselect?.category}
+              preselectedRoute={doseLoggerPreselect?.route}
+            />
+          )}
           <CommandPalette />
           {!isMobile && <VisualizerControls />}
           <Toaster />
