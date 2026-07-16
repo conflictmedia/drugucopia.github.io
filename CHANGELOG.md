@@ -7,6 +7,9 @@
 - Alcohol calc UI enhancements (Visual drink presets, direct ethanol dose logging)
 - Interaction checker safety and risk filtering (one tap logging, animated hazard visuals, severity filter
 - Substance detail view navigation (sticky nav bar)
+- Custom Substances Sync
+- Medication Profile Sync
+
 
 ### Changed
 - Replaced hardcoded tailwait utilites with daisyui design tokens
