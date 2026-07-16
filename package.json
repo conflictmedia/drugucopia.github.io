@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --bun next dev -p 3000",
-    "build": "bun --bun next build",
+    "build": "bun run generate:data && bun --bun next build",
     "start": "bun run scripts/serve.ts",
     "lint": "bun --bun eslint . --max-warnings 0",
     "test": "bun test src --pass-with-no-tests",
