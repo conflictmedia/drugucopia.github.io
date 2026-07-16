@@ -1,0 +1,5 @@
+[test]
+# Keep Bun's unit-test discovery separate from Playwright's browser suite even
+# when contributors invoke `bun test` directly instead of the package script.
+root = "src"
+
