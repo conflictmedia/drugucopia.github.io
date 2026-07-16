@@ -1,8 +1,9 @@
 'use client'
 
-import { AlertTriangle, HelpCircle, ShieldAlert, ThumbsDown, ThumbsUp, TrendingDown } from 'lucide-react'
+import { AlertTriangle, HelpCircle, Plus, ShieldAlert, ThumbsDown, ThumbsUp, TrendingDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { InteractionResult } from '@/lib/interaction-checker'
+import { useUIStore } from '@/store/ui-store'
 
 interface InteractionPairCardProps {
   result: InteractionResult
@@ -11,19 +12,19 @@ interface InteractionPairCardProps {
 const severityConfig = {
   dangerous: {
     icon: ShieldAlert,
-    borderColor: 'border-red-500/30',
-    bgColor: 'bg-base-100',
-    iconBgColor: 'bg-red-500/10',
-    badgeColor: 'bg-red-500/25 text-red-200 border-red-500/45',
-    badgeLabel: 'DANGEROUS',
+    borderColor: 'border-red-500/50',
+    bgColor: 'bg-red-500/5',
+    iconBgColor: 'bg-red-500/20',
+    badgeColor: 'bg-red-500/30 text-red-200 border-red-500/60 font-black',
+    badgeLabel: 'DANGEROUS / LETHAL RISK',
     iconColor: 'text-red-400',
   },
   unsafe: {
     icon: AlertTriangle,
-    borderColor: 'border-orange-500/30',
-    bgColor: 'bg-base-100',
-    iconBgColor: 'bg-orange-500/10',
-    badgeColor: 'bg-orange-500/25 text-orange-200 border-orange-500/45',
+    borderColor: 'border-orange-500/40',
+    bgColor: 'bg-orange-500/5',
+    iconBgColor: 'bg-orange-500/15',
+    badgeColor: 'bg-orange-500/25 text-orange-200 border-orange-500/45 font-bold',
     badgeLabel: 'UNSAFE',
     iconColor: 'text-orange-400',
   },
@@ -32,7 +33,7 @@ const severityConfig = {
     borderColor: 'border-amber-500/30',
     bgColor: 'bg-base-100',
     iconBgColor: 'bg-amber-500/10',
-    badgeColor: 'bg-amber-500/25 text-amber-200 border-amber-500/45',
+    badgeColor: 'bg-amber-500/25 text-amber-200 border-amber-500/45 font-semibold',
     badgeLabel: 'CAUTION',
     iconColor: 'text-amber-400',
   },
@@ -57,24 +58,33 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
   const config = severityConfig[result.severity]
   const Icon = config.icon
   const isTripsit = result.sources.includes('tripsit')
+  const openDoseLogger = useUIStore((state) => state.openDoseLogger)
 
   // Determine sub-label for low-risk results
   const subLabel = result.tripsitStatus
     ? tripsitStatusLabel[result.tripsitStatus]
     : null
 
+  const handleLogSubstance = (substanceName: string) => {
+    openDoseLogger({
+      substanceName,
+      route: 'oral',
+    })
+  }
+
   return (
     <div
       className={cn(
         'card border transition-all hover:shadow-md',
         config.borderColor,
-        config.bgColor
+        config.bgColor,
+        result.severity === 'dangerous' && 'pulse-danger'
       )}
     >
       <div className="card-body p-4">
         <div className="flex items-start gap-3">
           {/* Icon */}
-          <div className={cn('p-1.5 rounded-lg shrink-0', config.iconBgColor)}>
+          <div className={cn('p-2 rounded-lg shrink-0 mt-0.5', config.iconBgColor)}>
             {result.tripsitStatus === 'Low Risk & Decrease' ? (
               <TrendingDown className={cn('h-4 w-4', config.iconColor)} />
             ) : result.tripsitStatus === 'Low Risk & No Synergy' ? (
@@ -86,20 +96,43 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Substance pair */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-2">
-              <span className="badge badge-outline font-medium text-sm">
-                {result.substanceA}
-              </span>
-              <span className="text-neutral-content font-bold text-xs">&times;</span>
-              <span className="badge badge-outline font-medium text-sm">
-                {result.substanceB}
-              </span>
+            {/* Substance pair header with log shortcuts */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="badge badge-outline font-semibold text-sm">
+                  {result.substanceA}
+                </span>
+                <span className="text-neutral-content font-bold text-xs">&times;</span>
+                <span className="badge badge-outline font-semibold text-sm">
+                  {result.substanceB}
+                </span>
+              </div>
+
+              {/* Log actions */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleLogSubstance(result.substanceA)}
+                  className="btn btn-ghost btn-xs gap-1 text-[11px]"
+                  title={`Log ${result.substanceA}`}
+                >
+                  <Plus className="h-3 w-3" /> Log {result.substanceA}
+                </button>
+                <span className="text-base-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => handleLogSubstance(result.substanceB)}
+                  className="btn btn-ghost btn-xs gap-1 text-[11px]"
+                  title={`Log ${result.substanceB}`}
+                >
+                  <Plus className="h-3 w-3" /> Log {result.substanceB}
+                </button>
+              </div>
             </div>
 
             {/* Description */}
             {result.description && (
-              <p className="text-sm text-neutral-content leading-relaxed mb-2">
+              <p className="text-sm text-base-content leading-relaxed mb-2 font-normal">
                 {result.description}
               </p>
             )}
@@ -116,7 +149,7 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
               </div>
             )}
 
-            {/* Academic sources (collapsible — shows all when expanded) */}
+            {/* Academic sources */}
             {result.tripsitSources && result.tripsitSources.length > 0 && (
               <details className="mb-2 group">
                 <summary className="text-xs text-neutral-content cursor-pointer hover:text-base-content transition-colors select-none">
@@ -140,21 +173,21 @@ export function InteractionPairCard({ result }: InteractionPairCardProps) {
             )}
 
             {/* Metadata row */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <span
-                className={cn('badge text-[10px] font-bold', config.badgeColor)}
+                className={cn('badge text-[10px]', config.badgeColor)}
               >
                 {config.badgeLabel}
               </span>
               {subLabel && (
                 <span
-                  className={cn('badge text-[10px] font-bold', config.badgeColor)}
+                  className={cn('badge text-[10px]', config.badgeColor)}
                 >
                   {subLabel}
                 </span>
               )}
               {isTripsit && (
-                <span className="badge text-[10px] text-blue-200 border-blue-500/45 bg-blue-500/25">
+                <span className="badge text-[10px] text-info border-info/40 bg-info/10">
                   TRIPSIT
                 </span>
               )}

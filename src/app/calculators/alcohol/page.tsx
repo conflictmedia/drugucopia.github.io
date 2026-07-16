@@ -17,6 +17,8 @@ import {
   Scale,
   Beaker,
   GlassWater,
+  Plus,
+  Beer,
 } from 'lucide-react';
 import {
   SHOT_SIZES,
@@ -29,10 +31,13 @@ import {
   roundTo,
   ETHANOL_DENSITY_G_PER_ML,
 } from '@/lib/calculators/alcohol';
+import { useUIStore } from '@/store/ui-store';
 
 type Mode = 'shots-to-grams' | 'grams-to-shots';
 
 export default function AlcoholCalculatorPage() {
+  const openDoseLogger = useUIStore((state) => state.openDoseLogger);
+
   // ─── Shared inputs ────────────────────────────────────────────────────────
   const [shotSizeId, setShotSizeId] = useState('us-single');
   const [shotVolumeMl, setShotVolumeMl] = useState(
@@ -69,6 +74,19 @@ export default function AlcoholCalculatorPage() {
     setMode('shots-to-grams');
   };
 
+  // Quick drink presets (Beer, Wine, Spirits, Strong Ale/Cocktail)
+  const QUICK_BEVERAGE_PRESETS = [
+    { id: 'beer-light', label: 'Beer (5%)', icon: Beer, beverage: 'beer-5', abv: 5.0, shotSize: 'us-single' },
+    { id: 'wine-std', label: 'Wine (12%)', icon: Wine, beverage: 'wine-table', abv: 12.0, shotSize: 'us-single' },
+    { id: 'spirits-std', label: 'Spirits (40%)', icon: GlassWater, beverage: 'spirits', abv: 40.0, shotSize: 'us-single' },
+    { id: 'cocktail-std', label: 'Cocktail (25%)', icon: Beaker, beverage: 'custom', abv: 25.0, shotSize: 'us-single' },
+  ];
+
+  const selectQuickPreset = (preset: typeof QUICK_BEVERAGE_PRESETS[0]) => {
+    setBeverageId(preset.beverage);
+    setAbv(preset.abv);
+  };
+
   // ─── Computed results ─────────────────────────────────────────────────────
   const result = useMemo(() => {
     return shotsToGrams({ shots, shotVolumeMl, abv });
@@ -81,6 +99,16 @@ export default function AlcoholCalculatorPage() {
   const isCustomShot = shotSizeId === 'custom';
   const isCustomBeverage = beverageId === 'custom';
 
+  const handleLogEthanol = (grams: number) => {
+    if (grams <= 0) return;
+    openDoseLogger({
+      substanceId: 'alcohol',
+      substanceName: 'Alcohol',
+      category: 'depressants',
+      route: 'oral',
+    });
+  };
+
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-6">
       {/* Header */}
@@ -90,10 +118,31 @@ export default function AlcoholCalculatorPage() {
           <h1 className="text-3xl font-bold">Alcohol Calculator</h1>
         </div>
         <p className="text-base-content/70 max-w-2xl mx-auto">
-          Convert shots of an alcoholic beverage into grams of pure ethanol — the standard
-          unit used for tracking alcohol consumption. Calculation uses beverage volume, ABV,
-          and the density of ethanol ({ETHANOL_DENSITY_G_PER_ML} g/mL).
+          Convert shots or servings of an alcoholic beverage into grams of pure ethanol — the standard
+          unit used for tracking alcohol consumption and harm reduction.
         </p>
+      </div>
+
+      {/* Quick Visual Beverage Preset Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
+        {QUICK_BEVERAGE_PRESETS.map((preset) => {
+          const Icon = preset.icon;
+          const isActive = beverageId === preset.beverage && abv === preset.abv;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => selectQuickPreset(preset)}
+              className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all text-center ${isActive
+                  ? 'border-primary bg-primary/10 text-primary font-semibold shadow-sm'
+                  : 'border-base-300 bg-base-100 hover:border-primary/40 text-base-content/80'
+                }`}
+            >
+              <Icon className="h-5 w-5" />
+              <span className="text-xs">{preset.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Mode toggle */}
@@ -104,14 +153,14 @@ export default function AlcoholCalculatorPage() {
             className={`tab ${mode === 'shots-to-grams' ? 'tab-active' : ''}`}
             onClick={() => setMode('shots-to-grams')}
           >
-            Shots → Grams
+            Shots / Servings → Grams
           </a>
           <a
             role="tab"
             className={`tab ${mode === 'grams-to-shots' ? 'tab-active' : ''}`}
             onClick={() => setMode('grams-to-shots')}
           >
-            Grams → Shots
+            Grams → Shots / Servings
           </a>
         </div>
       </div>
@@ -121,7 +170,7 @@ export default function AlcoholCalculatorPage() {
         {/* Beverage & shot size selectors — shared */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="form-control space-y-1.5">
-            <Label className="flex items-center gap-1.5">
+            <Label className="flex items-center gap-1.5 font-semibold">
               <GlassWater className="h-4 w-4" /> Beverage Type
             </Label>
             <Select value={beverageId} onChange={(e) => handleBeverageChange(e.target.value)}>
@@ -132,7 +181,7 @@ export default function AlcoholCalculatorPage() {
               ))}
             </Select>
             {isCustomBeverage ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <Input
                   type="number"
                   min="0"
@@ -152,8 +201,8 @@ export default function AlcoholCalculatorPage() {
           </div>
 
           <div className="form-control space-y-1.5">
-            <Label className="flex items-center gap-1.5">
-              <Beaker className="h-4 w-4" /> Shot Size
+            <Label className="flex items-center gap-1.5 font-semibold">
+              <Beaker className="h-4 w-4" /> Shot / Serving Size
             </Label>
             <Select value={shotSizeId} onChange={(e) => handleShotSizeChange(e.target.value)}>
               {SHOT_SIZES.map((s) => (
@@ -163,7 +212,7 @@ export default function AlcoholCalculatorPage() {
               ))}
             </Select>
             {isCustomShot ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <Input
                   type="number"
                   min="1"
@@ -190,6 +239,7 @@ export default function AlcoholCalculatorPage() {
             shots={shots}
             setShots={setShots}
             result={result}
+            onLog={handleLogEthanol}
           />
         ) : (
           <GramsToShotsPanel
@@ -198,6 +248,7 @@ export default function AlcoholCalculatorPage() {
             reverseResult={reverseResult}
             shotVolumeMl={shotVolumeMl}
             abv={abv}
+            onLog={handleLogEthanol}
           />
         )}
 
@@ -213,12 +264,10 @@ export default function AlcoholCalculatorPage() {
           <Scale className="h-5 w-5 text-primary" /> How the conversion works
         </h2>
         <p className="text-sm text-base-content/80 leading-relaxed">
-          A &ldquo;shot&rdquo; is a measure of <strong>volume</strong>, while grams measure the
-          <strong> mass of pure ethanol</strong>. To bridge the two we need the beverage&rsquo;s
-          alcohol-by-volume (ABV) and the physical density of ethanol
-          ({ETHANOL_DENSITY_G_PER_ML} g/mL at 20°C). The calculation proceeds in two physical
-          steps: first the volume of pure ethanol is extracted from the total beverage volume,
-          then that ethanol volume is converted to mass using density.
+          A &ldquo;shot&rdquo; or &ldquo;serving&rdquo; is a measure of <strong>volume</strong>, while grams measure the
+          <strong> mass of pure ethanol</strong>. To bridge the two we use the beverage&rsquo;s
+          alcohol-by-volume (ABV) and the density of ethanol
+          ({ETHANOL_DENSITY_G_PER_ML} g/mL at 20°C).
         </p>
         <div className="bg-base-200/60 rounded-lg p-4 font-mono text-sm space-y-1">
           <div>ethanol_volume_ml = shots × shot_volume_ml × (abv ÷ 100)</div>
@@ -236,55 +285,52 @@ export default function AlcoholCalculatorPage() {
         <h2 className="text-xl font-semibold">Standard Drink References</h2>
         <p className="text-sm text-base-content/70">
           Different countries define a &ldquo;standard drink&rdquo; by a different mass of pure
-          ethanol. Use these to contextualise your gram result against drinking guidelines.
+          ethanol. Use these to contextualize your gram result against health guidelines.
         </p>
-        <table className="table table-zebra w-full text-sm">
-          <thead>
-            <tr>
-              <th>Region</th>
-              <th className="text-right">Grams per drink</th>
-              <th>Example</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="font-medium">United States</td>
-              <td className="text-right">14 g</td>
-              <td>1.5 fl oz spirits, 5 fl oz wine, 12 fl oz beer</td>
-            </tr>
-            <tr>
-              <td className="font-medium">United Kingdom</td>
-              <td className="text-right">8 g (1 unit)</td>
-              <td>25 mL single of 40% spirits</td>
-            </tr>
-            <tr>
-              <td className="font-medium">Australia / WHO</td>
-              <td className="text-right">10 g</td>
-              <td>30 mL spirits, 100 mL wine, 285 mL beer</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="table table-zebra w-full text-sm">
+            <thead>
+              <tr>
+                <th>Region</th>
+                <th className="text-right">Grams per drink</th>
+                <th>Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="font-medium">United States</td>
+                <td className="text-right">14 g</td>
+                <td>1.5 fl oz spirits, 5 fl oz wine, 12 fl oz beer</td>
+              </tr>
+              <tr>
+                <td className="font-medium">United Kingdom</td>
+                <td className="text-right">8 g (1 unit)</td>
+                <td>25 mL single of 40% spirits</td>
+              </tr>
+              <tr>
+                <td className="font-medium">Australia / WHO</td>
+                <td className="text-right">10 g</td>
+                <td>30 mL spirits, 100 mL wine, 285 mL beer</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <Alert variant="info" soft>
           <Info className="h-5 w-5 shrink-0" />
-          <div className="text-sm">
-            <strong>Guidelines:</strong> Many health authorities recommend no more than
-            ~20–30 g of ethanol per day and advise alcohol-free days. The WHO classifies
-            alcohol as a Group 1 carcinogen — there is no fully &ldquo;safe&rdquo; level of
-            consumption, only lower-risk levels.
+          <div className="text-xs leading-relaxed">
+            <strong>Guidelines:</strong> Health authorities recommend limiting alcohol intake and having alcohol-free days. Alcohol acts synergistically with depressants, significantly compounding respiratory risk.
           </div>
         </Alert>
       </Card>
 
       <Alert variant="warning" soft>
         <AlertTriangle className="h-5 w-5 shrink-0" />
-        <div className="text-sm">
+        <div className="text-xs leading-relaxed">
           <strong>Harm reduction:</strong> This tool is for educational and tracking purposes
           only. It does not account for body weight, sex, metabolism, food intake, or
-          tolerance — all of which materially affect blood alcohol concentration. Never use
-          this calculator to determine whether it is safe to drive. Mixing alcohol with
-          benzodiazepines, opioids, or other CNS depressants dramatically increases overdose
-          risk.
+          tolerance. Never use this calculator to determine whether it is safe to drive. Mixing alcohol with
+          benzodiazepines, opioids, or other CNS depressants dramatically increases overdose risk.
         </div>
       </Alert>
     </div>
@@ -297,16 +343,18 @@ function ShotsToGramsPanel({
   shots,
   setShots,
   result,
+  onLog,
 }: {
   shots: number;
   setShots: (n: number) => void;
   result: ReturnType<typeof shotsToGrams>;
+  onLog: (grams: number) => void;
 }) {
   return (
     <div className="space-y-4">
       <div className="form-control space-y-1.5">
-        <Label className="flex items-center gap-1.5">
-          <GlassWater className="h-4 w-4" /> Number of Shots
+        <Label className="flex items-center gap-1.5 font-semibold">
+          <GlassWater className="h-4 w-4" /> Number of Shots / Servings
         </Label>
         <Input
           type="number"
@@ -314,23 +362,38 @@ function ShotsToGramsPanel({
           step="0.5"
           value={shots}
           onChange={(e) => setShots(parseFloat(e.target.value) || 0)}
-          placeholder="How many shots?"
+          placeholder="How many shots/servings?"
         />
       </div>
 
       {result && shots > 0 ? (
-        <div className="bg-base-200/50 rounded-lg p-5 space-y-4">
+        <div className="bg-base-200/50 rounded-xl p-5 space-y-4 border border-base-300">
           {/* Headline result */}
-          <div className="flex items-center justify-center gap-3 text-center flex-wrap">
-            <span className="text-lg">{shots} shot{shots === 1 ? '' : 's'}</span>
-            <ArrowRightLeft className="h-6 w-6 text-primary" />
-            <span className="text-3xl font-bold text-primary">
-              {roundTo(result.ethanolGrams, 2)} g
-            </span>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div>
+              <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
+                <span className="text-lg">{shots} shot{shots === 1 ? '' : 's'}</span>
+                <ArrowRightLeft className="h-5 w-5 text-primary" />
+                <span className="text-3xl font-bold text-primary">
+                  {roundTo(result.ethanolGrams, 2)} g
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60 mt-0.5">
+                of pure ethanol
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => onLog(result.ethanolGrams)}
+              className="gap-1.5 shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              Log Dose
+            </Button>
           </div>
-          <p className="text-center text-xs text-base-content/60">
-            of pure ethanol
-          </p>
 
           {/* Detailed breakdown */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -371,17 +434,19 @@ function GramsToShotsPanel({
   reverseResult,
   shotVolumeMl,
   abv,
+  onLog,
 }: {
   targetGrams: number;
   setTargetGrams: (n: number) => void;
   reverseResult: number | null;
   shotVolumeMl: number;
   abv: number;
+  onLog: (grams: number) => void;
 }) {
   return (
     <div className="space-y-4">
       <div className="form-control space-y-1.5">
-        <Label className="flex items-center gap-1.5">
+        <Label className="flex items-center gap-1.5 font-semibold">
           <Scale className="h-4 w-4" /> Target Ethanol (grams)
         </Label>
         <Input
@@ -398,17 +463,32 @@ function GramsToShotsPanel({
       </div>
 
       {reverseResult !== null && targetGrams > 0 ? (
-        <div className="bg-base-200/50 rounded-lg p-5 space-y-4">
-          <div className="flex items-center justify-center gap-3 text-center flex-wrap">
-            <span className="text-lg">{roundTo(targetGrams, 2)} g</span>
-            <ArrowRightLeft className="h-6 w-6 text-primary" />
-            <span className="text-3xl font-bold text-primary">
-              {roundTo(reverseResult, 2)} shots
-            </span>
+        <div className="bg-base-200/50 rounded-xl p-5 space-y-4 border border-base-300">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div>
+              <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
+                <span className="text-lg">{roundTo(targetGrams, 2)} g</span>
+                <ArrowRightLeft className="h-5 w-5 text-primary" />
+                <span className="text-3xl font-bold text-primary">
+                  {roundTo(reverseResult, 2)} shots
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60 mt-0.5">
+                at {roundTo(shotVolumeMl, 1)} mL per shot and {abv}% ABV
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => onLog(targetGrams)}
+              className="gap-1.5 shrink-0"
+            >
+              <Plus className="h-4 w-4" />
+              Log Dose
+            </Button>
           </div>
-          <p className="text-center text-xs text-base-content/60">
-            at {roundTo(shotVolumeMl, 1)} mL per shot and {abv}% ABV
-          </p>
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Stat
@@ -435,7 +515,7 @@ function GramsToShotsPanel({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-base-100 rounded-lg p-3 border border-base-300">
-      <div className="text-xs text-base-content/60 uppercase tracking-wide">{label}</div>
+      <div className="text-xs text-base-content/60 uppercase tracking-wide font-medium">{label}</div>
       <div className="font-semibold text-base-content mt-0.5">{value}</div>
     </div>
   );

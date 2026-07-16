@@ -53,7 +53,7 @@ export function SubstanceDetailTabs({
   return (
     <div className="card border border-base-300/70 bg-base-100/70 backdrop-blur-sm shadow-sm">
       <Tabs defaultValue="overview" className="gap-0">
-        <div className="border-b border-base-300/70 p-2 md:p-3">
+        <div className="sticky top-16 z-20 border-b border-base-300/70 bg-base-100/95 backdrop-blur-md p-2 md:p-3 shadow-xs rounded-t-box">
           <TabsList className="w-full justify-center gap-1 overflow-x-auto scrollbar-none">
             <TabsTrigger value="overview" className="gap-1.5">
               <Info className="h-4 w-4" />
