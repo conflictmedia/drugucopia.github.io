@@ -162,13 +162,13 @@ const base642buf = (b64: string) => {
   return bytes
 }
 
-const hashRoomName = async (roomName: string, password: string) => {
+export const hashRoomName = async (roomName: string, password: string) => {
   const data = new TextEncoder().encode(roomName + password + 'drugucopia-salt')
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32)
 }
 
-const deriveKey = async (password: string, salt: string) => {
+export const deriveKey = async (password: string, salt: string) => {
   const enc = new TextEncoder()
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits', 'deriveKey'])
   return crypto.subtle.deriveKey(
@@ -177,13 +177,13 @@ const deriveKey = async (password: string, salt: string) => {
   )
 }
 
-const encryptData = async (dataObj: any, key: CryptoKey) => {
+export const encryptData = async (dataObj: any, key: CryptoKey) => {
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(dataObj)))
   return { iv: buf2base64(iv), ciphertext: buf2base64(ciphertext) }
 }
 
-const decryptData = async (encryptedObj: { iv: string; ciphertext: string }, key: CryptoKey) => {
+export const decryptData = async (encryptedObj: { iv: string; ciphertext: string }, key: CryptoKey) => {
   const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base642buf(encryptedObj.iv) }, key, base642buf(encryptedObj.ciphertext))
   return JSON.parse(new TextDecoder().decode(decrypted))
 }
@@ -263,7 +263,7 @@ export interface DoseConflict {
  * When baseline is empty (first-ever sync, or baseline was lost), this
  * falls back to pure updatedAt-wins with no conflicts surfaced.
  */
-const mergeDoses = (
+export const mergeDoses = (
   local: DoseLog[],
   remote: DoseLog[],
   localDeleted: Set<string>,
@@ -847,11 +847,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       // Track the latest unprocessed snapshot so we don't lose data
       // when a push is in progress.  Instead of dropping the snapshot
       // entirely, we queue it and process it once the push completes.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       let pendingSnap: any = null
       let isProcessingSnap = false
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const processSnapshot = async (docSnap: any) => {
         isProcessingSnap = true
         console.debug('[sync] processSnapshot starting, doc exists:', docSnap.exists())
@@ -1081,7 +1081,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       setSyncStatus('error')
     }
     // roomId and password are read via refs to avoid recreating on every keystroke
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [
     isLoaded,
     reminderIsLoaded,
@@ -1119,7 +1119,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     setRoomId('')
     setPassword('')
     toast({ title: 'Sync Disconnected', description: 'Data will only save locally.' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [setSyncStatus])
 
   // D2 — Resolve a pending conflict.
@@ -1191,7 +1191,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       if (storedRoom) setRoomId(storedRoom)
     }
     return () => { if (unsubscribeRef.current) unsubscribeRef.current() }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [])
 
   const contextValue = useMemo(() => ({

@@ -127,6 +127,7 @@ for (const substance of substances) {
 const baseline = (await Bun.file(
   resolve(import.meta.dir, "..", "data-validation-baseline.json"),
 ).json()) as {
+  warningCount: number;
   conflictingDuplicateIds: string[];
 };
 const allowedConflicts = new Set(baseline.conflictingDuplicateIds);
@@ -199,6 +200,14 @@ for (const [key, combo] of Object.entries(tripsitLookup)) {
       warnings.push(`TripSit:${key}.sources[${index}].url is invalid`);
     }
   }
+}
+
+// Existing content debt is review-gated: any increase or decrease requires an
+// explicit baseline update in the same pull request, preventing silent drift.
+if (warnings.length !== baseline.warningCount) {
+  errors.push(
+    `warning baseline changed: expected ${baseline.warningCount}, found ${warnings.length}`,
+  );
 }
 
 for (const warning of warnings.slice(0, 20))
