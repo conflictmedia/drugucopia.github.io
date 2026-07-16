@@ -90,11 +90,13 @@ function PhaseProgressBar({
         return (
           <div
             key={phase}
-            className={`${colorEntry.bar} transition-all duration-500 ${
-              past || current ? 'opacity-100' : 'opacity-30'
-            }`}
+            className={`${colorEntry.bar} transition-all duration-500 ${past || current ? 'opacity-100' : 'opacity-30'
+              }`}
             style={{ width: `${widthPct}%` }}
             role="meter"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={past ? 100 : current ? 50 : 0}
             aria-label={`${phase} phase: ${past ? 'complete' : current ? 'active' : 'upcoming'}`}
           />
         )
@@ -227,7 +229,7 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
     if (allActiveDoses.length === 0) return -1
     const latestActiveDose = allActiveDoses.reduce((latest, d) =>
       d.doseTime.getTime() > latest.doseTime.getTime() ? d : latest
-    , allActiveDoses[0])
+      , allActiveDoses[0])
     const elapsedMins = (now - latestActiveDose.doseTime.getTime()) / 60_000
     const doseOffsetMins = (latestActiveDose.doseTime.getTime() - group.windowStart.getTime()) / 60_000
     return (doseOffsetMins + elapsedMins) / group.windowDuration * 100
@@ -446,7 +448,7 @@ export function MobilePhaseBar({ group, className = '' }: MobilePhaseBarProps) {
               // Use subtle opacity; boost slightly for narrow bands so they remain visible
               const bandOpacity = bandWidth < 10 ? 0.22
                 : bandWidth < 30 ? 0.14
-                : 0.08
+                  : 0.08
 
               return (
                 <rect

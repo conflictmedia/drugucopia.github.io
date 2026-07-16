@@ -35,6 +35,7 @@ export function Combobox({
   const [search, setSearch] = React.useState('')
   const containerRef = React.useRef<HTMLDivElement>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const listboxId = React.useId()
 
   const filteredOptions = options.filter((option) => {
     const searchLower = search.toLowerCase()
@@ -67,6 +68,8 @@ export function Combobox({
         type="button"
         role="combobox"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
         disabled={disabled}
         onClick={() => {
           setOpen(!open)
@@ -97,7 +100,7 @@ export function Combobox({
           </div>
 
           {/* Options list */}
-          <div className="max-h-60 overflow-y-auto p-1">
+          <div id={listboxId} role="listbox" className="max-h-60 overflow-y-auto p-1">
             {filteredOptions.length === 0 ? (
               allowCustom && search ? (
                 <button

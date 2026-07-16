@@ -28,7 +28,9 @@
         "./src/*"
       ]
     },
-    "types": ["vitest/globals"]
+    "types": [
+      "bun"
+    ]
   },
   "include": [
     "next-env.d.ts",
@@ -38,7 +40,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "scripts"
+    "node_modules"
   ]
 }

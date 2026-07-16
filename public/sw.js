@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+
 /**
  * Drugucopia service worker.
  *
@@ -22,7 +22,7 @@
 
 // Bump this when changing the precache list or fetch strategy.
 // The activate handler drops any cache with a different version.
-const CACHE_VERSION = 'drugucopia-v7'
+const CACHE_VERSION = 'drugucopia-v8'
 const PRECACHE_NAME = `${CACHE_VERSION}-precache`
 const RUNTIME_NAME = `${CACHE_VERSION}-runtime`
 
@@ -38,14 +38,9 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // NUKE: drop ALL caches on install, regardless of version. The
-      // previous versioning scheme wasn't aggressive enough — users were
-      // still seeing stale JS chunks from old SW versions. Wiping
-      // everything on every install guarantees a clean slate.
-      const keys = await caches.keys()
-      await Promise.all(keys.map((k) => caches.delete(k)))
-
-      // Re-precache the critical app shell from the network (bypass HTTP cache).
+      // Populate the new version alongside the active version. Deleting the
+      // active cache during install can break open tabs before this worker is
+      // ready; stale versions are removed atomically during activation.
       const cache = await caches.open(PRECACHE_NAME)
       await Promise.all(
         PRECACHE_URLS.map(async (url) => {
@@ -56,8 +51,7 @@ self.addEventListener('install', (event) => {
           }
         }),
       )
-      // Take over from the previous SW immediately.
-      self.skipWaiting()
+      // Remain waiting until the user accepts the in-app update prompt.
     })(),
   )
 })
@@ -72,15 +66,8 @@ self.addEventListener('activate', (event) => {
           .filter((k) => !k.startsWith(CACHE_VERSION))
           .map((k) => caches.delete(k)),
       )
-      // Force EVERY existing client (open tab) to reload immediately so
-      // they pick up the new application JS. Without this, an open tab
-      // keeps running the old JS even after the new SW takes over —
-      // which is the root cause of "I deployed a fix but it's still
-      // broken" reports.
-      const clients = await self.clients.matchAll({ type: 'window' })
-      clients.forEach((client) => {
-        client.navigate(client.url).catch(() => { })
-      })
+      // Claim clients without forcing navigation. A forced reload can discard
+      // in-progress form input and previously caused reload loops during HMR.
       await self.clients.claim()
     })(),
   )

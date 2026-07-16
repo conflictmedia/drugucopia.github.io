@@ -2,9 +2,9 @@ name: Build + Deploy Next.js site to Pages (release only)
 
 on:
   push:
-    branches: ['release', 'develop']
+    branches: ['release', 'dev']
   pull_request:
-    branches: ['release', 'develop']
+    branches: ['release', 'dev']
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: quality-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     env:
+      NEXT_TELEMETRY_DISABLED: '1'
       NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
@@ -27,22 +31,39 @@ jobs:
           submodules: recursive
         
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '20'
-          cache: 'npm'
+          bun-version-file: package.json
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
+
+      - name: Type-check
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Validate safety data
+        run: bun run validate:data
+
+      - name: Test
+        run: bun run test
 
       # Only needed for an actual Pages deployment build
       - name: Setup Pages
         if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/release' }}
         uses: actions/configure-pages@v4
 
-      - name: Build with Next.js
-        run: npm run build
+      - name: Build with Next.js on Bun
+        run: bun run build
+
+      - name: Install Playwright browser
+        run: bunx playwright install --with-deps chromium
+
+      - name: Test production PWA
+        run: bun run test:e2e
 
       # Only upload the special Pages artifact when we intend to deploy
       - name: Upload Pages artifact (release pushes only)

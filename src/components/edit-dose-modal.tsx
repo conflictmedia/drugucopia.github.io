@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { format } from 'date-fns'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import {
@@ -183,7 +183,7 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     reset,
     formState: { errors },
   } = useForm<DoseFormValues>({
@@ -201,16 +201,17 @@ export function EditDoseModal({ dose, open, onOpenChange, onSaved }: EditDoseMod
     },
   })
 
-  // Watch fields for reactivity
-  const substanceId = watch('substanceId')
-  const substanceName = watch('substanceName')
-  const amount = watch('amount')
-  const unit = watch('unit')
-  const route = watch('route')
-  const timestamp = watch('timestamp')
-  const notes = watch('notes')
-  const mood = watch('mood')
-  const setting = watch('setting')
+  // Subscribe to form values without using React Hook Form's non-memoizable
+  // `watch` function during render.
+  const substanceId = useWatch({ control, name: 'substanceId' })
+  const substanceName = useWatch({ control, name: 'substanceName' })
+  const amount = useWatch({ control, name: 'amount' })
+  const unit = useWatch({ control, name: 'unit' })
+  const route = useWatch({ control, name: 'route' })
+  const timestamp = useWatch({ control, name: 'timestamp' })
+  const notes = useWatch({ control, name: 'notes' })
+  const mood = useWatch({ control, name: 'mood' })
+  const setting = useWatch({ control, name: 'setting' })
 
   useEffect(() => {
     reset({
