@@ -5,7 +5,8 @@ import { Check, ChevronsUpDown, X, Zap, Search, Keyboard, Pill } from 'lucide-re
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { substances, searchSubstancesRanked, getSubstancesByCategory } from '@/lib/substances/index'
+import { searchSubstanceSummaries, type SubstanceSummary } from '@/lib/substance-repository'
+import { useSubstanceIndex } from '@/hooks/use-substance-index'
 import type { Substance, SubstanceCategory } from '@/lib/types'
 import {
   isMedicationSelectorId,
@@ -65,6 +66,7 @@ export function InteractionSubstanceSelector({
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map())
+  const { substances } = useSubstanceIndex()
 
   /**
    * Resolve each selected ID to a Substance. IDs come in two flavors:
@@ -95,7 +97,7 @@ export function InteractionSubstanceSelector({
           if (med) {
             return {
               id,
-              name: med.name,
+              name: med.name.trim() || "Unnamed Medication",
               commonNames: med.genericName ? [med.genericName] : [],
               categories: ['medications'] as SubstanceCategory[],
               class: med.medicationType || 'Other',
@@ -114,17 +116,18 @@ export function InteractionSubstanceSelector({
         }
         return substances.find((s) => s.id === id)
       })
-      .filter(Boolean) as Substance[]
-  }, [selectedIds])
+      .filter(Boolean) as Array<Substance | SubstanceSummary>
+  }, [selectedIds, substances])
 
   // Ranked search results
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
-    return searchSubstancesRanked(query, {
-      categoryFilter: categoryFilter || undefined,
-      limit: 40,
-    }).filter((r) => !selectedIds.includes(r.substance.id))
-  }, [query, selectedIds, categoryFilter])
+    return searchSubstanceSummaries(
+      categoryFilter ? substances.filter((substance) => substance.categories.includes(categoryFilter)) : substances,
+      query,
+      40,
+    ).filter((result) => !selectedIds.includes(result.substance.id))
+  }, [query, selectedIds, categoryFilter, substances])
 
   // Popular substances when no query (excluding already selected)
   const popularResults = useMemo(() => {
@@ -132,13 +135,13 @@ export function InteractionSubstanceSelector({
     const filtered = POPULAR_SUBSTANCES
       .filter((id) => !selectedIds.includes(id))
       .map((id) => substances.find((s) => s.id === id))
-      .filter(Boolean) as Substance[]
+      .filter(Boolean) as SubstanceSummary[]
     // If category filter is active, filter popular too
     if (categoryFilter) {
       return filtered.filter((s) => s.categories?.includes(categoryFilter as SubstanceCategory))
     }
     return filtered
-  }, [query, selectedIds, categoryFilter])
+  }, [query, selectedIds, categoryFilter, substances])
 
   // Combined display results
   const displayResults = useMemo(() => {
@@ -256,8 +259,8 @@ export function InteractionSubstanceSelector({
   }
 
   const totalFiltered = categoryFilter
-    ? getSubstancesByCategory(categoryFilter).filter(
-      (s) => !selectedIds.includes(s.id)
+    ? substances.filter(
+      (s) => s.categories.includes(categoryFilter) && !selectedIds.includes(s.id)
     ).length
     : substances.filter((s) => !selectedIds.includes(s.id)).length
 

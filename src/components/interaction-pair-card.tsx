@@ -13,7 +13,7 @@ const severityConfig = {
   dangerous: {
     icon: ShieldAlert,
     borderColor: 'border-red-500/50',
-    bgColor: 'bg-red-500/5',
+    bgColor: 'bg-red-500/10',
     iconBgColor: 'bg-red-500/20',
     badgeColor: 'bg-red-500/30 text-red-200 border-red-500/60 font-black',
     badgeLabel: 'DANGEROUS / LETHAL RISK',
@@ -22,7 +22,7 @@ const severityConfig = {
   unsafe: {
     icon: AlertTriangle,
     borderColor: 'border-orange-500/40',
-    bgColor: 'bg-orange-500/5',
+    bgColor: 'bg-orange-500/10',
     iconBgColor: 'bg-orange-500/15',
     badgeColor: 'bg-orange-500/25 text-orange-200 border-orange-500/45 font-bold',
     badgeLabel: 'UNSAFE',

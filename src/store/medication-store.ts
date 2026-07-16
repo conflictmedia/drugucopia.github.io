@@ -300,20 +300,21 @@ export function medicationToSubstance(med: UserMedication): Substance {
     // Inherit interaction data from the linked substance, but keep the
     // user-facing name/dosage from the medication so warnings read
     // "Prozac" instead of "Fluoxetine" when the user typed Prozac.
+    const medicationName = med.name.trim() || linked.name;
     return {
       ...linked,
       id: toMedicationSelectorId(med.id),
-      name: med.name,
+      name: medicationName,
       commonNames: Array.from(
         new Set([
-          med.name,
+          medicationName,
           ...(linked.commonNames || []),
           ...(med.genericName ? [med.genericName] : []),
         ]),
       ),
       aliases: Array.from(
         new Set([
-          med.name,
+          medicationName,
           ...(linked.aliases || []),
           ...(med.genericName ? [med.genericName] : []),
         ]),
@@ -330,9 +331,10 @@ export function medicationToSubstance(med: UserMedication): Substance {
     ? MEDICATION_TYPE_TO_SUBSTANCE_CLASS[med.medicationType]
     : "Other";
 
+  const medicationName = med.name.trim() || "Unnamed Medication";
   return {
     id: toMedicationSelectorId(med.id),
-    name: med.name,
+    name: medicationName,
     commonNames: med.genericName ? [med.genericName] : [],
     categories: ["medications"],
     class: cls,
