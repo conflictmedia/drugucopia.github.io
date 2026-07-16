@@ -827,7 +827,12 @@ export function computeStreakInsights(doses: DoseLog[]): StreakInsights {
   // Walk through sorted unique active-day timestamps
   const uniqueDays = Array.from(activeDaySet).sort((a, b) => a - b);
   for (const ts of uniqueDays) {
-    if (prevTs !== null && ts - prevTs === 24 * 60 * 60 * 1000) {
+    // Compare calendar days rather than elapsed milliseconds: adjacent local
+    // midnights are 23 or 25 hours apart across daylight-saving transitions.
+    if (
+      prevTs !== null &&
+      differenceInCalendarDays(new Date(ts), new Date(prevTs)) === 1
+    ) {
       run += 1;
     } else {
       run = 1;
