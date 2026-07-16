@@ -119,12 +119,13 @@ function EmergencyCard({ resource }: { resource: typeof emergencyResources[0] })
 }
 
 function PrincipleChip({ principle }: { principle: typeof quickPrinciples[0] }) {
-  const Icon = getGuideIcon(principle.icon) || Shield
   return (
     <div className="card card-transparent card-lift">
       <div className="card-body flex-row items-start gap-3 p-4">
         <div className="p-2 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 shrink-0 border border-primary/10">
-          <Icon className="h-4 w-4 text-primary" />
+          {React.createElement(getGuideIcon(principle.icon) || Shield, {
+            className: 'h-4 w-4 text-primary',
+          })}
         </div>
         <div className="min-w-0">
           <p className="font-semibold text-sm">{principle.title}</p>

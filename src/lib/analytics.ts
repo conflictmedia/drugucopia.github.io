@@ -12,9 +12,16 @@ import {
   type RouteDosageDuration,
 } from "@/lib/substances/index";
 import {
+  parseDurationToMinutes,
+  calculatePhaseTimings,
+  calculateDoseScaledTimings,
+  intensityAt,
+} from "@/components/dose-timeline/dose-timeline-utils";
+import { classifyDose } from "@/lib/dose-classification";
+import {
   TOLERANCE_HALF_LIVES_DAYS,
   DEFAULT_TOLERANCE_HALF_LIFE_DAYS,
-} from "./analytics/tolerance-half-lives"
+} from "./analytics/tolerance-half-lives";
 import {
   format,
   subDays,
@@ -26,23 +33,24 @@ import {
   eachMonthOfInterval,
   differenceInCalendarDays,
   parseISO,
-} from "date-fns"
+} from "date-fns";
 
 function toleranceHalfLifeDays(substanceName: string): number {
-  const lower = substanceName.toLowerCase().trim()
-  if (lower in TOLERANCE_HALF_LIVES_DAYS) return TOLERANCE_HALF_LIVES_DAYS[lower]
+  const lower = substanceName.toLowerCase().trim();
+  if (lower in TOLERANCE_HALF_LIVES_DAYS)
+    return TOLERANCE_HALF_LIVES_DAYS[lower];
   for (const [key, val] of Object.entries(TOLERANCE_HALF_LIVES_DAYS)) {
-    if (lower.includes(key)) return val
+    if (lower.includes(key)) return val;
   }
-  return DEFAULT_TOLERANCE_HALF_LIFE_DAYS
+  return DEFAULT_TOLERANCE_HALF_LIFE_DAYS;
 }
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────
 
 /** Returns a Date object guaranteed valid (defaults to epoch on bad input). */
 function safeDate(s: string): Date {
-  const d = new Date(s)
-  return isNaN(d.getTime()) ? new Date(0) : d
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? new Date(0) : d;
 }
 
 /**
@@ -515,13 +523,11 @@ export function estimateTolerance(doses: DoseLog[]): ToleranceEstimate[] {
   for (const d of doses) {
     const group = groupFor.get(d.substanceName) ?? d.substanceName;
     if (!dosesByGroup.has(group)) dosesByGroup.set(group, []);
-    dosesByGroup
-      .get(group)!
-      .push({
-        name: d.substanceName,
-        dose: d,
-        ts: safeDate(d.timestamp).getTime(),
-      });
+    dosesByGroup.get(group)!.push({
+      name: d.substanceName,
+      dose: d,
+      ts: safeDate(d.timestamp).getTime(),
+    });
   }
 
   // ── Run the decay simulation per group ──
@@ -913,17 +919,7 @@ export function computeIntensityTimeline(
   windowHours: number = 24,
   sampleIntervalMins: number = 15,
 ): IntensityTimelinePoint[] {
-  // Lazy-load the timeline utils to avoid circular imports at module load time
-  // (these are pure functions but they pull in a lot of code).
-  const {
-    parseDurationToMinutes,
-    calculatePhaseTimings,
-    calculateDoseScaledTimings,
-    intensityAt,
-  } = require("@/components/dose-timeline/dose-timeline-utils");
-  const { classifyDose } = require("@/lib/dose-classification");
-  const { substances } = require("@/lib/substances/index");
-
+  const substances = ALL_SUBSTANCES;
   const now = Date.now();
   const windowStart = now - windowHours * 60 * 60 * 1000;
 
