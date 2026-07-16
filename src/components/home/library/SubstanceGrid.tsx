@@ -1,14 +1,14 @@
 'use client'
 
 import { Search } from 'lucide-react'
-import type { Substance } from '@/lib/types'
+import type { SubstanceSummary } from '@/lib/substance-repository'
 import { SubstanceCard } from './SubstanceCard'
 
 interface SubstanceGridProps {
-  substances: Substance[]
+  substances: SubstanceSummary[]
   visibleCount: number
   totalCount: number
-  onSelect: (s: Substance) => void
+  onSelect: (s: SubstanceSummary) => void
   onShowMore: () => void
 }
 

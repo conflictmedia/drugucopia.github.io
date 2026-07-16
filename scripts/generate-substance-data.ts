@@ -29,4 +29,3 @@ await Promise.all(substances.map((substance) =>
 ))
 
 console.log(`Generated ${summaries.length} substance summaries and detail records.`)
-
