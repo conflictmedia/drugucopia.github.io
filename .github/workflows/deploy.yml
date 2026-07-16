@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Validate safety data
+        run: bun run validate:data
+
       - name: Test
         run: bun run test
 
