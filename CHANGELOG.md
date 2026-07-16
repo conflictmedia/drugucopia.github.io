@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.7] - 2026-07-15
+
+### Added
+- Benzo equiv calculator UI enhancements (Interactive table highlighting, Preset Dose chips, interactive swap control, direct dose logging)
+- Alcohol calc UI enhancements (Visual drink presets, direct ethanol dose logging)
+- Interaction checker safety and risk filtering (one tap logging, animated hazard visuals, severity filter
+- Substance detail view navigation (sticky nav bar)
+- Custom Substances Sync
+- Medication Profile Sync
+
+
+### Changed
+- Replaced hardcoded tailwait utilites with daisyui design tokens
+- Badge and background colors now automatically adapt across the 14 themes
+
 ## [0.3.6] - 2026-07-15
 
 ### Fixed
