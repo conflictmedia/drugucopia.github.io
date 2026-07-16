@@ -42,7 +42,7 @@ export function DoseMarker({
   d,
   isPrimary,
   hex,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   groupKey,
   offsetMins,
   windowDuration,

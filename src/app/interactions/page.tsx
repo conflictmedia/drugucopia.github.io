@@ -76,7 +76,7 @@ function InteractionsPageInner() {
    */
   const medicationSubstances = useMemo(
     () => getMedicationsAsSubstances({ onlyActive: true }),
-    [medications, activeMedications.length], // eslint-disable-line react-hooks/exhaustive-deps
+    [medications, activeMedications.length],  
   )
 
   // Load substances from URL params on mount.
