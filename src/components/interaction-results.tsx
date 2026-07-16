@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   ShieldAlert,
   AlertTriangle,
@@ -8,10 +9,11 @@ import {
   Shuffle,
   ArrowRightLeft,
   ThumbsUp,
+  Filter,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InteractionPairCard } from './interaction-pair-card'
-import type { InteractionCheckResult } from '@/lib/interaction-checker'
+import type { InteractionCheckResult, InteractionSeverity } from '@/lib/interaction-checker'
 
 interface InteractionResultsProps {
   result: InteractionCheckResult | null
@@ -19,11 +21,15 @@ interface InteractionResultsProps {
   isLoading?: boolean
 }
 
+type SeverityFilter = 'all' | 'high-risk' | 'caution' | 'low-risk'
+
 export function InteractionResults({
   result,
   selectedCount,
   isLoading,
 }: InteractionResultsProps) {
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all')
+
   if (selectedCount === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -57,13 +63,13 @@ export function InteractionResults({
   if (result.summary.total === 0 && result.crossTolerances.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="p-4 rounded-2xl bg-green-500/10 mb-4">
-          <CheckCircle2 className="h-8 w-8 text-green-500" />
+        <div className="p-4 rounded-2xl bg-success/10 mb-4">
+          <CheckCircle2 className="h-8 w-8 text-success" />
         </div>
         <h3 className="text-lg font-semibold mb-1">No Known Interactions</h3>
         <p className="text-sm text-neutral-content max-w-sm">
           No documented interactions were found between the selected substances. This does
-          not guarantee safety — always do your own research and consult professionals.
+          not guarantee safety — always do your own research and consult healthcare professionals.
         </p>
       </div>
     )
@@ -75,68 +81,111 @@ export function InteractionResults({
   const lowRisk = result.pairs.filter((p) => p.severity === 'low-risk')
   const hasRisks = dangerous.length > 0 || unsafe.length > 0
 
+  const showDangerous = severityFilter === 'all' || severityFilter === 'high-risk'
+  const showUnsafe = severityFilter === 'all' || severityFilter === 'high-risk'
+  const showCaution = severityFilter === 'all' || severityFilter === 'caution'
+  const showLowRisk = severityFilter === 'all' || severityFilter === 'low-risk'
+
   return (
     <div className="space-y-6">
-      {/* Summary Banner — neutral bg with colored left border so badges don't
-          disappear into a matching-colored alert background (red-on-red, etc.) */}
+      {/* Summary Banner */}
       <div
         className={cn(
-          'alert border-l-4 bg-base-100 border-base-300',
+          'alert border-l-4 bg-base-100 border-base-300 shadow-sm',
           result.summary.dangerous > 0
-            ? 'border-l-red-500'
+            ? 'border-l-error'
             : result.summary.unsafe > 0
-              ? 'border-l-orange-500'
+              ? 'border-l-warning'
               : result.summary.caution > 0
-                ? 'border-l-amber-500'
-                : 'border-l-emerald-500'
+                ? 'border-l-warning'
+                : 'border-l-success'
         )}
       >
-        <div className="flex items-center gap-3 mb-3">
-          {result.summary.dangerous > 0 ? (
-            <ShieldAlert className="h-5 w-5 text-red-400" />
-          ) : result.summary.unsafe > 0 ? (
-            <AlertTriangle className="h-5 w-5 text-orange-400" />
-          ) : result.summary.caution > 0 ? (
-            <HelpCircle className="h-5 w-5 text-amber-400" />
-          ) : (
-            <ThumbsUp className="h-5 w-5 text-emerald-400" />
-          )}
-          <h3 className="font-semibold">Interaction Summary</h3>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {result.summary.dangerous > 0 && (
-            <span className="badge bg-red-500/25 text-red-200 border-red-500/40 font-bold">
-              {result.summary.dangerous} Dangerous
-            </span>
-          )}
-          {result.summary.unsafe > 0 && (
-            <span className="badge bg-orange-500/25 text-orange-200 border-orange-500/40 font-bold">
-              {result.summary.unsafe} Unsafe
-            </span>
-          )}
-          {result.summary.caution > 0 && (
-            <span className="badge bg-amber-500/25 text-amber-200 border-amber-500/40 font-bold">
-              {result.summary.caution} Caution
-            </span>
-          )}
-          {result.summary.lowRisk > 0 && (
-            <span className="badge bg-emerald-500/25 text-emerald-200 border-emerald-500/40 font-bold">
-              {result.summary.lowRisk} Low Risk
-            </span>
-          )}
-          <span className="badge badge-outline text-base-content/60">
-            {result.summary.total} total
-          </span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-3">
+            {result.summary.dangerous > 0 ? (
+              <ShieldAlert className="h-5 w-5 text-error shrink-0" />
+            ) : result.summary.unsafe > 0 ? (
+              <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+            ) : result.summary.caution > 0 ? (
+              <HelpCircle className="h-5 w-5 text-warning shrink-0" />
+            ) : (
+              <ThumbsUp className="h-5 w-5 text-success shrink-0" />
+            )}
+            <div>
+              <h3 className="font-semibold">Interaction Summary</h3>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {result.summary.dangerous > 0 && (
+                  <span className="badge bg-error/20 text-error border-error/40 font-bold text-xs">
+                    {result.summary.dangerous} Dangerous
+                  </span>
+                )}
+                {result.summary.unsafe > 0 && (
+                  <span className="badge bg-warning/20 text-warning border-warning/40 font-bold text-xs">
+                    {result.summary.unsafe} Unsafe
+                  </span>
+                )}
+                {result.summary.caution > 0 && (
+                  <span className="badge bg-warning/15 text-warning border-warning/30 font-medium text-xs">
+                    {result.summary.caution} Caution
+                  </span>
+                )}
+                {result.summary.lowRisk > 0 && (
+                  <span className="badge bg-success/20 text-success border-success/40 font-medium text-xs">
+                    {result.summary.lowRisk} Low Risk
+                  </span>
+                )}
+                <span className="badge badge-outline text-neutral-content text-xs">
+                  {result.summary.total} total
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1 self-start sm:self-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-base-200">
+            <Filter className="h-3.5 w-3.5 text-neutral-content mr-1" />
+            <button
+              onClick={() => setSeverityFilter('all')}
+              className={`btn btn-xs ${severityFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+            >
+              All ({result.summary.total})
+            </button>
+            {(result.summary.dangerous > 0 || result.summary.unsafe > 0) && (
+              <button
+                onClick={() => setSeverityFilter('high-risk')}
+                className={`btn btn-xs ${severityFilter === 'high-risk' ? 'btn-error' : 'btn-ghost text-error'}`}
+              >
+                High Risk ({result.summary.dangerous + result.summary.unsafe})
+              </button>
+            )}
+            {result.summary.caution > 0 && (
+              <button
+                onClick={() => setSeverityFilter('caution')}
+                className={`btn btn-xs ${severityFilter === 'caution' ? 'btn-warning' : 'btn-ghost text-warning'}`}
+              >
+                Caution ({result.summary.caution})
+              </button>
+            )}
+            {result.summary.lowRisk > 0 && (
+              <button
+                onClick={() => setSeverityFilter('low-risk')}
+                className={`btn btn-xs ${severityFilter === 'low-risk' ? 'btn-success' : 'btn-ghost text-success'}`}
+              >
+                Low Risk ({result.summary.lowRisk})
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Dangerous Interactions */}
-      {dangerous.length > 0 && (
+      {showDangerous && dangerous.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <ShieldAlert className="h-4 w-4 text-red-400" />
-            <h4 className="text-sm font-semibold text-red-400">Dangerous Interactions</h4>
-            <span className="badge text-[10px] bg-red-500/25 text-red-200 border-red-500/45">
+            <ShieldAlert className="h-4 w-4 text-error" />
+            <h4 className="text-sm font-bold text-error">Dangerous / Lethal Risk Combinations</h4>
+            <span className="badge text-[10px] bg-error/20 text-error border-error/40 font-bold">
               {dangerous.length}
             </span>
           </div>
@@ -149,14 +198,14 @@ export function InteractionResults({
       )}
 
       {/* Unsafe Interactions */}
-      {unsafe.length > 0 && (
+      {showUnsafe && unsafe.length > 0 && (
         <>
-          {dangerous.length > 0 && <div className="divider" />}
+          {showDangerous && dangerous.length > 0 && <div className="divider" />}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle className="h-4 w-4 text-orange-400" />
-              <h4 className="text-sm font-semibold text-orange-400">Unsafe Interactions</h4>
-              <span className="badge text-[10px] bg-orange-500/25 text-orange-200 border-orange-500/45">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              <h4 className="text-sm font-bold text-warning">Unsafe Interactions</h4>
+              <span className="badge text-[10px] bg-warning/20 text-warning border-warning/40 font-bold">
                 {unsafe.length}
               </span>
             </div>
@@ -170,14 +219,14 @@ export function InteractionResults({
       )}
 
       {/* Caution Interactions */}
-      {caution.length > 0 && (
+      {showCaution && caution.length > 0 && (
         <>
-          {hasRisks && <div className="divider" />}
+          {(showDangerous && dangerous.length > 0 || showUnsafe && unsafe.length > 0) && <div className="divider" />}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <HelpCircle className="h-4 w-4 text-amber-400" />
-              <h4 className="text-sm font-semibold text-amber-400">Use Caution</h4>
-              <span className="badge text-[10px] bg-amber-500/25 text-amber-200 border-amber-500/45">
+              <HelpCircle className="h-4 w-4 text-warning" />
+              <h4 className="text-sm font-semibold text-warning">Use Caution</h4>
+              <span className="badge text-[10px] bg-warning/15 text-warning border-warning/30">
                 {caution.length}
               </span>
             </div>
@@ -190,15 +239,15 @@ export function InteractionResults({
         </>
       )}
 
-      {/* Low Risk Interactions (synergies, decreases, no synergy) */}
-      {lowRisk.length > 0 && (
+      {/* Low Risk Interactions */}
+      {showLowRisk && lowRisk.length > 0 && (
         <>
           {(hasRisks || caution.length > 0) && <div className="divider" />}
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <ThumbsUp className="h-4 w-4 text-emerald-400" />
-              <h4 className="text-sm font-semibold text-emerald-400">Low Risk Combinations</h4>
-              <span className="badge text-[10px] bg-emerald-500/25 text-emerald-200 border-emerald-500/45">
+              <ThumbsUp className="h-4 w-4 text-success" />
+              <h4 className="text-sm font-semibold text-success">Low Risk Combinations</h4>
+              <span className="badge text-[10px] bg-success/20 text-success border-success/40">
                 {lowRisk.length}
               </span>
             </div>
@@ -217,15 +266,15 @@ export function InteractionResults({
           <div className="divider" />
           <section>
             <div className="flex items-center gap-2 mb-3">
-              <ArrowRightLeft className="h-4 w-4 text-blue-400" />
-              <h4 className="text-sm font-semibold text-blue-400">Cross-Tolerances</h4>
-              <span className="badge text-[10px] bg-blue-500/25 text-blue-200 border-blue-500/45">
+              <ArrowRightLeft className="h-4 w-4 text-info" />
+              <h4 className="text-sm font-semibold text-info">Cross-Tolerances</h4>
+              <span className="badge text-[10px] bg-info/20 text-info border-info/40">
                 {result.crossTolerances.length}
               </span>
             </div>
             <div className="space-y-2">
               {result.crossTolerances.map((ct, i) => (
-                <div key={`ct-${i}`} className="card card-transparent border-blue-500/20">
+                <div key={`ct-${i}`} className="card card-transparent border-info/20">
                   <div className="card-body p-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="badge badge-secondary font-medium text-xs capitalize">
@@ -248,9 +297,7 @@ export function InteractionResults({
               ))}
             </div>
             <p className="text-xs text-neutral-content mt-2 leading-relaxed">
-              Cross-tolerance means that tolerance to one substance may reduce the effects of
-              another substance in the same class. This can lead to taking higher doses than
-              intended.
+              Cross-tolerance means tolerance to one substance in a pharmacological class reduces responsiveness to other substances in that class.
             </p>
           </section>
         </>
@@ -263,11 +310,7 @@ export function InteractionResults({
         <div>
           <h3 className="font-bold text-xs">Disclaimer</h3>
           <p className="text-[11px] leading-relaxed">
-            Interaction data sourced from TripSit&apos;s community-maintained combos database
-            and per-substance profiles. Absence of a known interaction does not guarantee
-            safety. Always perform independent research and consult qualified healthcare
-            professionals. In case of emergency, contact your local emergency services
-            immediately.
+            Interaction data sourced from TripSit&apos;s community-maintained database. Absence of a known interaction does not guarantee safety. Always perform independent research and consult healthcare professionals.
           </p>
         </div>
       </div>

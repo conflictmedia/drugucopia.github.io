@@ -45,31 +45,29 @@ export function MedicationList() {
   // Count active vs total for the header summary.
   const activeCount = medications.filter(m => m.isActive).length;
 
-  // Per-class color theming for the medicationType badge. Falls back
-  // to a neutral color for "Other" / unknown.
+  // Per-class color theming for the medicationType badge. Uses semantic
+  // daisyUI theme tokens so colors adapt consistently across all themes.
   const typeBadgeClass = (type?: string): string => {
     switch (type) {
       case 'SSRI':
       case 'SNRI':
-        return 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/30';
+        return 'bg-info/15 text-info border-info/30';
       case 'MAOI':
-        return 'bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30';
-      case 'TCA':
-        return 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30';
-      case 'Benzodiazepine':
-        return 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30';
-      case 'Antipsychotic':
-        return 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30';
-      case 'Mood Stabilizer':
-        return 'bg-teal-500/15 text-teal-600 dark:text-teal-300 border-teal-500/30';
-      case 'Stimulant':
-        return 'bg-orange-500/15 text-orange-600 dark:text-orange-300 border-orange-500/30';
       case 'Opioid':
-        return 'bg-red-500/15 text-red-600 dark:text-red-300 border-red-500/30';
+        return 'bg-error/15 text-error border-error/30';
+      case 'TCA':
+        return 'bg-warning/15 text-warning border-warning/30';
+      case 'Benzodiazepine':
+        return 'bg-accent/15 text-accent border-accent/30';
+      case 'Antipsychotic':
+        return 'bg-secondary/15 text-secondary border-secondary/30';
+      case 'Mood Stabilizer':
       case 'Beta Blocker':
-        return 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border-cyan-500/30';
+        return 'bg-success/15 text-success border-success/30';
+      case 'Stimulant':
+        return 'bg-warning/15 text-warning border-warning/30';
       default:
-        return 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30';
+        return 'bg-base-300 text-neutral-content border-base-content/20';
     }
   };
 
