@@ -126,7 +126,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         <div className="navbar-end gap-1 sm:gap-2">
           <a
-            href="https://github.com/conflictmedia/drugucopia-app/releases"
+            href="https://github.com/drugucopia/app-drugucopia/releases"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-ghost btn-sm gap-1.5"
