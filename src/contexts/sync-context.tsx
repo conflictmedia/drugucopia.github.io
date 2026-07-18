@@ -390,6 +390,10 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       })
       lastWriteTimeRef.current = Date.now()
       console.debug('[sync] setDoc succeeded')
+      // Update the dose baseline to match what we just pushed. This ensures
+      // the baseline stays in sync with Firestore, which is critical for
+      // conflict detection on subsequent merges (especially after imports).
+      saveDoseBaseline(currentDoses)
     } catch (e) {
       console.error('[sync] Failed to push sync:', e)
       // Surface the error to the user — include the FULL error message so the
