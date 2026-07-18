@@ -1,6 +1,11 @@
 # Changelog
 
-## [0.3.8] - 2026-07-15
+## [0.3.9] - 2026-07-18
+
+### Changed
+- Alcohol in grams in dose history shows equivalence in 40%ABV shots
+
+## [0.3.8] - 2026-07-18
 
 ### Changed
 - Inputting shots/drinks in dose logger for alcohol now automatically converts it into grams.
