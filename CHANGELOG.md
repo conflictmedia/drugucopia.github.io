@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.8] - 2026-07-15
+
+### Changed
+- Inputting shots/drinks in dose logger for alcohol now automatically converts it into grams.
+
 ## [0.3.7] - 2026-07-15
 
 ### Added
