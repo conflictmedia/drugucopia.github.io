@@ -9,12 +9,12 @@ import { ChangelogPopupWrapper } from "@/components/changelog-popup-wrapper";
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ibm-plex-sans",
   subsets: ["latin"],
-  weight: ['400', '500', '600', '700'],
+  weight: ["400", "500", "600", "700"],
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
-  weight: '400',
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -31,10 +31,10 @@ export const metadata: Metadata = {
   keywords: ["psychoactive", "substances", "documentation", "harm reduction", "drug information"],
   authors: [{ name: "conflictmedia @ conflict@cocaine.ninja" }],
   icons: {
-    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`,
-    apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/logo.png`,
+    icon: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.png`,
+    apple: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/logo.png`,
   },
-  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ''}/manifest.webmanifest`,
+  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH || ""}/manifest.webmanifest`,
   appleWebApp: {
     capable: true,
     title: "Drugucopia",
@@ -50,9 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${ibmPlexSans.className} ${ibmPlexMono.className} antialiased text-base-content`}
-      >
+      <body className={`${ibmPlexSans.className} ${ibmPlexMono.className} antialiased text-base-content`}>
         <ThemeProvider>
           <LayoutClient>
             {children}

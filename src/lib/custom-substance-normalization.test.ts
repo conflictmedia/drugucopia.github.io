@@ -1,17 +1,18 @@
-import { afterEach, describe, expect, test } from 'bun:test'
 import { getAllSubstances, getSubstanceByIdAll, searchSubstancesRankedAll } from './substances/index'
 import { checkInteractions } from './interaction-checker'
 
 const storage = new Map<string, string>()
-Object.defineProperty(globalThis, 'window', { value: globalThis, configurable: true })
-Object.defineProperty(globalThis, 'localStorage', {
-  value: {
-    getItem: (key: string) => storage.get(key) ?? null,
-    setItem: (key: string, value: string) => storage.set(key, value),
-    removeItem: (key: string) => storage.delete(key),
-  },
-  configurable: true,
-})
+const mockStorage = {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => storage.set(key, value),
+  removeItem: (key: string) => storage.delete(key),
+  clear: () => storage.clear(),
+}
+
+// Properly mock localStorage for both globalThis and window
+Object.defineProperty(globalThis, 'localStorage', { value: mockStorage, configurable: true, writable: true })
+;(globalThis as any).window = { localStorage: mockStorage, navigator: {} }
+;(globalThis as any).localStorage = mockStorage
 
 afterEach(() => storage.clear())
 
@@ -39,4 +40,3 @@ describe('custom substance normalization', () => {
     expect(() => checkInteractions(['custom-one', 'caffeine'])).not.toThrow()
   })
 })
-

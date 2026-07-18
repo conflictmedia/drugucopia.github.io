@@ -1,7 +1,7 @@
 {
   "javascript": {
     "maxChunkBytes": 2300000,
-    "maxTotalBytes": 5950000
+    "maxTotalBytes": 6100000
   },
   "substanceData": {
     "maxSummaryBytes": 500000,

@@ -10,6 +10,7 @@ import {
   Shield,
   Shuffle,
   Pill,
+  Settings,
 } from "lucide-react";
 
 export interface NavItem {
@@ -22,11 +23,18 @@ export interface NavItem {
     | "custom-substances"
     | "safety"
     | "changelog"
-    | "medications";
+    | "medications"
+    | "settings";
   href: string;
   label: string;
   icon: LucideIcon;
   section: "explore" | "track" | "tools" | "info";
+  /**
+   * DaisyUI semantic color token used for the item's icon. Inactive items
+   * render the icon at ~70% opacity in this color; active items render at
+   * full opacity. This gives each section a stable theme-aware accent so
+   * the sidebar reads as more colorful instead of monochrome neutral.
+   */
   color:
     | "primary"
     | "secondary"
@@ -110,6 +118,14 @@ export const NAV_ITEMS: NavItem[] = [
     section: "info",
     color: "info",
   },
+  {
+    id: "settings",
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
+    section: "info",
+    color: "success",
+  },
 ];
 
 export const NAV_SECTIONS: Array<{
@@ -146,6 +162,8 @@ export function isNavItemActive(item: NavItem, pathname: string) {
       return p.startsWith("/harm-reduction");
     case "changelog":
       return p.startsWith("/changelog");
+    case "settings":
+      return p.startsWith("/settings");
     default:
       return false;
   }

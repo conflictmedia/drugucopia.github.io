@@ -1,78 +1,118 @@
-'use client'
+"use client";
 
-import { AlertTriangle, HelpCircle } from 'lucide-react'
-import { useState, useEffect, useSyncExternalStore, type ReactNode } from 'react'
-import { AppSidebar } from './AppSidebar'
-import { TopBar } from './TopBar'
-import { Toaster } from '@/components/ui/toaster'
-import { VisualizerControls } from '@/components/visualizer-controls'
-import { MilkdropBackgroundWrapper } from '@/components/milkdrop-background-wrapper'
-import dynamic from 'next/dynamic'
-import { ReminderProvider } from '@/components/reminder-provider'
-import { CommandPalette } from '@/components/command-palette'
-import { OnboardingTour } from '@/components/onboarding-tour'
-import { useUIStore } from '@/store/ui-store'
+import { AlertTriangle } from "lucide-react";
+import { useState, useEffect, useSyncExternalStore, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { AppSidebar } from "./AppSidebar";
+import { TopBar } from "./TopBar";
+import { BottomNav } from "./BottomNav";
+import { Toaster } from "@/components/ui/toaster";
+import { VisualizerControls } from "@/components/visualizer-controls";
+import { MilkdropBackgroundWrapper } from "@/components/milkdrop-background-wrapper";
+import { SyncProvider } from "@/contexts/sync-context";
+import { ReminderProvider } from "@/components/reminder-provider";
+import { CommandPalette } from "@/components/command-palette";
+import { OnboardingTour } from "@/components/onboarding-tour";
+import { UpdateCheckPopupWrapper } from "@/components/update-check-popup-wrapper";
+import { useUIStore } from "@/store/ui-store";
+
+const DoseLoggerModal = dynamic(
+  () => import("@/components/dose-logger-modal").then((mod) => mod.DoseLoggerModal),
+  { ssr: false, loading: () => null }
+);
 
 interface LayoutClientProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
-const DRAWER_ID = 'app-shell-drawer'
-
-// Keep Firebase/Firestore out of the main application shell chunk. The
-// provider loads on the client and preserves the same children contract.
-const SyncProvider = dynamic(
-  () => import('@/contexts/sync-context').then((module) => module.SyncProvider),
-  { ssr: false },
-)
-const DoseLoggerModal = dynamic(
-  () => import('@/components/dose-logger-modal').then((module) => module.DoseLoggerModal),
-  { ssr: false },
-)
+const DRAWER_ID = "app-shell-drawer";
 
 export function LayoutClient({ children }: LayoutClientProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem('drugucopia-sidebar-expanded') === 'true'
-  })
-  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger, onboardingCompleted, setOnboardingCompleted, showOnboardingTour } = useUIStore()
-  const [showOnboarding, setShowOnboarding] = useState(false)
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("drugucopia-sidebar-expanded") === "true";
+  });
+  const { doseLoggerOpen, doseLoggerPreselect, closeDoseLogger, showOnboardingTour, setOnboardingCompleted } = useUIStore();
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false,
-  )
-  const isMobile = useSyncExternalStore(
-    (callback) => {
-      window.addEventListener('resize', callback)
-      return () => window.removeEventListener('resize', callback)
-    },
-    () => window.innerWidth < 768,
-    () => false,
-  )
+  );
+  const [isMobile, setIsMobile] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Keyboard shortcut: Ctrl+Shift+O to show onboarding tour
+  // Onboarding tour: auto-open on first visit (when the localStorage
+  // flag `drugucopia-tour-complete` is unset). Re-triggerable via the
+  // `showOnboardingTour()` store action (Ctrl+Shift+O shortcut below),
+  // which sets `showOnboarding` directly inside its keydown handler.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'O') {
-        e.preventDefault()
-        showOnboardingTour()
-        setShowOnboarding(true)
+    try {
+      const done = window.localStorage.getItem("drugucopia-tour-complete") === "true";
+      setOnboardingCompleted(done);
+      if (!done) {
+        const t = window.setTimeout(() => setShowOnboarding(true), 1200);
+        return () => window.clearTimeout(t);
       }
+    } catch {
+      /* ignore */
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showOnboardingTour])
+  }, [setOnboardingCompleted]);
 
-  // Sync onboarding state
+  // Ctrl+Shift+O keyboard shortcut to re-open the onboarding tour.
   useEffect(() => {
-    const hasCompleted = localStorage.getItem('drugucopia-tour-complete') === 'true'
-    setOnboardingCompleted(hasCompleted)
-    if (!hasCompleted) {
-      setShowOnboarding(true)
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "O" || e.key === "o")) {
+        e.preventDefault();
+        showOnboardingTour();
+        setShowOnboarding(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showOnboardingTour]);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // ── Android back button: close drawer / dose logger when open ──
+  useEffect(() => {
+    const handlePopState = () => {
+      // If the drawer is open, close it and consume the back navigation
+      if (drawerOpen) {
+        setDrawerOpen(false);
+        return;
+      }
+      // If the dose logger modal is open, close it
+      if (doseLoggerOpen) {
+        closeDoseLogger();
+        return;
+      }
+    };
+
+    // Push a history entry when the drawer/modal opens so the back
+    // button has something to pop. When it closes, we don't push.
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [drawerOpen, doseLoggerOpen, closeDoseLogger]);
+
+  // Push a history entry when drawer opens (so Android back can pop it)
+  useEffect(() => {
+    if (drawerOpen) {
+      window.history.pushState({ drawerOpen: true }, "");
     }
-  }, [setOnboardingCompleted])
+  }, [drawerOpen]);
+
+  // Push a history entry when dose logger opens
+  useEffect(() => {
+    if (doseLoggerOpen) {
+      window.history.pushState({ doseLoggerOpen: true }, "");
+    }
+  }, [doseLoggerOpen]);
 
   if (!mounted) {
     return (
@@ -81,16 +121,20 @@ export function LayoutClient({ children }: LayoutClientProps) {
           <div className="loading loading-spinner loading-lg text-primary" />
         </div>
       </div>
-    )
+    );
   }
 
   const toggleSidebar = () => {
-    const next = !sidebarExpanded
-    setSidebarExpanded(next)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('drugucopia-sidebar-expanded', String(next))
+    const next = !sidebarExpanded;
+    setSidebarExpanded(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("drugucopia-sidebar-expanded", String(next));
     }
-  }
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+  };
 
   return (
     <SyncProvider>
@@ -99,7 +143,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
           <MilkdropBackgroundWrapper />
 
           {isMobile ? (
-            <div className="drawer">
+            <div className="drawer min-h-[100dvh]">
               <input
                 id={DRAWER_ID}
                 type="checkbox"
@@ -109,40 +153,44 @@ export function LayoutClient({ children }: LayoutClientProps) {
               />
 
               <div className="drawer-content flex min-h-[100dvh] flex-col">
-                <TopBar
-                  onMenuClick={() => setDrawerOpen(true)}
-                />
+                <TopBar onMenuClick={() => setDrawerOpen(true)} />
 
-                <main className="relative flex-1 pb-[env(safe-area-inset-bottom)]">
+                <main className="relative flex-1 pb-[calc(env(safe-area-inset-bottom,0px)+64px)]">
                   {children}
                 </main>
 
-                <div className="drawer-side z-40">
-                  <label
-                    htmlFor={DRAWER_ID}
-                    aria-label="close navigation"
-                    className="drawer-overlay"
-                    onClick={() => setDrawerOpen(false)}
-                  />
-                  <AppSidebar
-                    expanded
-                    onNavigate={() => setDrawerOpen(false)}
-                    onToggle={toggleSidebar}
-                  />
-                </div>
+                <BottomNav onMoreClick={() => setDrawerOpen(true)} />
+              </div>
+
+              <div className="drawer-side z-40 pb-[calc(env(safe-area-inset-bottom,0px)+64px)]">
+                {/* Click overlay closes drawer — using a div instead of
+                    a <label> so we have full control and can also prevent
+                    the click from toggling the checkbox unexpectedly */}
+                <div
+                  aria-label="close navigation"
+                  className="drawer-overlay"
+                  onClick={closeDrawer}
+                  onKeyDown={(e) => { if (e.key === "Escape") closeDrawer() }}
+                  role="button"
+                  tabIndex={-1}
+                />
+                <AppSidebar
+                  expanded
+                  onNavigate={closeDrawer}
+                  onToggle={toggleSidebar}
+                />
               </div>
             </div>
           ) : (
             <div className="flex min-h-[100dvh]">
               <AppSidebar
                 expanded={sidebarExpanded}
+                onNavigate={() => { }} // no-op for desktop, but keeps prop consistent
                 onToggle={toggleSidebar}
               />
               <div className="flex min-w-0 flex-1 flex-col">
-                <TopBar
-                  onMenuClick={() => setDrawerOpen(true)}
-                />
-                <main className="relative flex-1">
+                <TopBar onMenuClick={() => setDrawerOpen(true)} />
+                <main className="relative flex-1 pb-[env(safe-area-inset-bottom,0px)]">
                   {children}
                 </main>
               </div>
@@ -152,9 +200,9 @@ export function LayoutClient({ children }: LayoutClientProps) {
           {!isMobile && (
             <div
               className={[
-                'pointer-events-none fixed bottom-0 right-0 z-30 hidden border-t border-warning/20 bg-base-100/95 backdrop-blur-sm md:block',
-                sidebarExpanded ? 'left-60' : 'left-16',
-              ].join(' ')}
+                "pointer-events-none fixed bottom-0 right-0 z-30 hidden border-t border-warning/20 bg-base-100/95 backdrop-blur-sm md:block",
+                sidebarExpanded ? "left-60" : "left-16",
+              ].join(" ")}
             >
               <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-warning">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -163,22 +211,27 @@ export function LayoutClient({ children }: LayoutClientProps) {
             </div>
           )}
 
-          {doseLoggerOpen && (
-            <DoseLoggerModal
-              open
-              onOpenChange={(open) => !open && closeDoseLogger()}
-              preselectedSubstanceId={doseLoggerPreselect?.substanceId}
-              preselectedSubstanceName={doseLoggerPreselect?.substanceName}
-              preselectedCategory={doseLoggerPreselect?.category}
-              preselectedRoute={doseLoggerPreselect?.route}
-            />
-          )}
+          <DoseLoggerModal
+            open={doseLoggerOpen}
+            onOpenChange={(open) => !open && closeDoseLogger()}
+            preselectedSubstanceId={doseLoggerPreselect?.substanceId}
+            preselectedSubstanceName={doseLoggerPreselect?.substanceName}
+            preselectedCategory={doseLoggerPreselect?.category}
+            preselectedRoute={doseLoggerPreselect?.route}
+          />
           <CommandPalette />
           {!isMobile && <VisualizerControls />}
           <Toaster />
-          <OnboardingTour isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
+          <OnboardingTour
+            isOpen={showOnboarding}
+            onClose={() => {
+              setShowOnboarding(false);
+              setOnboardingCompleted(true);
+            }}
+          />
+          <UpdateCheckPopupWrapper />
         </div>
       </ReminderProvider>
     </SyncProvider>
-  )
+  );
 }
