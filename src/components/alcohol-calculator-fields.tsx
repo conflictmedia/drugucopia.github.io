@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Wine, Scale, Beaker, Info, ArrowRightLeft } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +23,8 @@ interface AlcoholCalculatorFieldsProps {
   onAmountChange: (amount: string) => void
   /** Callback to update the form's unit */
   onUnitChange: (unit: string) => void
+  /** Callback fired when conversion happens (drinks -> grams) */
+  onConverted?: (drinks: number, unit: 'shots' | 'drinks', grams: number) => void
 }
 
 /**
@@ -36,6 +38,7 @@ export function AlcoholCalculatorFields({
   amount,
   onAmountChange,
   onUnitChange,
+  onConverted,
 }: AlcoholCalculatorFieldsProps) {
   // ─── Calculator state ───────────────────────────────────────────────────────
   const [beverageId, setBeverageId] = useState('spirits')
@@ -46,13 +49,23 @@ export function AlcoholCalculatorFields({
   // ─── Derived values ────────────────────────────────────────────────────────
   const beveragePreset = useMemo(() => getBeveragePreset(beverageId), [beverageId])
   const shotSize = useMemo(() => getShotSize(shotSizeId), [shotSizeId])
-  
+
   // Calculate grams of ethanol
   const conversionResult = useMemo(() => {
     const volumeMl = shotSize?.volumeMl ?? 44.36
     const abv = beveragePreset?.abv ?? 40
     return shotsToGrams({ shots: drinkCount, shotVolumeMl: volumeMl, abv })
   }, [drinkCount, shotSize, beveragePreset])
+
+  // Auto-convert to grams on mount and when drinkCount changes (from parent)
+  useEffect(() => {
+    if (conversionResult && drinkCount > 0) {
+      const roundedGrams = roundTo(conversionResult.ethanolGrams, 2)
+      onAmountChange(String(roundedGrams))
+      onUnitChange('g')
+      onConverted?.(drinkCount, drinkUnit, roundedGrams)
+    }
+  }, [conversionResult, drinkCount, drinkUnit, onAmountChange, onUnitChange, onConverted])
 
   // ─── Handle drink count change ────────────────────────────────────────────
   const handleDrinkCountChange = (value: number) => {
@@ -65,6 +78,7 @@ export function AlcoholCalculatorFields({
       const roundedGrams = roundTo(result.ethanolGrams, 2)
       onAmountChange(String(roundedGrams))
       onUnitChange('g')
+      onConverted?.(value, drinkUnit, roundedGrams)
     }
   }
 
@@ -80,6 +94,7 @@ export function AlcoholCalculatorFields({
         const roundedGrams = roundTo(result.ethanolGrams, 2)
         onAmountChange(String(roundedGrams))
         onUnitChange('g')
+        onConverted?.(drinkCount, drinkUnit, roundedGrams)
       }
     }
   }
@@ -96,6 +111,7 @@ export function AlcoholCalculatorFields({
         const roundedGrams = roundTo(result.ethanolGrams, 2)
         onAmountChange(String(roundedGrams))
         onUnitChange('g')
+        onConverted?.(drinkCount, drinkUnit, roundedGrams)
       }
     }
   }
@@ -127,9 +143,9 @@ export function AlcoholCalculatorFields({
         <Wine className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">Alcohol → Grams Calculator</span>
         <span className="text-xs text-neutral-content/60 ml-auto">
-          <a 
-            href="/calculators/alcohol" 
-            target="_blank" 
+          <a
+            href="/calculators/alcohol"
+            target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-primary transition-colors"
           >
@@ -146,8 +162,8 @@ export function AlcoholCalculatorFields({
             <Wine className="h-3.5 w-3.5" />
             Beverage
           </Label>
-          <Select 
-            value={beverageId} 
+          <Select
+            value={beverageId}
             onChange={(e) => handleBeverageChange(e.target.value)}
             className="text-sm"
           >
@@ -165,8 +181,8 @@ export function AlcoholCalculatorFields({
             <Beaker className="h-3.5 w-3.5" />
             Drink Size
           </Label>
-          <Select 
-            value={shotSizeId} 
+          <Select
+            value={shotSizeId}
             onChange={(e) => handleShotSizeChange(e.target.value)}
             className="text-sm"
           >
@@ -190,22 +206,20 @@ export function AlcoholCalculatorFields({
             <button
               type="button"
               onClick={() => handleDrinkUnitToggle('shots')}
-              className={`px-2 py-0.5 transition-colors ${
-                drinkUnit === 'shots' 
-                  ? 'bg-primary text-primary-content' 
+              className={`px-2 py-0.5 transition-colors ${drinkUnit === 'shots'
+                  ? 'bg-primary text-primary-content'
                   : 'hover:bg-base-200'
-              }`}
+                }`}
             >
               Shots
             </button>
             <button
               type="button"
               onClick={() => handleDrinkUnitToggle('drinks')}
-              className={`px-2 py-0.5 transition-colors ${
-                drinkUnit === 'drinks' 
-                  ? 'bg-primary text-primary-content' 
+              className={`px-2 py-0.5 transition-colors ${drinkUnit === 'drinks'
+                  ? 'bg-primary text-primary-content'
                   : 'hover:bg-base-200'
-              }`}
+                }`}
             >
               Drinks
             </button>
@@ -250,7 +264,7 @@ export function AlcoholCalculatorFields({
                 const equiv = conversionResult.standardDrinks[def.id]
                 if (!equiv || equiv < 0.01) return null
                 return (
-                  <span 
+                  <span
                     key={def.id}
                     className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-base-100 border border-base-300"
                   >

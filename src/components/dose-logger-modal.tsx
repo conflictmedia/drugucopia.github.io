@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical, Pill } from 'lucide-react'
+import { Plus, Loader2, AlertTriangle, Zap, Clock, CalendarDays, X, ChevronDown, ChevronUp, Pin, PinOff, GripVertical, Pill, Scale } from 'lucide-react'
 import { substances, searchSubstancesRanked, getAllSubstances, searchSubstancesRankedAll } from '@/lib/substances/index'
 import { useSubstanceIndex } from '@/hooks/use-substance-index'
 import { toast } from '@/hooks/use-toast'
@@ -757,6 +757,7 @@ export function DoseLoggerModal({
   const [optionalOpen, setOptionalOpen] = useState(false)
 
   const [durationOverride, setDurationOverride] = useState<Duration | null>(null)
+  const [alcoholConversion, setAlcoholConversion] = useState<string | null>(null)
 
   useEffect(() => {
     if (preselectedSubstanceId) setSubstanceId(preselectedSubstanceId)
@@ -800,6 +801,7 @@ export function DoseLoggerModal({
       setSetting('')
       setIntensity(5)
       setOptionalOpen(false)
+      setAlcoholConversion(null)
     }
   }, [open, preselectedSubstanceId, preselectedRoute])
 
@@ -1765,13 +1767,26 @@ export function DoseLoggerModal({
 
           {/* ── Alcohol Calculator ──────────────────────────────────────── */}
           {/* Show the inline alcohol→grams calculator when the selected
-              substance is alcohol and route is oral. */}
-          {substanceId === 'alcohol' && route === 'oral' && (
+              substance is alcohol and the user selects a shot/drink unit. */}
+          {substanceId === 'alcohol' && (unit === 'shot' || unit === 'drink') && (
             <AlcoholCalculatorFields
               amount={amount}
               onAmountChange={setAmount}
               onUnitChange={setUnit}
+              onConverted={(drinks, drinkUnit, grams) => {
+                setAlcoholConversion(`${drinks} ${drinkUnit} = ${grams}g pure ethanol`)
+              }}
             />
+          )}
+
+          {alcoholConversion && (
+            <Alert className="bg-primary/5 text-primary border-primary/20">
+              <Scale className="h-4 w-4" />
+              <AlertTitle>Alcohol converted to grams</AlertTitle>
+              <AlertDescription>
+                {alcoholConversion}. Pure ethanol is tracked in grams for consistent dose logging and interaction checking.
+              </AlertDescription>
+            </Alert>
           )}
 
           {interactingSubstances.length > 0 && (
