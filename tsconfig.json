@@ -29,7 +29,8 @@
       ]
     },
     "types": [
-      "bun"
+      "bun",
+      "vitest/globals"
     ]
   },
   "include": [
@@ -37,7 +38,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "src/vitest-globals.d.ts"
   ],
   "exclude": [
     "node_modules"

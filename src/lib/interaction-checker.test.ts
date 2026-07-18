@@ -1,4 +1,3 @@
-import { describe, expect, test } from 'bun:test'
 import { checkInteractions, checkSingleSubstanceInteractions, getSubstanceInteractions } from './interaction-checker'
 import type { Substance } from './substances/types'
 
