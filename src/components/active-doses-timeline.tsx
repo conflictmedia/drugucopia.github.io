@@ -602,8 +602,8 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                       return next
                     })}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden
-                        ? 'opacity-30 border-base-300 line-through'
-                        : 'opacity-90 hover:opacity-100'
+                      ? 'opacity-30 border-base-300 line-through'
+                      : 'opacity-90 hover:opacity-100'
                       }`}
                     style={{
                       borderColor: hidden ? undefined : color,
@@ -872,7 +872,7 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                     return rg.doses.map(d => {
                       const doseId = d.id ?? d.doseTime.getTime().toString()
                       const isIsolated = selectedDose === doseId
-                      const formatted = formatDoseAmount(d.amount, d.unit)
+                      const formatted = formatDoseAmount(d.amount, d.unit, group.substanceName)
                       // Use fresh timing for active check
                       const elapsedMinsForDose = (now - d.doseTime.getTime()) / 60_000
                       const isDoseActive = elapsedMinsForDose >= 0 && elapsedMinsForDose < d.timings.offsetEnd
@@ -884,10 +884,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                           key={`${rg.route}-${doseId}`}
                           onClick={() => handleDoseChipClick(group.key, doseId)}
                           className={`relative inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-all ${isIsolated
-                              ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
-                              : isDoseEnded
-                                ? 'border-base-300/50 opacity-50'
-                                : 'border-base-300 hover:border-base-300/80'
+                            ? 'ring-2 ring-purple-500/50 border-purple-500/50 bg-purple-500/10'
+                            : isDoseEnded
+                              ? 'border-base-300/50 opacity-50'
+                              : 'border-base-300 hover:border-base-300/80'
                             }`}
                           style={{ color: palette.stroke }}
                         >
@@ -901,6 +901,9 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                           />
                           <span>{formatted.amount} {formatUnit(formatted.unit, d.amount)}</span>
                           <span className="text-neutral-content">{rg.route}</span>
+                          {formatted.alcoholEquivalent && (
+                            <span className="text-neutral-content/60 text-[10px] ml-1">{formatted.alcoholEquivalent}</span>
+                          )}
 
                           {/* #5 — Phase progress indicator bar at bottom of chip */}
                           {isDoseActive && (
@@ -1507,8 +1510,17 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                 {/* Dose amount header */}
                                 <div className="flex items-center gap-1.5 text-[10px] text-neutral-content flex-wrap">
                                   <span className="font-medium text-base-content">
-                                    {formatDoseAmount(d.amount, d.unit).amount}
-                                    {formatUnit(d.unit, d.amount)}
+                                    {(() => {
+                                      const formatted = formatDoseAmount(d.amount, d.unit, group.substanceName)
+                                      return (
+                                        <>
+                                          {formatted.amount} {formatUnit(formatted.unit, d.amount)}
+                                          {formatted.alcoholEquivalent && (
+                                            <span className="text-neutral-content/60 text-[10px] ml-1">{formatted.alcoholEquivalent}</span>
+                                          )}
+                                        </>
+                                      )
+                                    })()}
                                   </span>
                                   <span>·</span>
                                   <span>{format(d.doseTime, 'h:mm a')}</span>
@@ -1542,10 +1554,10 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
                                     <div
                                       key={p.key}
                                       className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-all ${isActive
-                                          ? 'ring-1 ring-purple-500/30 bg-purple-500/5'
-                                          : isPast
-                                            ? 'opacity-50'
-                                            : 'opacity-30'
+                                        ? 'ring-1 ring-purple-500/30 bg-purple-500/5'
+                                        : isPast
+                                          ? 'opacity-50'
+                                          : 'opacity-30'
                                         }`}
                                     >
                                       {(() => {

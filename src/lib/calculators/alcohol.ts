@@ -37,52 +37,52 @@ export interface ShotSize {
 
 export const SHOT_SIZES: ShotSize[] = [
   {
-    id: 'us-single',
-    label: 'US shot (1.5 fl oz)',
+    id: "us-single",
+    label: "US shot (1.5 fl oz)",
     volumeMl: ML_PER_US_FL_OZ * 1.5, // 44.36 mL
-    notes: 'Standard US pour, ~44.4 mL. Used in most American bars.',
+    notes: "Standard US pour, ~44.4 mL. Used in most American bars.",
   },
   {
-    id: 'us-double',
-    label: 'US double (2.5 fl oz)',
+    id: "us-double",
+    label: "US double (2.5 fl oz)",
     volumeMl: ML_PER_US_FL_OZ * 2.5, // 73.93 mL
     notes: 'Common "double" pour in the United States.',
   },
   {
-    id: 'uk-single',
-    label: 'UK single (25 mL)',
+    id: "uk-single",
+    label: "UK single (25 mL)",
     volumeMl: 25,
-    notes: 'Legal UK single measure of spirits or liqueurs.',
+    notes: "Legal UK single measure of spirits or liqueurs.",
   },
   {
-    id: 'uk-double',
-    label: 'UK double (50 mL)',
+    id: "uk-double",
+    label: "UK double (50 mL)",
     volumeMl: 50,
-    notes: 'Legal UK double measure of spirits or liqueurs.',
+    notes: "Legal UK double measure of spirits or liqueurs.",
   },
   {
-    id: 'au-single',
-    label: 'Australia (30 mL)',
+    id: "au-single",
+    label: "Australia (30 mL)",
     volumeMl: 30,
-    notes: 'Standard Australian/NZ shot of spirits.',
+    notes: "Standard Australian/NZ shot of spirits.",
   },
   {
-    id: 'ca-shot',
-    label: 'Canada (1.5 imp fl oz)',
+    id: "ca-shot",
+    label: "Canada (1.5 imp fl oz)",
     volumeMl: ML_PER_IMP_FL_OZ * 1.5, // 42.62 mL
-    notes: 'Canadian standard shot, ~42.6 mL.',
+    notes: "Canadian standard shot, ~42.6 mL.",
   },
   {
-    id: 'jp-shot',
-    label: 'Japan (45 mL)',
+    id: "jp-shot",
+    label: "Japan (45 mL)",
     volumeMl: 45,
-    notes: 'Common Japanese shochu/whisky pour.',
+    notes: "Common Japanese shochu/whisky pour.",
   },
   {
-    id: 'custom',
-    label: 'Custom volume',
+    id: "custom",
+    label: "Custom volume",
     volumeMl: 44.36,
-    notes: 'Enter any shot volume in millilitres.',
+    notes: "Enter any shot volume in millilitres.",
   },
 ];
 
@@ -97,16 +97,51 @@ export interface BeveragePreset {
 }
 
 export const BEVERAGE_PRESETS: BeveragePreset[] = [
-  { id: 'beer', label: 'Beer', abv: 5, notes: 'Average full-strength beer.' },
-  { id: 'light-beer', label: 'Light beer', abv: 4.2, notes: 'Light/lower-strength lager.' },
-  { id: 'craft-beer', label: 'Craft beer / IPA', abv: 6.5, notes: 'Typical craft IPA.' },
-  { id: 'wine', label: 'Wine', abv: 12, notes: 'Average table wine.' },
-  { id: 'fortified-wine', label: 'Fortified wine', abv: 18, notes: 'Port, sherry, vermouth.' },
-  { id: 'sake', label: 'Sake', abv: 15, notes: 'Japanese rice wine.' },
-  { id: 'liqueur', label: 'Liqueur', abv: 20, notes: 'Baileys, Kahlúa, amaretto, etc.' },
-  { id: 'spirits', label: 'Spirits (40%)', abv: 40, notes: 'Vodka, whisky, gin, rum, tequila.' },
-  { id: 'high-proof', label: 'High-proof spirits', abv: 50, notes: 'Bourbon barrel proof, absinthe, etc.' },
-  { id: 'custom', label: 'Custom ABV', abv: 40, notes: 'Enter any ABV percentage.' },
+  { id: "beer", label: "Beer", abv: 5, notes: "Average full-strength beer." },
+  {
+    id: "light-beer",
+    label: "Light beer",
+    abv: 4.2,
+    notes: "Light/lower-strength lager.",
+  },
+  {
+    id: "craft-beer",
+    label: "Craft beer / IPA",
+    abv: 6.5,
+    notes: "Typical craft IPA.",
+  },
+  { id: "wine", label: "Wine", abv: 12, notes: "Average table wine." },
+  {
+    id: "fortified-wine",
+    label: "Fortified wine",
+    abv: 18,
+    notes: "Port, sherry, vermouth.",
+  },
+  { id: "sake", label: "Sake", abv: 15, notes: "Japanese rice wine." },
+  {
+    id: "liqueur",
+    label: "Liqueur",
+    abv: 20,
+    notes: "Baileys, Kahlúa, amaretto, etc.",
+  },
+  {
+    id: "spirits",
+    label: "Spirits (40%)",
+    abv: 40,
+    notes: "Vodka, whisky, gin, rum, tequila.",
+  },
+  {
+    id: "high-proof",
+    label: "High-proof spirits",
+    abv: 50,
+    notes: "Bourbon barrel proof, absinthe, etc.",
+  },
+  {
+    id: "custom",
+    label: "Custom ABV",
+    abv: 40,
+    notes: "Enter any ABV percentage.",
+  },
 ];
 
 // ─── Standard drink references ──────────────────────────────────────────────
@@ -123,10 +158,10 @@ export interface StandardDrinkDefinition {
  * Useful for contextualising a gram result against drinking guidelines.
  */
 export const STANDARD_DRINKS: StandardDrinkDefinition[] = [
-  { id: 'us', label: 'US standard drink', gramsPerDrink: 14 },
-  { id: 'uk', label: 'UK unit', gramsPerDrink: 8 },
-  { id: 'au', label: 'AU standard drink', gramsPerDrink: 10 },
-  { id: 'who', label: 'WHO standard drink', gramsPerDrink: 10 },
+  { id: "us", label: "US standard drink", gramsPerDrink: 14 },
+  { id: "uk", label: "UK unit", gramsPerDrink: 8 },
+  { id: "au", label: "AU standard drink", gramsPerDrink: 10 },
+  { id: "who", label: "WHO standard drink", gramsPerDrink: 10 },
 ];
 
 // ─── Core conversion ────────────────────────────────────────────────────────
@@ -161,7 +196,9 @@ export interface AlcoholConversionResult {
  * Returns `null` if the inputs are invalid (non-finite, negative, or zero
  * shot volume / ABV).
  */
-export function shotsToGrams(input: AlcoholConversionInput): AlcoholConversionResult | null {
+export function shotsToGrams(
+  input: AlcoholConversionInput,
+): AlcoholConversionResult | null {
   const { shots, shotVolumeMl, abv } = input;
 
   if (
@@ -204,7 +241,7 @@ export function shotsToGrams(input: AlcoholConversionInput): AlcoholConversionRe
 export function gramsToShots(
   targetGrams: number,
   shotVolumeMl: number,
-  abv: number
+  abv: number,
 ): number | null {
   if (
     !Number.isFinite(targetGrams) ||
@@ -233,7 +270,9 @@ export function getBeveragePreset(id: string): BeveragePreset | undefined {
   return BEVERAGE_PRESETS.find((b) => b.id === id);
 }
 
-export function getStandardDrink(id: string): StandardDrinkDefinition | undefined {
+export function getStandardDrink(
+  id: string,
+): StandardDrinkDefinition | undefined {
   return STANDARD_DRINKS.find((d) => d.id === id);
 }
 
@@ -245,3 +284,35 @@ export function roundTo(value: number, decimals = 2): number {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
+export function gramsToDrinks(targetGrams: number): {
+  shots: { us: number; uk: number; eu: number };
+  standardDrinks: { us: number; uk: number; australian: number };
+} | null {
+  if (targetGrams <= 0) return null;
+
+  const spiritShotUs = getShotSize("us-single")?.volumeMl ?? 44.36;
+  const spiritShotUk = getShotSize("uk-single")?.volumeMl ?? 25;
+  const spiritShotEu = getShotSize("eu-standard")?.volumeMl ?? 40;
+
+  const wineGlassMl = 150;
+  const wineAbv = 12.5;
+  const beerCanMl = 355;
+  const beerAbv = 5;
+
+  const shots = {
+    us: roundTo(gramsToShots(targetGrams, spiritShotUs, 40) ?? 0, 2),
+    uk: roundTo(gramsToShots(targetGrams, spiritShotUk, 40) ?? 0, 2),
+    eu: roundTo(gramsToShots(targetGrams, spiritShotEu, 40) ?? 0, 2),
+  };
+
+  const wineGrams = wineGlassMl * (wineAbv / 100) * ETHANOL_DENSITY_G_PER_ML;
+  const beerGrams = beerCanMl * (beerAbv / 100) * ETHANOL_DENSITY_G_PER_ML;
+
+  const standardDrinks = {
+    us: roundTo(targetGrams / 14, 2),
+    uk: roundTo(targetGrams / 8, 2),
+    australian: roundTo(targetGrams / 10, 2),
+  };
+
+  return { shots, standardDrinks };
+}
