@@ -139,11 +139,11 @@ export function LayoutClient({ children }: LayoutClientProps) {
   return (
     <SyncProvider>
       <ReminderProvider>
-        <div className="h-[100dvh] overflow-hidden bg-transparent">
+        <div className="min-h-[100dvh] bg-transparent">
           <MilkdropBackgroundWrapper />
 
           {isMobile ? (
-            <div className="drawer h-[100dvh] overflow-hidden">
+            <div className="drawer min-h-[100dvh]">
               <input
                 id={DRAWER_ID}
                 type="checkbox"
@@ -155,7 +155,7 @@ export function LayoutClient({ children }: LayoutClientProps) {
               <div className="drawer-content flex min-h-[100dvh] flex-col">
                 <TopBar onMenuClick={() => setDrawerOpen(true)} />
 
-                <main className="relative flex-1 app-scroll-region pb-[calc(env(safe-area-inset-bottom,0px)+64px)]">
+                <main className="relative flex-1 pb-[calc(env(safe-area-inset-bottom,0px)+64px)]">
                   {children}
                 </main>
 
@@ -185,12 +185,12 @@ export function LayoutClient({ children }: LayoutClientProps) {
             <div className="flex min-h-[100dvh]">
               <AppSidebar
                 expanded={sidebarExpanded}
-                onNavigate={() => {}} // no-op for desktop, but keeps prop consistent
+                onNavigate={() => { }} // no-op for desktop, but keeps prop consistent
                 onToggle={toggleSidebar}
               />
               <div className="flex min-w-0 flex-1 flex-col">
                 <TopBar onMenuClick={() => setDrawerOpen(true)} />
-                <main className="relative flex-1 app-scroll-region pb-[env(safe-area-inset-bottom,0px)]">
+                <main className="relative flex-1 pb-[env(safe-area-inset-bottom,0px)]">
                   {children}
                 </main>
               </div>
