@@ -606,15 +606,15 @@ export function estimateTolerance(doses: DoseLog[]): ToleranceEstimate[] {
     // Verified: amphetamine 5d half / 10.5d baseline = 2.1x, cannabis 10.5d/17.5d
     // = 1.7x, MDMA 30d/75d = 2.5x → average ~2x = 25% remaining.
     const decayPerDay = Math.log(2) / halfLifeDays;
-    const targetLevel = 0.25;
+    const targetLevel = 0.05;
     const daysToBaseline =
       level > targetLevel ? Math.log(level / targetLevel) / decayPerDay : 0;
 
     let levelLabel: ToleranceEstimate["level"];
-    if (level < 0.25) levelLabel = "baseline";
-    else if (level < 0.45) levelLabel = "low";
-    else if (level < 0.65) levelLabel = "moderate";
-    else if (level < 0.85) levelLabel = "high";
+    if (level < 0.05) levelLabel = "baseline";
+    else if (level < 0.25) levelLabel = "low";
+    else if (level < 0.45) levelLabel = "moderate";
+    else if (level < 0.65) levelLabel = "high";
     else levelLabel = "very-high";
 
     const dosesLast30Days = subsDoses.filter(

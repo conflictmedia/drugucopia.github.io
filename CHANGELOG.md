@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.10] - 2026-07-18
+
+### Changed
+- tweaked the baseline % target and other ones
+
 ## [0.3.9] - 2026-07-18
 
 ### Changed
