@@ -1305,7 +1305,7 @@ export function DoseHistory() {
                                       })()}
                                     </span>
                                     <span className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3 shrink-0" />{format(new Date(dose.timestamp), 'h:mm a')}
+                                      <Clock className="h-3 w-3 shrink-0" />{format(new Date(dose.timestamp), "MMM d, yyyy 'at' h:mm a")}
                                     </span>
                                     <span>{dose.route}</span>
                                   </div>

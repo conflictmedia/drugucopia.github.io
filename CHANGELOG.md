@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.11] - 2026-07-18
+
+### Added
+- Full date and time to all history entries
+
 ## [0.3.10] - 2026-07-18
 
 ### Changed
