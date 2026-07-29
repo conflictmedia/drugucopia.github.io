@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.3.12] - 2026-07-29
+
+### Fixed
+- Interaction Checker page crash on search
+
 ## [0.3.11] - 2026-07-18
 
 ### Added

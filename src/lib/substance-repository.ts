@@ -81,6 +81,7 @@ export function searchSubstanceSummaries(
     ]
     let best: SubstanceSummarySearchResult | null = null
     for (const candidate of fields) {
+      if (typeof candidate.value !== "string") continue
       const value = normalizeSearchText(candidate.value)
       const score = value === normalizedQuery
         ? candidate.exact
