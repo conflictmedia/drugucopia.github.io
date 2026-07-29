@@ -1,15 +1,8 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState, lazy, Suspense } from 'react'
+import { useEffect, useState } from 'react'
 import { DARK_THEME_IDS } from '@/components/theme-provider'
-
-// Lazy load to avoid SSR
-const MilkdropBackground = lazy(() =>
-  import('@/components/milkdrop-background').then((mod) => ({
-    default: mod.MilkdropBackground,
-  }))
-)
 
 export function MilkdropBackgroundWrapper() {
   const { resolvedTheme } = useTheme()
@@ -20,23 +13,20 @@ export function MilkdropBackgroundWrapper() {
   }, [])
 
   if (!mounted) {
-    return <div className="mesh-gradient" style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }} />
+    return <div className="fixed inset-0 z-[-1] pointer-events-none bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url(/glitch_back.webp)' }} />
   }
 
-  // Use the DARK_THEME_IDS set so that all dark DaisyUI themes (dracula,
-  // synthwave, nord, etc.) are correctly identified — not just "dark".
   const isDark = !!resolvedTheme && DARK_THEME_IDS.has(resolvedTheme)
 
   return (
-    <Suspense
-      fallback={
-        <div
-          className="mesh-gradient"
-          style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none' }}
-        />
-      }
-    >
-      <MilkdropBackground isDark={isDark} />
-    </Suspense>
+    <div
+      className="fixed inset-0 z-[-1] pointer-events-none bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage: 'url(/glitch_back.webp)',
+        opacity: isDark ? 0.6 : 0.4,
+        filter: isDark ? 'brightness(0.8) contrast(1.1)' : 'brightness(1.1) contrast(0.95)',
+        transition: 'opacity 0.5s ease, filter 0.5s ease',
+      }}
+    />
   )
 }
