@@ -1,20 +1,23 @@
 import { expect, test } from "playwright/test";
+import packageJson from "../../package.json" with { type: "json" };
 
 test("interaction checker search box works", async ({ page }) => {
   page.on('pageerror', err => console.log('PAGE ERROR:', err.message));
   page.on('console', msg => {
     if (msg.type() === 'error') console.log('CONSOLE ERROR:', msg.text());
   });
-  
+
   await page.goto("/interactions");
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000);
-  
-  // Set localStorage to skip tour/changelog BEFORE reloading
-  await page.evaluate(() => {
+
+  // Set localStorage to skip tour/changelog BEFORE reloading.
+  // Use the actual app version so the changelog popup doesn't appear
+  // (it compares last-seen-version to APP_VERSION and shows on mismatch).
+  await page.evaluate((appVersion) => {
     localStorage.setItem('drugucopia-tour-complete', 'true');
-    localStorage.setItem('drugucopia-last-seen-version', '99.99.99');
-  });
+    localStorage.setItem('drugucopia-last-seen-version', appVersion);
+  }, packageJson.version);
   await page.reload();
   await page.waitForTimeout(2000);
   
