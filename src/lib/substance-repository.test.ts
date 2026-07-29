@@ -57,6 +57,29 @@ describe("lazy substance repository", () => {
     ).toBe("caffeine");
   });
 
+  test("does not throw when a summary has missing string fields", () => {
+    // Custom substances can produce summaries with undefined `class` or
+    // `description` (CustomSubstance has `category` but no `class`). The
+    // search function must tolerate that instead of throwing on
+    // `undefined.toLowerCase()`.
+    const summary = {
+      id: "my-custom",
+      name: "My Custom",
+      commonNames: [],
+      aliases: [],
+      categories: ["other"],
+      // class intentionally missing
+      description: "Custom substance description",
+      riskLevel: "none" as const,
+      defaultUnit: null,
+      routes: [],
+    } as unknown as SubstanceSummary;
+    expect(() => searchSubstanceSummaries([summary], "custom")).not.toThrow();
+    expect(searchSubstanceSummaries([summary], "my custom")[0].substance.id).toBe(
+      "my-custom",
+    );
+  });
+
   test("deduplicates concurrent detail requests and evicts failures", async () => {
     let calls = 0;
     globalThis.fetch = (async () => {
