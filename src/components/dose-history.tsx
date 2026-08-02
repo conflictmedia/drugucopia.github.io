@@ -49,7 +49,7 @@ interface ImportPreview {
   newCount: number
 }
 
-function findSubstanceMatch(name: string): { name: string; categories: string[] } | null {
+function findSubstanceMatch(name: string): { name: string; categories: string[]; routeData?: Record<string, { duration?: { onset: string; comeup: string; peak: string; offset: string; total: string; afterglow: string } }> } | null {
   const searchName = name.toLowerCase().trim()
 
   for (const substance of substances) {
@@ -57,7 +57,8 @@ function findSubstanceMatch(name: string): { name: string; categories: string[] 
     if (substance.name.toLowerCase() === searchName) {
       return {
         name: substance.name,
-        categories: substance.categories
+        categories: substance.categories,
+        routeData: substance.routeData
       }
     }
 
@@ -65,7 +66,8 @@ function findSubstanceMatch(name: string): { name: string; categories: string[] 
     if (substance.id.toLowerCase() === searchName) {
       return {
         name: substance.name,
-        categories: substance.categories
+        categories: substance.categories,
+        routeData: substance.routeData
       }
     }
 
@@ -73,7 +75,8 @@ function findSubstanceMatch(name: string): { name: string; categories: string[] 
     if (substance.commonNames?.some(cn => cn.toLowerCase() === searchName)) {
       return {
         name: substance.name,
-        categories: substance.categories
+        categories: substance.categories,
+        routeData: substance.routeData
       }
     }
 
@@ -81,7 +84,8 @@ function findSubstanceMatch(name: string): { name: string; categories: string[] 
     if (substance.aliases?.some(alias => alias.toLowerCase() === searchName)) {
       return {
         name: substance.name,
-        categories: substance.categories
+        categories: substance.categories,
+        routeData: substance.routeData
       }
     }
   }
@@ -503,6 +507,21 @@ function parsePWJournalJSON(text: string): ImportResult {
       const finalSubstanceName = matchedSubstance?.name ?? substanceName
       const finalCategories = matchedSubstance?.categories ?? []
 
+      // Backfill duration from substance routeData if not already set
+      if (!duration && matchedSubstance?.routeData) {
+        const routeKey = route.toLowerCase()
+        const routeData = matchedSubstance.routeData[routeKey]
+        if (routeData?.duration) {
+          duration = {
+            onset: routeData.duration.onset,
+            comeup: routeData.duration.comeup,
+            peak: routeData.duration.peak,
+            offset: routeData.duration.offset,
+            total: routeData.duration.total,
+          }
+        }
+      }
+
       // Get creation date if available
       const createdAtMs = typeof ingestion.creationDate === 'number' ? ingestion.creationDate : timeMs
       const createdAt = new Date(createdAtMs).toISOString()
@@ -527,6 +546,198 @@ function parsePWJournalJSON(text: string): ImportResult {
 
   if (doses.length === 0) {
     return { ok: false, error: 'No valid ingestions found in the PWJournal export.' }
+  }
+
+  return { ok: true, doses }
+}
+
+/** Parse a PsyLog export file. */
+function parsePsyLogJSON(text: string): ImportResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { ok: false, error: 'File is not valid JSON.' }
+  }
+
+  const root = parsed as Record<string, unknown>
+  if (!Array.isArray(root?.experiences)) {
+    return { ok: false, error: 'Not a valid PsyLog export — expected a top-level "experiences" array.' }
+  }
+
+  const experiences = root.experiences as Record<string, unknown>[]
+  if (experiences.length === 0) {
+    return { ok: false, error: 'No experiences found in the PsyLog export.' }
+  }
+
+  const doses: DoseLog[] = []
+
+  // Route mapping from PsyLog format to standard format
+  const routeMap: Record<string, string> = {
+    'ORAL': 'Oral',
+    'SMOKED': 'Smoked',
+    'INSUFFLATED': 'Insufflated',
+    'SUBLINGUAL': 'Sublingual',
+    'INJECTED': 'Injected',
+    'RECTAL': 'Rectal',
+    'TRANSDERMAL': 'Transdermal',
+    'INHALED': 'Inhaled',
+    'BUCCAL': 'Buccal',
+    'VAPORIZED': 'Vaporized',
+  }
+
+  for (let expIdx = 0; expIdx < experiences.length; expIdx++) {
+    const experience = experiences[expIdx]
+    const expLabel = `Experience ${expIdx + 1}`
+
+    // Get experience-level notes (the "text" field)
+    const experienceNotes = typeof experience.text === 'string' && experience.text.trim()
+      ? experience.text.trim()
+      : ''
+
+    const ingestions = Array.isArray(experience.ingestions)
+      ? experience.ingestions as Record<string, unknown>[]
+      : []
+
+    if (ingestions.length === 0) {
+      continue // Skip experiences with no ingestions
+    }
+
+    for (let ingIdx = 0; ingIdx < ingestions.length; ingIdx++) {
+      const ingestion = ingestions[ingIdx]
+      const rowLabel = `${expLabel}, Ingestion ${ingIdx + 1}`
+
+      // Validate substance name
+      const substanceName = typeof ingestion.substanceName === 'string' && ingestion.substanceName.trim()
+        ? ingestion.substanceName.trim()
+        : null
+      if (!substanceName) {
+        return { ok: false, error: `${rowLabel}: "substanceName" must be a non-empty string.` }
+      }
+
+      // Validate dose amount - default to 0 if missing/invalid
+      const dose = typeof ingestion.dose === 'number' && !isNaN(ingestion.dose)
+        ? ingestion.dose
+        : 0
+
+      // Skip this ingestion if dose is 0 or negative (no valid dose data)
+      if (dose <= 0) {
+        continue
+      }
+
+      // Handle estimated dose
+      let amount = dose
+      const isEstimate = ingestion.isDoseAnEstimate === true
+      const estimateStdDev = typeof ingestion.estimatedDoseStandardDeviation === 'number'
+        ? ingestion.estimatedDoseStandardDeviation
+        : null
+
+      // Validate units - default to empty string if missing/empty
+      const units = typeof ingestion.units === 'string' && ingestion.units.trim()
+        ? ingestion.units.trim()
+        : ''
+
+      // Validate and convert timestamp (PsyLog uses milliseconds)
+      // Use experience sortDate as fallback, then creationDate, then current time
+      let timeMs: number | null = typeof ingestion.time === 'number' && !isNaN(ingestion.time)
+        ? ingestion.time
+        : null
+
+      if (timeMs === null) {
+        // Fallback to experience sortDate
+        timeMs = typeof experience.sortDate === 'number' && !isNaN(experience.sortDate)
+          ? experience.sortDate
+          : typeof experience.creationDate === 'number' && !isNaN(experience.creationDate)
+            ? experience.creationDate
+            : Date.now()
+      }
+      const timestamp = new Date(timeMs).toISOString()
+
+      // Validate and convert route
+      const rawRoute = typeof ingestion.administrationRoute === 'string'
+        ? ingestion.administrationRoute.toUpperCase()
+        : ''
+      const route = routeMap[rawRoute] || rawRoute.charAt(0) + rawRoute.slice(1).toLowerCase()
+
+      // Generate unique ID with psylog- prefix
+      const id = `psylog-${crypto.randomUUID()}`
+
+      // Get ingestion-level notes
+      const ingestionNotes = typeof ingestion.notes === 'string' && ingestion.notes.trim()
+        ? ingestion.notes.trim()
+        : ''
+
+      // Combine experience notes with ingestion notes
+      const combinedNotes: string[] = []
+      if (experienceNotes) combinedNotes.push(experienceNotes)
+      if (ingestionNotes) combinedNotes.push(ingestionNotes)
+      if (isEstimate && estimateStdDev) {
+        combinedNotes.push(`Estimated dose: ${dose}±${estimateStdDev} ${units}`)
+      } else if (isEstimate) {
+        combinedNotes.push('Estimated dose')
+      }
+      const finalNotes = combinedNotes.join(' | ') || null
+
+      // Handle duration from endTime
+      let duration: DoseLog['duration'] = null
+      const endTimeMs = typeof ingestion.endTime === 'number' ? ingestion.endTime : null
+      if (endTimeMs && !isNaN(endTimeMs)) {
+        const totalMinutes = Math.round((endTimeMs - timeMs) / 60_000)
+        if (totalMinutes > 0) {
+          duration = {
+            onset: '—',
+            comeup: '—',
+            peak: '—',
+            offset: '—',
+            total: `${totalMinutes} min`,
+          }
+        }
+      }
+
+      // Try to match the substance against the repository
+      const matchedSubstance = findSubstanceMatch(substanceName)
+      const finalSubstanceName = matchedSubstance?.name ?? substanceName
+      const finalCategories = matchedSubstance?.categories ?? []
+
+      // Backfill duration from substance routeData if not already set
+      if (!duration && matchedSubstance?.routeData) {
+        const routeKey = route.toLowerCase()
+        const routeData = matchedSubstance.routeData[routeKey]
+        if (routeData?.duration) {
+          duration = {
+            onset: routeData.duration.onset,
+            comeup: routeData.duration.comeup,
+            peak: routeData.duration.peak,
+            offset: routeData.duration.offset,
+            total: routeData.duration.total,
+          }
+        }
+      }
+
+      // Get creation date if available
+      const createdAtMs = typeof ingestion.creationDate === 'number' ? ingestion.creationDate : timeMs
+      const createdAt = new Date(createdAtMs).toISOString()
+
+      doses.push({
+        id,
+        substanceName: finalSubstanceName,
+        categories: finalCategories,
+        amount,
+        unit: units,
+        route,
+        timestamp,
+        duration,
+        notes: finalNotes,
+        mood: null,
+        setting: null,
+        createdAt,
+        updatedAt: new Date().toISOString(),
+      })
+    }
+  }
+
+  if (doses.length === 0) {
+    return { ok: false, error: 'No valid ingestions found in the PsyLog export.' }
   }
 
   return { ok: true, doses }
@@ -589,7 +800,7 @@ export function DoseHistory() {
 
   const csvInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
-  const psyloJsonInputRef = useRef<HTMLInputElement>(null)
+  const psyLogJsonInputRef = useRef<HTMLInputElement>(null)
   const pwjournalInputRef = useRef<HTMLInputElement>(null)
 
   const groupDosesByDate = (doses: DoseLog[]) => {
@@ -762,7 +973,7 @@ export function DoseHistory() {
 
   const handleFileSelected = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: 'csv' | 'json' | 'psylo' | 'pwjournal',
+    type: 'csv' | 'json' | 'psylog' | 'pwjournal',
   ) => {
     const file = e.target.files?.[0]
     // Reset so selecting the same file again re-triggers onChange
@@ -772,7 +983,7 @@ export function DoseHistory() {
 
     const text = await file.text()
     const result = type === 'json' ? parseJSON(text)
-      : type === 'psylo' ? parsePsyloJSON(text)
+      : type === 'psylog' ? parsePsyLogJSON(text)
         : type === 'pwjournal' ? parsePWJournalJSON(text)
           : parseCSV(text)
 
@@ -1047,9 +1258,9 @@ export function DoseHistory() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="gap-2 cursor-pointer"
-                  onClick={() => psyloJsonInputRef.current?.click()}
+                  onClick={() => psyLogJsonInputRef.current?.click()}
                 >
-                  <FileJson className="h-4 w-4" />Import from Psylo
+                  <FileJson className="h-4 w-4" />Import from PsyLog
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="gap-2 cursor-pointer"
@@ -1088,11 +1299,11 @@ export function DoseHistory() {
               onChange={(e) => handleFileSelected(e, 'json')}
             />
             <input
-              ref={psyloJsonInputRef}
+              ref={psyLogJsonInputRef}
               type="file"
               accept=".json,application/json"
               className="hidden"
-              onChange={(e) => handleFileSelected(e, 'psylo')}
+              onChange={(e) => handleFileSelected(e, 'psylog')}
             />
             <input
               ref={pwjournalInputRef}

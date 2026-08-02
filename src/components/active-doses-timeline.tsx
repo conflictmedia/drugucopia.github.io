@@ -257,6 +257,16 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
   }, [])
 
   /* ---------------------------------------------------------------- */
+  /*  Helper — check if unit is a weight-based unit (mg, g, µg, etc.)    */
+  /* ---------------------------------------------------------------- */
+
+  const WEIGHT_UNITS = ['mg', 'g', 'µg', 'mcg', 'ug', 'μg', 'milligram', 'gram', 'microgram']
+
+  function isWeightUnit(unit: string): boolean {
+    return WEIGHT_UNITS.includes(unit.toLowerCase().trim())
+  }
+
+  /* ---------------------------------------------------------------- */
   /*  Memos — data pipeline                                            */
   /* ---------------------------------------------------------------- */
 
@@ -287,8 +297,15 @@ export function ActiveDosesTimeline({ refreshTrigger }: ActiveDosesTimelineProps
           ? classifyDose(d.amount, d.unit, substanceEntry, d.route)
           : null
 
-        const horizontalWeight = classification?.horizontalWeight ?? 0.5
-        const doseHeight = classification?.heightRelativeToCommon ?? 1
+        // Default to 100% intensity (horizontalWeight = 1) for non-weight units
+        // (e.g., "Pill", "Corner", "seeds", "drink", "hit", "line", etc.)
+        const isWeight = isWeightUnit(d.unit)
+        const horizontalWeight = isWeight
+          ? (classification?.horizontalWeight ?? 0.5)
+          : 1
+        const doseHeight = isWeight
+          ? (classification?.heightRelativeToCommon ?? 1)
+          : 1
 
         // Use dose-scaled timings when classification data is available,
         // otherwise fall back to the standard (range-averaged) timings

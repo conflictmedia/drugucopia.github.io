@@ -49,6 +49,13 @@ import { substances } from '@/lib/substances/index'
 import { classifyDose } from '@/lib/dose-classification'
 import { formatDoseAmount } from '@/lib/utils'
 import { EstimatedDurationBadge } from '@/components/estimated-duration-badge'
+
+// ─── Helper: check if unit is weight-based ───────────────────────────────────
+const WEIGHT_UNITS = ['mg', 'g', 'µg', 'mcg', 'ug', 'μg', 'milligram', 'gram', 'microgram']
+function isWeightUnit(unit: string): boolean {
+  return WEIGHT_UNITS.includes(unit.toLowerCase().trim())
+}
+
 import {
   parseDurationToMinutes,
   calculatePhaseTimings,
@@ -312,7 +319,16 @@ function computeGroups(doses: ReturnType<typeof useDoseStore.getState>['doses'])
       const classification = substanceEntry
         ? classifyDose(d.amount, d.unit, substanceEntry, d.route)
         : null
-      const horizontalWeight = classification?.horizontalWeight ?? 0.5
+
+      // Default to 100% intensity for non-weight units (e.g., "Pill", "Corner", "seeds")
+      const isWeight = isWeightUnit(d.unit)
+      const horizontalWeight = isWeight
+        ? (classification?.horizontalWeight ?? 0.5)
+        : 1
+      const doseHeight = isWeight
+        ? (classification?.heightRelativeToCommon ?? 1)
+        : 1
+
       // d.duration is non-null here (filtered above), but TS can't narrow
       // through .filter().map() — assert non-null.
       const duration = d.duration!
@@ -325,7 +341,7 @@ function computeGroups(doses: ReturnType<typeof useDoseStore.getState>['doses'])
         timings,
         status,
         doseTime,
-        doseHeight: classification?.heightRelativeToCommon ?? 1,
+        doseHeight,
         horizontalWeight,
         doseClass: classification?.doseClass,
       } as EnrichedDose
