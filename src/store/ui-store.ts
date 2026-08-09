@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+export type TimelineStyle = "intensity" | "phase";
+
 interface UIState {
   doseLoggerOpen: boolean;
   doseLoggerPreselect?: {
@@ -26,6 +28,12 @@ interface UIState {
   initializeFavorites: () => void;
   toggleFavorite: (sub: FavoriteSubstance) => void;
   isFavorite: (idOrName: string) => boolean;
+
+  // Timeline visualization style
+  timelineStyle: TimelineStyle;
+  timelineStyleLoaded: boolean;
+  initializeTimelineStyle: () => void;
+  setTimelineStyle: (style: TimelineStyle) => void;
 }
 
 export interface FavoriteSubstance {
@@ -38,6 +46,7 @@ export interface FavoriteSubstance {
 }
 
 const FAVORITES_KEY = "drugucopia-favorite-substances";
+const TIMELINE_STYLE_KEY = "drugucopia-timeline-style";
 
 function loadFavorites(): FavoriteSubstance[] {
   if (typeof window === "undefined") return [];
@@ -60,9 +69,28 @@ function loadFavorites(): FavoriteSubstance[] {
   }
 }
 
+function loadTimelineStyle(): TimelineStyle {
+  if (typeof window === "undefined") return "intensity";
+  try {
+    const raw = localStorage.getItem(TIMELINE_STYLE_KEY);
+    if (raw === "phase" || raw === "intensity") return raw;
+    return "intensity";
+  } catch {
+    return "intensity";
+  }
+}
+
 function persistFavorites(list: FavoriteSubstance[]) {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function persistTimelineStyle(style: TimelineStyle) {
+  try {
+    localStorage.setItem(TIMELINE_STYLE_KEY, style);
   } catch {
     /* ignore quota errors */
   }
@@ -109,6 +137,15 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ favoriteSubstances: loadFavorites(), favoritesLoaded: true });
   },
 
+  // Timeline visualization style — load from localStorage on client only
+  timelineStyle: "intensity" as TimelineStyle,
+  timelineStyleLoaded: false,
+
+  initializeTimelineStyle: () => {
+    if (get().timelineStyleLoaded) return;
+    set({ timelineStyle: loadTimelineStyle(), timelineStyleLoaded: true });
+  },
+
   toggleFavorite: (sub) => {
     const existing = get().favoriteSubstances;
     const key = sub.id.toLowerCase();
@@ -136,5 +173,11 @@ export const useUIStore = create<UIState>((set, get) => ({
     return get().favoriteSubstances.some(
       (s) => s.id.toLowerCase() === key || s.name.toLowerCase() === key,
     );
+  },
+
+  // Timeline visualization style
+  setTimelineStyle: (style) => {
+    set({ timelineStyle: style });
+    persistTimelineStyle(style);
   },
 }));

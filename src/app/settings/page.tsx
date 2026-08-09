@@ -16,7 +16,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Collapse, CollapseTitle, CollapseContent } from "@/components/ui/collapse";
-import { Bell, BellOff, Plus, Trash2, Pencil, ShieldCheck, ShieldAlert, Play, Volume2, VolumeX, AlertTriangle, Search, X } from "lucide-react";
+import { Bell, BellOff, Plus, Trash2, Pencil, ShieldCheck, ShieldAlert, Play, Volume2, VolumeX, AlertTriangle, Search, X, BarChart, Layout } from "lucide-react";
 import { useReminderStore } from "@/store/reminder-store";
 import { askNotificationPermission } from "@/lib/reminder-engine";
 import { formatIntervalMinutes } from "@/lib/notification-utils";
@@ -30,6 +30,7 @@ import { useToleranceNotificationStore } from "@/store/tolerance-notification-st
 import { SubstanceSelectionList } from "@/components/SubstanceSelectionList";
 import { DurationInput } from "@/components/ui/duration-input";
 import { TimelineNotificationSettings } from "@/components/timeline-notification-settings";
+import { useUIStore } from "@/store/ui-store";
 
 // ─── Category dots (matches Header & dose-logger-modal) ─────────────────────
 const CATEGORY_DOTS: Record<string, string> = {
@@ -957,6 +958,128 @@ function ToleranceNotificationSettingsSection() {
     </Card>
   );
 }
+}
+}
+
+// ─── Timeline Visualization Settings Section ───────────────────────────────────
+
+function TimelineStyleSection() {
+  const timelineStyle = useUIStore((s) => s.timelineStyle);
+  const setTimelineStyle = useUIStore((s) => s.setTimelineStyle);
+  const initializeTimelineStyle = useUIStore((s) => s.initializeTimelineStyle);
+
+  // Initialize on mount
+  useEffect(() => {
+    initializeTimelineStyle();
+  }, [initializeTimelineStyle]);
+
+  return (
+    <Card className="py-3 gap-2">
+      <CardHeader className="pb-1">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Layout className="h-5 w-5 text-primary" />
+          Timeline Visualization
+        </CardTitle>
+        <CardDescription>
+          Choose how dose timelines are displayed in the Active Session view
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-3">
+          <div>
+            <Label className="block text-sm font-medium mb-2">Display Style</Label>
+            <div className="flex items-center gap-2" role="radiogroup" aria-label="Timeline display style">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="timeline-style"
+                  value="intensity"
+                  checked={timelineStyle === "intensity"}
+                  onChange={() => setTimelineStyle("intensity")}
+                  className="radio radio-primary"
+                />
+                <div>
+                  <p className="font-medium">Intensity Chart</p>
+                  <p className="text-xs text-neutral-content">Area curves showing intensity over time with phase bands and tooltips</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="timeline-style"
+                  value="phase"
+                  checked={timelineStyle === "phase"}
+                  onChange={() => setTimelineStyle("phase")}
+                  className="radio radio-primary"
+                />
+                <div>
+                  <p className="font-medium">Phase Timeline</p>
+                  <p className="text-xs text-neutral-content">Phase bars (onset/comeup/peak/offset) like Psylog — proportional segments with dose markers</p>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="divider my-1" />
+
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium text-neutral-content uppercase tracking-wide">Preview</h4>
+          <div className="p-3 rounded-lg bg-base-200 border border-base-300">
+            {timelineStyle === "intensity" ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-purple-500/30" />
+                  <span>Intensity curves with smooth area fills</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-purple-500/10 border border-purple-500/30" />
+                  <span>Phase bands (onset/comeup/peak/offset) as background</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-rose-500" />
+                  <span>Pulsing "NOW" indicator line</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-amber-500" />
+                  <span>Dose start markers (triangles)</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 h-6">
+                    <div className="w-8 h-full rounded-l-lg bg-amber-500/60" title="Onset" />
+                    <div className="w-10 h-full bg-orange-500/60" title="Comeup" />
+                    <div className="w-12 h-full bg-red-500/60" title="Peak" />
+                    <div className="w-10 h-full rounded-r-lg bg-blue-500/60" title="Offset" />
+                  </div>
+                  <span>Proportional phase segments</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-rose-500" />
+                  <span>Pulsing "NOW" indicator line</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-l-2 border-t-2 border-amber-500 rotate-45" style={{width: '8px', height: '8px'}} />
+                  <span>Dose start markers (triangles)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 flex items-center justify-center text-[8px] font-bold text-amber-500">
+                    <span className="animate-pulse">NOW</span>
+                  </div>
+                  <span>Current time label</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Settings Page ───────────────────────────────────────────────────────────
 
@@ -974,6 +1097,7 @@ export default function SettingsPage() {
         <ReminderSettingsSection />
         <ToleranceNotificationSettingsSection />
         <TimelineNotificationSettings />
+        <TimelineStyleSection />
       </div>
     </div>
   );
