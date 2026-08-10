@@ -157,3 +157,72 @@ export interface TooltipData {
   /** Minutes remaining until the current phase changes to the next phase (for primary dose) */
   minutesUntilPhaseChange: number;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Chart Types (shared between utils and chart components)           */
+/* ------------------------------------------------------------------ */
+
+export interface ChartDataPoint {
+  t: number; // timestamp in ms
+  [doseKey: string]: number;
+}
+
+export interface DoseSeries {
+  dose: EnrichedDose;
+  route: RouteGroup;
+  dataKey: string;
+  palette: { stroke: string; fill: string };
+  isEnded: boolean;
+  /** Dose-relative height = userDose / avgCommonDose. Curves are scaled by
+   *  this so heavier doses visually tower over lighter ones. */
+  doseHeight: number;
+}
+
+export interface PhaseBandConfig {
+  phase: PhaseName;
+  startMs: number;
+  endMs: number;
+}
+
+export interface ChartConfig {
+  data: ChartDataPoint[];
+  series: DoseSeries[];
+  phaseBands: PhaseBandConfig[];
+  windowStartMs: number;
+  windowEndMs: number;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Overlay Mode Types                                                */
+/* ------------------------------------------------------------------ */
+
+export interface ComboDose {
+  doses: EnrichedDose[];
+  combinedAmount: string;
+  combinedUnit: string;
+  routes: string[];
+  earliestTime: Date;
+  latestTime: Date;
+}
+
+export interface OverlayDoseSeries extends DoseSeries {
+  substanceName: string;
+  substanceKey: string;
+  substanceColor: string;
+  comboInfo?: ComboDose; // For same-dose combos
+}
+
+export interface OverlayChartConfig {
+  data: ChartDataPoint[];
+  series: OverlayDoseSeries[];
+  phaseBands: PhaseBandConfig[];
+  windowStartMs: number;
+  windowEndMs: number;
+  maxIntensity: number; // For normalization
+}
+
+export type DisplayMode = "separate" | "overlay" | "normalized";
+export type RedoseCombining = "individual" | "cumulative";
+export type SubstanceHeight = "independent" | "normalized";
+export type CurveStyle = "smooth" | "stepped";
+export type OpacityValue = 0.4 | 0.6 | 0.8 | 1.0;

@@ -6,6 +6,16 @@ import {
   PhaseName,
   TimeMarker,
   PhaseBandRange,
+  EnrichedDose,
+  RouteGroup,
+  SubstanceGroup,
+  ChartDataPoint,
+  DoseSeries,
+  PhaseBandConfig,
+  ChartConfig,
+  ComboDose,
+  OverlayDoseSeries,
+  OverlayChartConfig,
 } from "./dose-timeline-types";
 import {
   PL,
@@ -17,7 +27,9 @@ import {
   MOBILE_PT,
   MOBILE_GH,
   CURVE_SAMPLES,
+  ROUTE_PALETTE,
 } from "./dose-timeline-constants";
+import { formatDoseAmount } from "@/lib/utils";
 
 /* ================================================================== */
 /*  Utility helpers                                                    */
@@ -924,4 +936,291 @@ export function getNowProgress(
   if (now >= windowEndMs) return 100;
 
   return clamp((elapsed / (windowDuration * 60_000)) * 100, 0, 100);
+}
+
+/** Compute the dose-height-scaled intensity (0–100, clamped) for a single
+ *  dose at a given timestamp. Used by the chart sampler, the tooltip, and
+ *  the header combined-intensity badge so they all agree on the same value. */
+export function scaledIntensityAt(dose: EnrichedDose, t: number): number {
+  const elapsedMins = (t - dose.doseTime.getTime()) / 60_000;
+  if (elapsedMins < 0 || elapsedMins > dose.timings.totalDuration) return 0;
+  const progress = (elapsedMins / dose.timings.totalDuration) * 100;
+  // Dose-height scaling — heavier doses rise above 100 (visual cue),
+  // but clamp the *visible curve* at 100 so it stays in the chart bounds.
+  const val = intensityAt(progress, dose.timings) * dose.doseHeight;
+  return Math.max(0, Math.min(100, val));
+}
+
+/* ================================================================== */
+/*  Overlay Mode Utilities                                            */
+/* ================================================================== */
+
+/** Group doses that are within 2 minutes of each other into combo entries.
+ *  Only groups doses of the SAME substance together.
+ *  Returns an array of ComboDose objects, each representing either a single dose
+ *  or a combination of doses of the same substance dosed within 2 minutes. */
+export function groupSameDoseCombos(doses: EnrichedDose[]): ComboDose[] {
+  if (doses.length === 0) return [];
+
+  // First, group by substance
+  const bySubstance = new Map<string, EnrichedDose[]>();
+  for (const d of doses) {
+    const key = d.substanceName.toLowerCase();
+    if (!bySubstance.has(key)) bySubstance.set(key, []);
+    bySubstance.get(key)!.push(d);
+  }
+
+  const allCombos: ComboDose[] = [];
+
+  // For each substance, group doses within 2 minutes
+  for (const [, substanceDoses] of bySubstance) {
+    // Sort by dose time
+    const sorted = [...substanceDoses].sort((a, b) => a.doseTime.getTime() - b.doseTime.getTime());
+
+    const combos: ComboDose[] = [];
+    let currentCombo: EnrichedDose[] = [sorted[0]];
+
+    for (let i = 1; i < sorted.length; i++) {
+      const prevTime = sorted[i - 1].doseTime.getTime();
+      const currTime = sorted[i].doseTime.getTime();
+      const diffMinutes = (currTime - prevTime) / 60_000;
+
+      if (diffMinutes <= 2) {
+        // Within 2 minutes - add to current combo (same substance)
+        currentCombo.push(sorted[i]);
+      } else {
+        // More than 2 minutes - finalize current combo and start new one
+        combos.push(createComboDose(currentCombo));
+        currentCombo = [sorted[i]];
+      }
+    }
+
+    // Don't forget the last combo
+    combos.push(createComboDose(currentCombo));
+    allCombos.push(...combos);
+  }
+
+  // Sort all combos by earliest time
+  return allCombos.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
+}
+
+function createComboDose(doses: EnrichedDose[]): ComboDose {
+  const sorted = [...doses].sort((a, b) => a.doseTime.getTime() - b.doseTime.getTime());
+  const earliest = sorted[0];
+  const latest = sorted[sorted.length - 1];
+
+  // Build combined amount string
+  const amounts = doses.map(d => formatDoseAmount(d.amount, d.unit));
+  const combinedAmount = amounts.map(a => `${a.amount} ${a.unit}`).join(" + ");
+
+  // Collect unique routes
+  const routes = [...new Set(doses.map(d => d.route))];
+
+  return {
+    doses,
+    combinedAmount,
+    combinedUnit: doses[0].unit, // Use first dose's unit as reference
+    routes,
+    earliestTime: earliest.doseTime,
+    latestTime: latest.doseTime,
+  };
+}
+
+/** Combine all substance groups into a single overlay chart configuration.
+ *  This creates a unified dataset with shared time axis and all substances' series. */
+export function combineGroupsForOverlay(
+  groups: SubstanceGroup[],
+  visibleRoutes: RouteGroup[],
+  sampleCount: number,
+  windowOverride?: { startMs: number; endMs: number } | null,
+  redoseCombining: "individual" | "cumulative" = "individual",
+  substanceHeight: "independent" | "normalized" = "independent",
+): OverlayChartConfig {
+  // Collect all visible doses from all groups
+  const allDoses: EnrichedDose[] = [];
+  for (const group of groups) {
+    for (const rg of group.routes) {
+      // Check if this route is visible (matching the visibleRoutes logic)
+      const visibleRg = visibleRoutes.find(vr => vr.route.toLowerCase() === rg.route.toLowerCase());
+      if (visibleRg) {
+        for (const d of rg.doses) {
+          // Check if dose is selected (if in isolation mode)
+          const doseId = String(d.id ?? d.doseTime.getTime());
+          const isSelected = visibleRg.doses.some(vd => String(vd.id ?? vd.doseTime.getTime()) === doseId);
+          if (isSelected || visibleRg.doses.length === rg.doses.length) {
+            allDoses.push(d);
+          }
+        }
+      }
+    }
+  }
+
+  if (allDoses.length === 0) {
+    // Return empty config with defaults
+    return {
+      data: [],
+      series: [],
+      phaseBands: [],
+      windowStartMs: Date.now(),
+      windowEndMs: Date.now() + 60 * 60 * 1000,
+      maxIntensity: 100,
+    };
+  }
+
+  // Determine time window
+  const earliestDose = allDoses.reduce((earliest, d) =>
+    d.doseTime.getTime() < earliest.doseTime.getTime() ? d : earliest
+  );
+  const latestEnd = allDoses.reduce((latest, d) => {
+    const end = d.doseTime.getTime() + d.timings.totalDuration * 60_000;
+    return end > latest ? end : latest;
+  }, 0);
+
+  const windowStartMs = windowOverride?.startMs ?? (earliestDose.doseTime.getTime() - 5 * 60_000);
+  const windowEndMs = windowOverride?.endMs ?? (latestEnd + 10 * 60_000);
+  const windowDurationMs = windowEndMs - windowStartMs;
+  const sampleIntervalMs = windowDurationMs / sampleCount;
+
+  // Handle redose combining
+  let combos: ComboDose[];
+  if (redoseCombining === "cumulative") {
+    // Group all doses by substance (combine routes, no 2-min window)
+    const bySubstance = new Map<string, EnrichedDose[]>();
+    for (const d of allDoses) {
+      const key = d.substanceName.toLowerCase();
+      if (!bySubstance.has(key)) bySubstance.set(key, []);
+      bySubstance.get(key)!.push(d);
+    }
+    combos = [];
+    for (const [, substanceDoses] of bySubstance) {
+      substanceDoses.sort((a, b) => a.doseTime.getTime() - b.doseTime.getTime());
+      combos.push(createComboDose(substanceDoses));
+    }
+    combos.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
+  } else {
+    // Individual mode — use 2-minute combo grouping
+    const seriesDoses = allDoses;
+    combos = groupSameDoseCombos(seriesDoses);
+  }
+
+  // Build series with substance info
+  const series: OverlayDoseSeries[] = [];
+  for (const combo of combos) {
+    // For combo, we'll use the first dose's timings for phase bands
+    // but compute combined intensity at render time
+    const representativeDose = combo.doses[0];
+
+    // Find substance group for color
+    const substanceGroup = groups.find(g =>
+      g.key === representativeDose.substanceName.toLowerCase()
+    );
+    const substanceColor = substanceGroup
+      ? categoryHexColor(substanceGroup.categories)
+      : "#71717a";
+
+    // Find route for palette
+    const route = combo.routes[0];
+    const routeGroup = visibleRoutes.find(rg => rg.route.toLowerCase() === route.toLowerCase());
+    const paletteIndex = routeGroup?.paletteIndex ?? 0;
+    const palette = ROUTE_PALETTE[paletteIndex % ROUTE_PALETTE.length];
+
+    const doseId = combo.doses.map(d => String(d.id ?? d.doseTime.getTime())).join("+");
+    const dataKey = `dose_${doseId}`;
+
+    series.push({
+      dose: representativeDose,
+      route: routeGroup ?? {
+        route: combo.routes[0],
+        doses: combo.doses,
+        primary: representativeDose,
+        totalAmount: combo.doses.reduce((s, d) => s + d.amount, 0),
+        unit: combo.combinedUnit,
+        uniformUnit: combo.doses.every(d => d.unit === combo.doses[0].unit),
+        paletteIndex,
+      },
+      dataKey,
+      palette,
+      isEnded: false,
+      doseHeight: representativeDose.doseHeight,
+      substanceName: representativeDose.substanceName,
+      substanceKey: representativeDose.substanceName.toLowerCase(),
+      substanceColor,
+      comboInfo: combo.doses.length > 1 ? combo : undefined,
+    });
+  }
+
+  // Build data array - sample combined intensity across all series
+  const data: ChartDataPoint[] = [];
+  let maxIntensity = 0;
+
+  for (let i = 0; i <= sampleCount; i++) {
+    const t = windowStartMs + i * sampleIntervalMs;
+    const point: ChartDataPoint = { t };
+
+    for (const s of series) {
+      // For combo doses, compute combined intensity at this timestamp
+      let intensity: number;
+      if (s.comboInfo) {
+        // Compute combined intensity from all doses in combo
+        const intensities = s.comboInfo.doses.map(d => scaledIntensityAt(d, t));
+        intensity = combinedIntensityAt(intensities);
+      } else {
+        intensity = scaledIntensityAt(s.dose, t);
+      }
+
+      // Apply substance height normalization if needed
+      if (substanceHeight === "normalized") {
+        // Will be normalized after we know max intensity
+        point[s.dataKey] = intensity;
+      } else {
+        point[s.dataKey] = intensity;
+      }
+
+      if (intensity > maxIntensity) maxIntensity = intensity;
+    }
+
+    data.push(point);
+  }
+
+  // Normalize if substanceHeight === "normalized"
+  if (substanceHeight === "normalized" && maxIntensity > 0) {
+    const scale = 100 / maxIntensity;
+    for (const point of data) {
+      for (const s of series) {
+        point[s.dataKey] = Math.min(100, point[s.dataKey] * scale);
+      }
+    }
+    maxIntensity = 100;
+  }
+
+  // Phase bands from the earliest dose (or first series)
+  const bandDose = series[0]?.dose ?? earliestDose;
+  const bandOffsetMins = (bandDose.doseTime.getTime() - windowStartMs) / 60_000;
+  const phaseBands: PhaseBandConfig[] = getPhaseBandRanges(bandDose.timings).map(band => ({
+    phase: band.phase,
+    startMs: windowStartMs + (bandOffsetMins + band.startFrac * bandDose.timings.totalDuration) * 60_000,
+    endMs: windowStartMs + (bandOffsetMins + band.endFrac * bandDose.timings.totalDuration) * 60_000,
+  }));
+
+  return { data, series, phaseBands, windowStartMs, windowEndMs, maxIntensity };
+}
+
+/** Category to hex color map */
+const CATEGORY_HEX_COLORS: Record<string, string> = {
+  stimulants: "#f59e0b",
+  depressants: "#6366f1",
+  hallucinogens: "#a855f7",
+  dissociatives: "#06b6d4",
+  empathogens: "#ec4899",
+  cannabinoids: "#22c55e",
+  opioids: "#ef4444",
+  deliriants: "#64748b",
+  nootropics: "#14b8a6",
+  other: "#71717a",
+  medications: "#10b981",
+};
+
+function categoryHexColor(categories: string[]): string {
+  if (categories.length === 0) return "#71717a";
+  return CATEGORY_HEX_COLORS[categories[0]] ?? "#71717a";
 }

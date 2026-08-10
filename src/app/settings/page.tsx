@@ -30,6 +30,7 @@ import { useToleranceNotificationStore } from "@/store/tolerance-notification-st
 import { SubstanceSelectionList } from "@/components/SubstanceSelectionList";
 import { DurationInput } from "@/components/ui/duration-input";
 import { TimelineNotificationSettings } from "@/components/timeline-notification-settings";
+import { TimelineDisplaySettingsSection } from "@/components/TimelineDisplaySettingsSection";
 
 // ─── Category dots (matches Header & dose-logger-modal) ─────────────────────
 const CATEGORY_DOTS: Record<string, string> = {
@@ -974,6 +975,7 @@ export default function SettingsPage() {
         <ReminderSettingsSection />
         <ToleranceNotificationSettingsSection />
         <TimelineNotificationSettings />
+        <TimelineDisplaySettingsSection />
       </div>
     </div>
   );

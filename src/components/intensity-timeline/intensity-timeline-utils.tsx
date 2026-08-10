@@ -2,12 +2,39 @@
 
 import { format } from 'date-fns'
 import { phaseColors, phaseIcons, PHASE_BANDS, ENDED_DOSE_RETENTION_MINS, ROUTE_PALETTE, NOW_INDICATOR } from '@/components/dose-timeline/dose-timeline-constants'
-import type { EnrichedDose, PhaseName, RouteGroup, SubstanceGroup } from '@/components/dose-timeline/dose-timeline-types'
-import { parseDurationToMinutes, calculatePhaseTimings, calculateDoseScaledTimings, intensityAt, phaseNameAt, getPhaseStatus, combinedIntensityAt, formatMinutes, formatPhaseName, phaseStart, phaseEnd, getPhaseBandRanges, getDoseCategories } from '@/components/dose-timeline/dose-timeline-utils'
+import type { 
+  EnrichedDose, 
+  PhaseName, 
+  RouteGroup, 
+  SubstanceGroup,
+  ChartDataPoint,
+  DoseSeries,
+  PhaseBandConfig,
+  ChartConfig,
+} from '@/components/dose-timeline/dose-timeline-types'
+import { 
+  parseDurationToMinutes, 
+  calculatePhaseTimings, 
+  calculateDoseScaledTimings, 
+  intensityAt, 
+  phaseNameAt, 
+  getPhaseStatus, 
+  combinedIntensityAt, 
+  formatMinutes, 
+  formatPhaseName, 
+  phaseStart, 
+  phaseEnd, 
+  getPhaseBandRanges, 
+  getDoseCategories,
+  scaledIntensityAt,
+} from '@/components/dose-timeline/dose-timeline-utils'
 import { classifyDose } from '@/lib/dose-classification'
 import { formatDoseAmount } from '@/lib/utils'
 import type { Substance } from '@/lib/substances/types'
 import { substances } from '@/lib/substances/index'
+
+// Re-export shared utilities for backward compatibility
+export { scaledIntensityAt } from '@/components/dose-timeline/dose-timeline-utils'
 
 // ─── Helper: check if unit is weight-based ───────────────────────────────────
 const WEIGHT_UNITS = ['mg', 'g', 'µg', 'mcg', 'ug', 'μg', 'milligram', 'gram', 'microgram']
@@ -51,57 +78,6 @@ const SUBSTANCE_BY_NAME: Map<string, Substance> = (() => {
   }
   return map
 })()
-
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-export interface ChartDataPoint {
-  t: number // timestamp in ms
-  [doseKey: string]: number
-}
-
-export interface DoseSeries {
-  dose: EnrichedDose
-  route: RouteGroup
-  dataKey: string
-  palette: { stroke: string; fill: string }
-  isEnded: boolean
-  /** Dose-relative height = userDose / avgCommonDose. Curves are scaled by
-   *  this so heavier doses visually tower over lighter ones. */
-  doseHeight: number
-}
-
-export interface PhaseBandConfig {
-  phase: PhaseName
-  startMs: number
-  endMs: number
-}
-
-export interface ChartConfig {
-  data: ChartDataPoint[]
-  series: DoseSeries[]
-  phaseBands: PhaseBandConfig[]
-  windowStartMs: number
-  windowEndMs: number
-}
-
-/** Compute the dose-height-scaled intensity (0–100, clamped) for a single
- *  dose at a given timestamp. Used by the chart sampler, the tooltip, and
- *  the header combined-intensity badge so they all agree on the same value.
- *
- *  Fix 1.2: multiplies raw intensityAt() by doseHeight (userDose / avgCommon).
- *  Fix 5.2: edge fade removed — it was an SVG rendering nicety that caused
- *  the tooltip's reported intensity to disagree with the conceptual model.
- *  Recharts renders smooth area fills, so the fade isn't needed.
- */
-export function scaledIntensityAt(dose: EnrichedDose, t: number): number {
-  const elapsedMins = (t - dose.doseTime.getTime()) / 60_000
-  if (elapsedMins < 0 || elapsedMins > dose.timings.totalDuration) return 0
-  const progress = (elapsedMins / dose.timings.totalDuration) * 100
-  // Dose-height scaling — heavier doses rise above 100 (visual cue),
-  // but clamp the *visible curve* at 100 so it stays in the chart bounds.
-  const val = intensityAt(progress, dose.timings) * dose.doseHeight
-  return Math.max(0, Math.min(100, val))
-}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 

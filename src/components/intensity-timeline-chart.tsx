@@ -45,10 +45,12 @@ import {
 } from 'lucide-react'
 import { useDoseStore } from '@/store/dose-store'
 import { useReminderStore } from '@/store/reminder-store'
+import { useTimelineDisplayStore } from '@/store/timeline-display-store'
 import { substances } from '@/lib/substances/index'
 import { classifyDose } from '@/lib/dose-classification'
 import { formatDoseAmount } from '@/lib/utils'
 import { EstimatedDurationBadge } from '@/components/estimated-duration-badge'
+import { OverlayChart } from '@/components/overlay-chart'
 
 // ─── Helper: check if unit is weight-based ───────────────────────────────────
 const WEIGHT_UNITS = ['mg', 'g', 'µg', 'mcg', 'ug', 'μg', 'milligram', 'gram', 'microgram']
@@ -70,6 +72,9 @@ import {
   getPhaseBandRanges,
   phaseStart,
   phaseEnd,
+  scaledIntensityAt,
+  combineGroupsForOverlay,
+  groupSameDoseCombos,
 } from '@/components/dose-timeline/dose-timeline-utils'
 import {
   phaseColors,
@@ -83,6 +88,13 @@ import {
 import type {
   EnrichedDose, RouteGroup, SubstanceGroup,
   PhaseTimings, PhaseName,
+  ChartDataPoint,
+  DoseSeries,
+  PhaseBandConfig,
+  ChartConfig,
+  ComboDose,
+  OverlayDoseSeries,
+  OverlayChartConfig,
 } from '@/components/dose-timeline/dose-timeline-types'
 
 // ─── Category → hex color map ──────────────────────────────────────────────
@@ -122,38 +134,6 @@ const SUBSTANCE_BY_NAME: Map<string, typeof substances[number]> = (() => {
   return map
 })()
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-interface ChartDataPoint {
-  t: number // timestamp in ms
-  [doseKey: string]: number
-}
-
-interface DoseSeries {
-  dose: EnrichedDose
-  route: RouteGroup
-  dataKey: string
-  palette: { stroke: string; fill: string }
-  isEnded: boolean
-  /** Dose-relative height = userDose / avgCommonDose. Curves are scaled by
-   *  this so heavier doses visually tower over lighter ones. */
-  doseHeight: number
-}
-
-interface PhaseBandConfig {
-  phase: PhaseName
-  startMs: number
-  endMs: number
-}
-
-interface ChartConfig {
-  data: ChartDataPoint[]
-  series: DoseSeries[]
-  phaseBands: PhaseBandConfig[]
-  windowStartMs: number
-  windowEndMs: number
-}
-
 /** Window zoom options for the timeline. `null` = auto-fit (show all doses). */
 const WINDOW_OPTIONS = [
   { hours: 1, label: '1h' },
@@ -164,25 +144,6 @@ const WINDOW_OPTIONS = [
 ] as const
 
 export type WindowHours = number | null
-
-/** Compute the dose-height-scaled intensity (0–100, clamped) for a single
- *  dose at a given timestamp. Used by the chart sampler, the tooltip, and
- *  the header combined-intensity badge so they all agree on the same value.
- *
- *  Fix 1.2: multiplies raw intensityAt() by doseHeight (userDose / avgCommon).
- *  Fix 5.2: edge fade removed — it was an SVG rendering nicety that caused
- *  the tooltip's reported intensity to disagree with the conceptual model.
- *  Recharts renders smooth area fills, so the fade isn't needed.
- */
-function scaledIntensityAt(dose: EnrichedDose, t: number): number {
-  const elapsedMins = (t - dose.doseTime.getTime()) / 60_000
-  if (elapsedMins < 0 || elapsedMins > dose.timings.totalDuration) return 0
-  const progress = (elapsedMins / dose.timings.totalDuration) * 100
-  // Dose-height scaling — heavier doses rise above 100 (visual cue),
-  // but clamp the *visible curve* at 100 so it stays in the chart bounds.
-  const val = intensityAt(progress, dose.timings) * dose.doseHeight
-  return Math.max(0, Math.min(100, val))
-}
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -475,6 +436,13 @@ function buildChartConfig(
 export function IntensityTimelineChart() {
   const doses = useDoseStore(s => s.doses)
   const isLoaded = useDoseStore(s => s.isLoaded)
+  const displaySettings = useTimelineDisplayStore(s => s.settings)
+  const initializeDisplay = useTimelineDisplayStore(s => s.initialize)
+
+  useEffect(() => {
+    const cleanup = initializeDisplay()
+    return () => { if (typeof cleanup === 'function') cleanup() }
+  }, [initializeDisplay])
 
   const [hiddenSubstances, setHiddenSubstances] = useState<Set<string>>(new Set())
   const [selectedRoutes, setSelectedRoutes] = useState<Record<string, string | null>>({})
@@ -527,7 +495,7 @@ export function IntensityTimelineChart() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-neutral-content" />
-          <span className="ml-2 text-sm text-neutral-content">Loading active doses…</span>
+          <span className="ml-2 text-sm text-neutral-content">Loading active doses...</span>
         </CardContent>
       </Card>
     )
@@ -553,6 +521,20 @@ export function IntensityTimelineChart() {
 
   const visibleGroups = groups.filter(g => !hiddenSubstances.has(g.key))
 
+  // Render overlay mode (single chart with all substances)
+  if (displaySettings.displayMode === 'overlay' || displaySettings.displayMode === 'normalized') {
+    return (
+      <OverlayChart
+        groups={visibleGroups}
+        getCategoryColor={getCategoryColor}
+        nowTs={nowTs}
+        windowHours={windowHours}
+        displaySettings={displaySettings}
+      />
+    )
+  }
+
+  // Render separate mode (original per-substance cards)
   return (
     <div className="space-y-4">
       {/* Top toolbar: substance toggle chips + window zoom selector */}
@@ -572,8 +554,7 @@ export function IntensityTimelineChart() {
                     else next.add(g.key)
                     return next
                   })}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'
-                    }`}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${hidden ? 'opacity-30 border-base-300 line-through' : 'opacity-90 hover:opacity-100'}`}
                   style={{ borderColor: hidden ? undefined : color, color }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color, opacity: hidden ? 0.3 : 1 }} />
@@ -599,10 +580,7 @@ export function IntensityTimelineChart() {
               <button
                 key={opt.label}
                 onClick={() => setWindowHours(opt.hours)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${isActive
-                  ? 'bg-primary text-primary-content'
-                  : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'
-                  }`}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${isActive ? 'bg-primary text-primary-content' : 'text-neutral-content hover:text-base-content hover:bg-base-300/50'}`}
               >
                 {opt.label}
               </button>
